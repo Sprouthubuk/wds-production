@@ -3,13 +3,14 @@
 namespace Tests\Unit;
 
 use App\Services\PricingService;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 class PricingServiceTest extends TestCase
 {
     private array $bundles = [['qty' => 3, 'price_pence' => 4000], ['qty' => 10, 'price_pence' => 12500]];
 
-    /** @dataProvider cases */
+    #[DataProvider('cases')]
     public function test_prices_match_the_frontend(int $qty, int $expected): void
     {
         $this->assertSame($expected, (new PricingService)->price($qty, 1495, $this->bundles));
