@@ -88,9 +88,9 @@ class VerityDrawFlowTest extends TestCase
         $this->assertMatchesRegularExpression('/^VTY-[A-Z0-9]{6}$/', $c->verity_ref);
         $this->assertSame('live', $c->status);
 
-        $this->buyOnline($c, 3, 'alex@example.com');
-        $this->enterByPost($c, 'pat@example.com');
-        $this->buyAtEvent($c, 2, 'sam@example.com');
+        $online = $this->buyOnline($c, 3, 'alex@example.com');
+        $postal = $this->enterByPost($c, 'pat@example.com');
+        $event = $this->buyAtEvent($c, 2, 'sam@example.com');
 
         // WDS's tickets mirror Verity's numbers exactly: 1..6 in confirmation order, every channel in one run.
         $tickets = Ticket::orderBy('number')->get();
@@ -104,7 +104,10 @@ class VerityDrawFlowTest extends TestCase
             $this->assertSame('entrant:'.$t->entrant_id, $entry->group->owner_ref);
         }
         $this->assertSame(['paid', 'postal', 'paid'], EntryGroup::orderBy('id')->pluck('source')->all());
-        $this->assertSame(['order_line:1', 'postal:1', 'order_line:2'], EntryGroup::orderBy('id')->pluck('host_ref')->all());
+        // Ids aren't reset between tests on MySQL, so build the expected host refs from the real rows.
+        $this->assertSame([
+            'order_line:'.$online->lines()->first()->id, 'postal:'.$postal->id, 'order_line:'.$event->lines()->first()->id,
+        ], EntryGroup::orderBy('id')->pluck('host_ref')->all());
         $this->assertSame(6, (int) $vc->fresh()->tickets_sold);
 
         // The close: entries frozen, a future drand round committed, and the close timestamped.
