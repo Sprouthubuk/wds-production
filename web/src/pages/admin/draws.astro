@@ -1,13 +1,16 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, when } from '../../lib/admin';
+import ForfeitForm from '../../components/ForfeitForm.astro';
 
 interface TrailEvent { seq: number; type: string; at: string | null; hash: string }
 interface DrawState {
   competitionId: number; competition: string; verityRef: string; status: 'live' | 'paused' | 'closed' | 'drawn' | 'void' | string;
   closesAt: string | null; ticketsSold: number; totalTickets: number;
   round: number | null; roundCommitted: boolean; roundAt: string | null; roundLate: boolean; commitment: string;
-  draw: null | { id: number; status: 'prepared' | 'drawn' | 'published' | string; entries: number; entriesHash: string; winningTicket: string | null; winnerName: string | null; drawnAt: string | null; publishedAt: string | null; certificateUrl: string | null; verifyUrl: string | null };
+  draw: null | { id: number; status: 'prepared' | 'drawn' | 'published' | string; entries: number; entriesHash: string; winningTicket: string | null; winnerName: string | null; drawnAt: string | null; publishedAt: string | null; certificateUrl: string | null; verifyUrl: string | null;
+    winners: { id: number; label: string; ticket: string | null; name: string | null; forfeited: boolean; reason: string | null; note: string | null; canForfeit: boolean }[];
+    redrawPending: { number: number; round: number; roundAt: string | null } | null };
   trail: TrailEvent[];
 }
 const rows = await adminGet<DrawState[]>(Astro.cookies, '/draws');
@@ -47,6 +50,22 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
         {r.draw?.winningTicket ? <tr><th>Winning ticket</th><td><strong>#{r.draw.winningTicket}</strong> · {r.draw.winnerName} · drawn {when(r.draw.drawnAt)}</td></tr> : null}
         {r.draw?.verifyUrl ? <tr><th>Proof</th><td><a href={r.draw.verifyUrl} target="_blank" rel="noopener">Public verify page ↗</a> · <a href={r.draw.certificateUrl!} target="_blank" rel="noopener">Certificate (JSON) ↗</a></td></tr> : null}
       </tbody></table></div>
+
+      {r.draw?.winners?.length ? (
+        <div style="margin-top:12px">
+          <h3 class="label" style="margin:0 0 6px">Winners</h3>
+          <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Draw</th><th>Ticket</th><th>Winner</th><th>Status</th><th></th></tr></thead><tbody>
+            {r.draw.winners.map((w) => (
+              <tr>
+                <td>{w.label}</td><td class="mono">#{w.ticket}</td><td>{w.name}</td>
+                <td>{w.forfeited ? <><span class="pill pill--forfeited">forfeited</span><div class="small muted">{w.reason}{w.note ? ` · note: ${w.note}` : ''}</div></> : <span class="pill pill--approved">winner</span>}</td>
+                <td>{w.canForfeit ? <ForfeitForm winnerId={w.id} ticket={w.ticket} name={w.name} competition={r.competition} /> : null}</td>
+              </tr>
+            ))}
+          </tbody></table></div>
+          {r.draw.redrawPending ? <p class="small" style="margin:8px 0 0">Redraw {r.draw.redrawPending.number} is committed to drand round <span class="mono">{r.draw.redrawPending.round}</span>, expected {when(r.draw.redrawPending.roundAt)}. It runs automatically.</p> : null}
+        </div>
+      ) : null}
 
       {r.draw?.status === 'drawn' ? (
         <div style="margin-top:12px"><button class="btn" data-admin-action={`/api/admin/draws/${r.draw.id}/publish`} data-confirm="Publish the result? It goes on the Live draws page with its certificate." data-reload>Publish result</button></div>

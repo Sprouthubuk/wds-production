@@ -70,6 +70,9 @@ export interface DrawCertificate {
   drandRandomness: string | null; drandSignature: string | null; drawSeed: string | null; winningTickets: number[];
   auditEvent: { seq: number; hash: string } | null; closeTimestamp: { authority: string; witnessedAt: string; token: string } | null;
   engine: { version: string; engine_sha256: string; draw_path_sha256: string } | null; howToVerify: string;
+  /** Original draw, then Redraw 1, 2 …; a forfeited winner is kept (ticket and reason only). */
+  winners: { label: string; ticket: string | null; name: string | null; status: 'winner' | 'forfeited'; reason: string | null }[];
+  redrawsPending: { redraw: number; forfeitedTicket: number; drandRound: number | null; drandRoundAt: string | null }[];
 }
 
 /** A published draw's certificate summary (null until the result is published). */

@@ -22,6 +22,16 @@ trait VerityFakes
 
     protected const SIGNATURE = '862631debfc2c6a799721fb44622a74ca9bceae6a20665acafb1ca77ee613334a93f81e7ebd2ef162483166a31892d96';
 
+    /** A second real quicknet round, 33732989, published 2026-11-06T21:58:51Z: used by redraws (R2). */
+    protected const ROUND_2 = 33732989;
+
+    protected const RANDOMNESS_2 = 'd9d733c333a9a87fd2903f85d75f614f6630bf7c3d19ad0c7afc08868cbf1223';
+
+    protected const SIGNATURE_2 = 'a16cbca54ebc06743e1009f8d3dab313eb386a9ea1dae4641a109187ff0a6adb9d130acc1122fb0985a7f48556bef929';
+
+    /** A forfeit scheduled at this moment commits its redraw to ROUND_2 (60 s later). */
+    protected const FORFEIT_AT = '2026-11-06 21:57:51';
+
     /** Closing here commits to ROUND (the first round at least 60 s after the close). */
     protected const CLOSES_AT = '2026-10-30 20:00:00';
 
@@ -40,6 +50,7 @@ trait VerityFakes
         Http::preventStrayRequests();
         Http::fake([
             'relay.test/*/public/'.self::ROUND => Http::response(['round' => self::ROUND, 'randomness' => self::RANDOMNESS, 'signature' => self::SIGNATURE]),
+            'relay.test/*/public/'.self::ROUND_2 => Http::response(['round' => self::ROUND_2, 'randomness' => self::RANDOMNESS_2, 'signature' => self::SIGNATURE_2]),
             'relay.test/*' => Http::response(['error' => 'not this round'], 404),
             'tsa.test/*' => fn (Request $r) => Http::response(self::tsaReply($r->body()), 200, ['Content-Type' => 'application/timestamp-reply']),
         ]);

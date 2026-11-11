@@ -36,5 +36,15 @@ return [
         'verify_page' => rtrim((string) env('FRONTEND_URL', 'http://localhost:4321'), '/').'/verify',
         // End-prize value recorded at publish when a competition has no cash alternative.
         'default_prize_value_pence' => 0,
+        // Days a winner has to complete the claim (ID check, contact) before the prize can be forfeited.
+        'claim_days' => (int) env('RAFFLE_CLAIM_DAYS', 14),
+        // Forfeit reasons. Only the label goes on Verity's public audit chain (permanent), so it must never
+        // hold personal details; a free-text note stays in WDS. ":days" is claim_days.
+        'forfeit_reasons' => [
+            'failed_id' => 'Failed ID check',
+            'no_response' => 'No response within :days days',
+            'ineligible' => 'Ineligible under the terms',
+            'other' => 'Other reason under the terms',
+        ],
     ],
 ];

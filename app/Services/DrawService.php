@@ -10,6 +10,7 @@ use App\Models\Winner;
 use App\Services\Draws\VerityDrawEngine;
 use Illuminate\Support\Facades\DB;
 use Sprouthub\Verity\Models\Competition as VerityCompetition;
+use Sprouthub\Verity\Models\Redraw;
 use Sprouthub\Verity\Models\Winner as VerityWinner;
 
 /**
@@ -80,35 +81,52 @@ class DrawService
         });
     }
 
+    /**
+     * Every main winner Verity has recorded for this competition, original and redraws, is mirrored as a
+     * WDS winner row and never deleted: a forfeited one stays, marked forfeited; a redraw's winner gets
+     * redraw_number 1, 2 …. The draw's winning ticket is the current active winner (none while a redraw
+     * is waiting for its drand round, or when the prize went unawarded).
+     */
     private function mirrorWinners(Competition $competition, VerityCompetition $vc, Draw $draw): void
     {
-        $main = VerityWinner::query()->with('entry')->where('competition_id', $vc->id)->where('type', 'main')
-            ->orderBy('position')->orderBy('id')->get();
-        $current = $main->where('status', 'active')->sortBy('position')->first() ?? $main->first();
+        $main = VerityWinner::query()->with('entry')->where('competition_id', $vc->id)->where('type', 'main')->orderBy('id')->get();
+        $redrawNumbers = Redraw::query()->where('competition_id', $vc->id)->pluck('number', 'id');
 
         foreach ($main as $vw) {
             $ticket = Ticket::where('verity_entry_id', $vw->entry_id)->first()
                 ?? Ticket::where('competition_id', $competition->id)->where('number', $vw->entry->number)->firstOrFail();
-            Winner::firstOrCreate(
-                ['draw_id' => $draw->id, 'ticket_id' => $ticket->id],
-                [
+            $row = Winner::where('verity_winner_id', $vw->id)->first()
+                ?? Winner::where('draw_id', $draw->id)->where('ticket_id', $ticket->id)->first();
+            $link = [
+                'verity_winner_id' => $vw->id,
+                'redraw_number' => $vw->redraw_id ? (int) ($redrawNumbers[$vw->redraw_id] ?? 0) ?: null : null,
+            ];
+            if (! $row) {
+                $row = Winner::create($link + [
                     'competition_id' => $competition->id,
+                    'draw_id' => $draw->id,
+                    'ticket_id' => $ticket->id,
                     'user_id' => $ticket->user_id,
                     'display_name' => self::displayName($ticket->name),
                     'prize' => $vw->prize_name,
-                    'drawn_at' => $vc->drawn_at,
-                ],
-            );
+                    'drawn_at' => $vw->redraw_id ? $vw->created_at : $vc->drawn_at,
+                ]);
+            } else {
+                $row->update($link);
+            }
+            // Forfeited in Verity some other way (not through WDS's forfeit): still shown as forfeited.
+            if ($vw->status === 'forfeited' && ! $row->isForfeited()) {
+                $row->update(['forfeited_at' => now(), 'show_on_site' => false]);
+            }
         }
 
-        $winningTicket = Ticket::where('verity_entry_id', $current->entry_id)->first();
+        $current = $main->where('status', 'active')->sortByDesc('id')->first();
+        $winningTicket = $current ? Ticket::where('verity_entry_id', $current->entry_id)->first() : null;
         $draw->update([
             'status' => $draw->status === 'published' ? 'published' : 'drawn',
-            'winning_number' => (int) $current->entry->number,
+            'winning_number' => $current ? (int) $current->entry->number : null,
             'winning_ticket_id' => $winningTicket?->id,
             'drawn_at' => $vc->drawn_at,
-            'beacon_round' => $vc->beacon_round,
-            'beacon_round_at' => VerityDrawEngine::roundTime($vc->beacon_round ? (int) $vc->beacon_round : null),
             'proof' => json_encode([
                 'spec' => $vc->spec,
                 'beacon_round' => (int) $vc->beacon_round,

@@ -6,12 +6,16 @@ use App\Exceptions\EntryException;
 use App\Models\Competition;
 use App\Models\Draw;
 use App\Models\Entrant;
+use App\Models\User;
+use App\Models\Winner;
 use Illuminate\Support\Facades\DB;
 use Sprouthub\Verity\Engine\Drand;
 use Sprouthub\Verity\Engine\VerityException;
 use Sprouthub\Verity\Facades\Verity;
 use Sprouthub\Verity\Models\Competition as VerityCompetition;
 use Sprouthub\Verity\Models\EntryGroup;
+use Sprouthub\Verity\Models\Redraw;
+use Sprouthub\Verity\Models\Winner as VerityWinner;
 
 /**
  * WDS's one door into the Verity draw engine (sprouthub/verity-engine). Verity owns the numbering,
@@ -135,6 +139,52 @@ class VerityDrawEngine
         }
     }
 
+    /**
+     * Forfeit a drawn winner, through Verity, so it's on the public audit chain:
+     *  - $redraw = true: Verity::redraw() forfeits the winner AND commits the replacement to a drand round
+     *    still in the future (protocol R2), in one step. verity:process-due draws it once the round is out.
+     *    There is no separate "redraw later": fixing the round at the forfeit is what stops anyone
+     *    choosing when to redraw. Returns the scheduled redraw, or null if no redraw was possible
+     *    (VERITY_MAX_REDRAWS reached, or every entry has won), in which case the prize is unawarded.
+     *  - $redraw = false: Verity::forfeit(), the prize is unawarded (draw.forfeited), no redraw ever.
+     *
+     * Only the reason's label (a category, no personal details) goes to Verity, because the audit chain
+     * is public and permanent. The note stays in WDS. The WDS winner row is kept, marked forfeited.
+     */
+    public function forfeit(Winner $winner, string $category, ?string $note, bool $redraw, User $admin): ?Redraw
+    {
+        if ($winner->isForfeited()) {
+            throw new EntryException('This winner has already been forfeited.');
+        }
+        $reason = Winner::forfeitLabel($category) ?? throw new EntryException('Choose a reason for the forfeit.');
+        $vw = $winner->verity_winner_id ? VerityWinner::query()->find($winner->verity_winner_id) : null;
+        if (! $vw) {
+            throw new EntryException('Only a winner drawn by the draw engine can be forfeited here.');
+        }
+
+        return DB::transaction(function () use ($winner, $category, $note, $redraw, $admin, $reason, $vw) {
+            try {
+                $scheduled = null;
+                if ($redraw) {
+                    $scheduled = Verity::redraw($vw, $reason, by: 'admin:'.$admin->id);
+                } else {
+                    Verity::forfeit($vw, $reason, by: 'admin:'.$admin->id);
+                }
+            } catch (VerityException $e) {
+                throw new EntryException($e->getMessage());
+            }
+            $winner->update([
+                'forfeited_at' => now(),
+                'forfeit_category' => $category,
+                'forfeit_note' => $note !== null && trim($note) !== '' ? mb_substr(trim($note), 0, 500) : null,
+                'forfeited_by' => $admin->id,
+                'show_on_site' => false,
+            ]);
+
+            return $scheduled;
+        });
+    }
+
     /** Verity still takes entries (and withdrawals) for this competition. */
     public function isOpen(Competition $competition): bool
     {
@@ -185,8 +235,36 @@ class VerityDrawEngine
             'auditEvent' => $completed ? ['seq' => $completed['seq'] ?? null, 'hash' => $completed['hash'] ?? null] : null,
             'closeTimestamp' => $tsa ? ['authority' => config('verity.tsa_url'), 'witnessedAt' => $tsa['witnessed_at'], 'token' => $tsa['token']] : null,
             'engine' => $record['engine'] ?? null,
+            'winners' => self::publicWinners($draw),
+            // Redraws committed to a drand round that isn't out yet (protocol R2).
+            'redrawsPending' => collect($record['redraws'] ?? [])->where('status', 'scheduled')
+                ->map(fn ($r) => ['redraw' => $r['redraw'], 'forfeitedTicket' => $r['forfeited_ticket'], 'drandRound' => $r['beacon_round'] ?? null, 'drandRoundAt' => $r['round_time'] ?? null])
+                ->values()->all(),
             'howToVerify' => config('raffle.draws.verify_page').'/'.$draw->id,
         ];
+    }
+
+    /**
+     * Every winner of a draw, as shown publicly: the original draw, then Redraw 1, 2 …. A forfeited
+     * winner is never removed. It's listed as forfeited with its reason category, by ticket number
+     * only (no name: a forfeit reason next to a person's name, published for good, isn't needed to
+     * verify anything).
+     *
+     * @return list<array{label:string, ticket:?string, name:?string, status:string, reason:?string}>
+     */
+    public static function publicWinners(Draw $draw): array
+    {
+        $total = (int) $draw->competition->total_tickets;
+
+        return Winner::with('ticket')->where('draw_id', $draw->id)->get()
+            ->sortBy(fn (Winner $w) => [(int) $w->redraw_number, $w->id])->values()
+            ->map(fn (Winner $w) => [
+                'label' => $w->redraw_number ? "Redraw {$w->redraw_number}" : 'Original draw',
+                'ticket' => $w->ticket?->display($total),
+                'name' => $w->isForfeited() ? null : $w->display_name,
+                'status' => $w->isForfeited() ? 'forfeited' : 'winner',
+                'reason' => $w->isForfeited() ? (Winner::forfeitLabel($w->forfeit_category) ?? 'Forfeited under the terms') : null,
+            ])->all();
     }
 
     /**

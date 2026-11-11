@@ -52,6 +52,10 @@ class PublicController extends Controller
             'certificateUrl' => route('draws.certificate', $d),
             'verifyUrl' => config('raffle.draws.verify_page').'/'.$d->id,
             'drandRound' => $d->beacon_round ? (int) $d->beacon_round : null,
+            // No current winner: the winner was forfeited and a redraw is waiting for its drand round, or
+            // no redraw was possible and the prize went unawarded.
+            'note' => $d->winning_ticket_id ? null : (self::redrawPending($d) ? 'Redraw pending' : 'Prize unawarded'),
+            'redraws' => (int) Winner::where('draw_id', $d->id)->whereNotNull('redraw_number')->count(),
         ]);
 
         return response()->json(['data' => $upcoming->concat($past)->values()]);
@@ -75,6 +79,13 @@ class PublicController extends Controller
                 'publishedAt' => $draw->published_at?->toIso8601String(),
             ] + $verity->certificate($draw),
         ]);
+    }
+
+    private static function redrawPending(Draw $draw): bool
+    {
+        $vcId = \Sprouthub\Verity\Models\Competition::where('ref', $draw->verity_ref)->value('id');
+
+        return $vcId && \Sprouthub\Verity\Models\Redraw::where('competition_id', $vcId)->where('status', 'scheduled')->exists();
     }
 
     public function settings()
