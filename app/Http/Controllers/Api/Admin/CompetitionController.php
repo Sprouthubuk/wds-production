@@ -75,6 +75,8 @@ class CompetitionController extends Controller
             'cashAlternative' => ['nullable', 'numeric', 'min:0'],
             'buildVideoUrl' => ['nullable', 'url'],
             'opensAt' => ['nullable', 'date'], 'closesAt' => ['nullable', 'date'],
+            // Empty = three days before closesAt (Competition::postalClosesAt()).
+            'postalClosesAt' => ['nullable', 'date', ...($request->filled('closesAt') ? ['before_or_equal:closesAt'] : [])],
             'drawAt' => [$existing ? 'sometimes' : 'required', 'date'],
             'postalEntryEnabled' => ['boolean'], 'eventSalesEnabled' => ['boolean'], 'sortOrder' => ['integer'],
         ]);
@@ -83,7 +85,7 @@ class CompetitionController extends Controller
             'title' => 'title', 'strapline' => 'strapline', 'category' => 'category', 'badge' => 'badge', 'status' => 'status',
             'images' => 'images', 'description' => 'description', 'specs' => 'specs', 'totalTickets' => 'total_tickets',
             'maxPerPerson' => 'max_per_person', 'buildVideoUrl' => 'build_video_url', 'opensAt' => 'opens_at',
-            'closesAt' => 'closes_at', 'drawAt' => 'draw_at', 'postalEntryEnabled' => 'postal_entry_enabled',
+            'closesAt' => 'closes_at', 'postalClosesAt' => 'postal_closes_at', 'drawAt' => 'draw_at', 'postalEntryEnabled' => 'postal_entry_enabled',
             'eventSalesEnabled' => 'event_sales_enabled', 'sortOrder' => 'sort_order',
         ];
         $out = [];

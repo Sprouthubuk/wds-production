@@ -11,7 +11,7 @@ class Competition extends Model
     protected $fillable = [
         'slug', 'title', 'strapline', 'category', 'badge', 'status', 'images', 'description', 'specs',
         'ticket_price_pence', 'bundles', 'total_tickets', 'max_per_person', 'cash_alternative_pence',
-        'build_video_url', 'opens_at', 'closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order',
+        'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order',
     ];
 
     protected function casts(): array
@@ -23,6 +23,7 @@ class Competition extends Model
             'bundles' => 'array',
             'opens_at' => 'datetime',
             'closes_at' => 'datetime',
+            'postal_closes_at' => 'datetime',
             'draw_at' => 'datetime',
             'postal_entry_enabled' => 'boolean',
             'event_sales_enabled' => 'boolean',
@@ -55,6 +56,15 @@ class Competition extends Model
             ->where('competition_id', $this->id)
             ->whereHas('order', fn ($q) => $q->where('status', 'pending')->where('reserved_until', '>', now()))
             ->sum('qty');
+    }
+
+    /** Default gap between the postal deadline and the online close, when postal_closes_at isn't set. */
+    public const POSTAL_CLOSE_DAYS_BEFORE = 3;
+
+    /** Postal entries must be received by this moment: postal_closes_at, or three days before closes_at. */
+    public function postalClosesAt(): ?\Illuminate\Support\Carbon
+    {
+        return $this->postal_closes_at ?? $this->closes_at?->copy()->subDays(self::POSTAL_CLOSE_DAYS_BEFORE);
     }
 
     public function available(): int

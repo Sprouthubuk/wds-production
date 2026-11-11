@@ -4,13 +4,16 @@ namespace App\Services;
 
 use App\Exceptions\EntryException;
 use App\Models\Competition;
+use App\Models\Entrant;
 use App\Models\PostalEntry;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 /**
  * Free postal entries are logged by staff from the envelopes received. Each valid entry gets ONE
- * ticket number in the same sequence as paid entries, and counts towards the per-person maximum.
+ * ticket number in the same sequence as paid entries, and counts towards the per-person maximum
+ * (per entrant: the same person online, by post and at events). Envelopes received after the
+ * competition's postal closing date (Competition::postalClosesAt()) are rejected.
  */
 class PostalEntryService
 {
@@ -24,6 +27,7 @@ class PostalEntryService
             $entry = PostalEntry::create([
                 'competition_id' => $competition->id,
                 'user_id' => User::where('email', TicketAllocator::normaliseEmail($data['email']))->value('id'),
+                'entrant_id' => Entrant::forEmail($data['email'])->id,
                 'name' => $data['name'],
                 'address' => $data['address'],
                 'date_of_birth' => $data['date_of_birth'],
@@ -54,7 +58,11 @@ class PostalEntryService
         if (! $competition->postal_entry_enabled) {
             return 'Postal entry not enabled for this competition';
         }
-        if ($competition->closes_at && now()->parse($data['received_on'])->startOfDay()->gt($competition->closes_at)) {
+        $received = now()->parse($data['received_on'])->startOfDay();
+        if (($postalClose = $competition->postalClosesAt()) && $received->gt($postalClose)) {
+            return 'Received after the postal closing date';
+        }
+        if ($competition->closes_at && $received->gt($competition->closes_at)) {
             return 'Received after the closing date';
         }
         if (! ResponsiblePlay::isAdult($data['date_of_birth'])) {

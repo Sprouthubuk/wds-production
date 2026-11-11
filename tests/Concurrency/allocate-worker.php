@@ -7,7 +7,7 @@
  *
  * Boots the app against the database in the environment (DB_CONNECTION / DB_DATABASE ...), waits
  * for the shared start time so every racer begins together, then allocates 1-3 tickets per
- * iteration across the online, postal and event channels. Prints one JSON line with what it got.
+ * iteration across the online, postal and event channels; every fifth one under a shared email. Prints one JSON line with what it got.
  */
 
 require __DIR__.'/../../vendor/autoload.php';
@@ -31,7 +31,8 @@ for ($i = 0; $i < (int) $iterations; $i++) {
     try {
         $tickets = $allocator->allocate($competition, $qty, [
             'channel' => $channels[$i % 3],
-            'email' => "racer{$workerId}@race.test",
+            // Every fifth purchase is by one shared person, so both racers create/find the same entrant.
+            'email' => $i % 5 === 4 ? 'shared@race.test' : "racer{$workerId}@race.test",
             'name' => "Racer {$workerId}",
         ]);
         $result['ok']++;

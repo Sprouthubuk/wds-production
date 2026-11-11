@@ -7,6 +7,7 @@ use App\Mail\TicketsIssued;
 use App\Models\Competition;
 use App\Models\CreditTransaction;
 use App\Models\DiscountCode;
+use App\Models\Entrant;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Payments\PaymentGateway;
@@ -117,6 +118,7 @@ class CheckoutService
                 'reference' => self::newReference(),
                 'access_key' => Str::random(40),
                 'user_id' => $user?->id,
+                'entrant_id' => Entrant::forEmail($email)->id,
                 'email' => $email,
                 'name' => trim($customer['name']),
                 'phone' => $customer['phone'] ?? null,

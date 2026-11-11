@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 class Order extends Model
 {
     protected $fillable = [
-        'reference', 'access_key', 'user_id', 'email', 'name', 'phone', 'date_of_birth', 'channel', 'status',
+        'reference', 'access_key', 'user_id', 'entrant_id', 'email', 'name', 'phone', 'date_of_birth', 'channel', 'status',
         'subtotal_pence', 'bundle_saving_pence', 'discount_pence', 'credit_used_pence', 'total_pence',
         'discount_code_id', 'payment_method', 'payment_provider', 'provider_reference', 'staff_user_id',
         'marketing_opt_in', 'reserved_until', 'paid_at',

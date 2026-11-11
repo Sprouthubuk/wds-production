@@ -10,10 +10,11 @@ const [c, settings] = await Promise.all([getCompetition(slug!), getSettings()]);
 if (!c) return Astro.rewrite('/404');
 const drawDate = new Date(c.drawAt);
 const drawLabel = drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const postalLabel = c.postalClosesAt ? new Date(c.postalClosesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : null;
 const closesLabel = c.closesAt ? new Date(c.closesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'When sold out or before the draw';
 const faqs = [
   { q: 'When is the draw?', a: `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}. Follow @${settings.drawsInstagram} on Instagram to watch it live.` },
-  { q: 'Can I enter for free?', a: 'Yes. Post a postcard or letter with your details to the free entry address. Postal entries have exactly the same chance of winning.' },
+  { q: 'Can I enter for free?', a: `Yes. Post a postcard or letter with your details to the free entry address. ${postalLabel ? `It must reach us by ${postalLabel}. ` : ''}Postal entries have exactly the same chance of winning.` },
   { q: 'How do I get my ticket numbers?', a: 'Ticket numbers are issued in order. Online entries get theirs by email straight after payment and can see them in their account. Postal entries are emailed once logged.' },
   { q: 'What happens if I win?', a: 'We contact you straight after the draw, verify your ID and arrange handover. Winners must be 18 or over.' },
 ];
@@ -59,6 +60,7 @@ const jsonLd = {
         <span class="eyebrow">Draw details</span>
         <div class="details">
           <div><span class="label">Closes</span><b>{closesLabel}</b></div>
+          {postalLabel ? <div><span class="label">Postal entries by</span><b>{postalLabel}</b></div> : null}
           <div><span class="label">Live draw</span><b>{drawLabel}</b></div>
           <div><span class="label">Watch on</span><b>Instagram @{settings.drawsInstagram}</b></div>
           <div><span class="label">Ticket numbers</span><b>Issued in order</b></div>

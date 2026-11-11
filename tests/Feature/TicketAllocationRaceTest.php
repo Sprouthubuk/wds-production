@@ -14,7 +14,8 @@ use Tests\TestCase;
  * builds its own database instead of using RefreshDatabase.
  *
  * Proves: no duplicate numbers, numbers 1..N with no gaps, tickets_allocated matches the rows,
- * and each racer's rows match exactly what it was told it got (nothing half-written).
+ * each racer's rows match exactly what it was told it got (nothing half-written), and a person
+ * both racers enter at the same moment still ends up as one entrant.
  */
 class TicketAllocationRaceTest extends TestCase
 {
@@ -113,13 +114,19 @@ class TicketAllocationRaceTest extends TestCase
         $this->assertSame($expected, (int) $race->table('competitions')->where('id', $competitionId)->value('tickets_allocated'), 'tickets_allocated matches the rows');
 
         foreach ($results as $w => $r) {
-            $mine = $race->table('tickets')->where('competition_id', $competitionId)->where('email', "racer{$w}@race.test")
+            $mine = $race->table('tickets')->where('competition_id', $competitionId)->where('name', "Racer {$w}")
                 ->orderBy('number')->pluck('number')->map(fn ($n) => (int) $n)->all();
             $reported = $r['numbers'];
             sort($reported);
             $this->assertSame($reported, $mine, "Racer {$w}'s rows are exactly the numbers it was given");
         }
-        $this->assertSame(0, $race->table('tickets')->where('competition_id', $competitionId)->where(fn ($q) => $q->whereNull('email')->orWhereNull('name'))->count());
+        $this->assertSame(0, $race->table('tickets')->where('competition_id', $competitionId)->where(fn ($q) => $q->whereNull('email')->orWhereNull('name')->orWhereNull('entrant_id'))->count());
+
+        // One entrant per email, even for the person both racers created at the same moment.
+        $this->assertSame(self::WORKERS + 1, $race->table('entrants')->count());
+        $this->assertSame(1, $race->table('entrants')->where('email', 'shared@race.test')->count());
+        $this->assertSame(1, $race->table('tickets')->where('email', 'shared@race.test')->distinct()->count('entrant_id'));
+        $this->assertSame(0, $race->table('tickets')->join('entrants', 'entrants.id', '=', 'tickets.entrant_id')->whereColumn('entrants.email', '!=', 'tickets.email')->count());
 
         // Evidence that the two really overlapped: the owner changes many times along the number line.
         $owners = $race->table('tickets')->where('competition_id', $competitionId)->orderBy('number')->pluck('email')->all();

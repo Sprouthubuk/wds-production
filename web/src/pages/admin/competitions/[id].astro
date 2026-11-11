@@ -14,7 +14,7 @@ if (!isNew) {
 }
 const v = c ?? {
   id: 0, slug: '', title: '', strapline: '', category: 'cars', badge: null, status: 'draft', images: [], description: [''], specs: [],
-  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
+  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, postalClosesAt: null, postalClosesAtCustom: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
 } as Competition;
 const locked = v.ticketsSold > 0;
 ---
@@ -86,6 +86,7 @@ const locked = v.ticketsSold > 0;
       <div class="form-grid">
         <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} /></div>
         <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} /></div>
+        <div class="field"><label for="postal-closes">Postal entries close</label><input id="postal-closes" name="postalClosesAt" type="datetime-local" value={localInput(v.postalClosesAtCustom ?? null)} /><span class="hint">Leave empty for three days before closing. Envelopes received after this are rejected.</span></div>
         <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" required value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site.</span></div>
         <div class="field"><label for="status">Status</label><select id="status" name="status">{[['draft', 'Draft (hidden)'], ['scheduled', 'Scheduled'], ['live', 'Live'], ['closed', 'Closed'], ['drawn', 'Drawn']].map(([val, l]) => <option value={val} selected={v.status === val}>{l}</option>)}</select></div>
       </div>
@@ -188,7 +189,7 @@ const locked = v.ticketsSold > 0;
         specs: $$<HTMLElement>('[data-spec]').map((r) => ({ label: $<HTMLInputElement>('[data-k]', r).value.trim(), value: $<HTMLInputElement>('[data-v]', r).value.trim() })).filter((s) => s.label && s.value),
         bundles: $$<HTMLElement>('[data-bundle]').map((r) => ({ qty: Number($<HTMLInputElement>('[data-q]', r).value), price: Number($<HTMLInputElement>('[data-p]', r).value) })).filter((b) => b.qty > 1 && b.price > 0),
         totalTickets: Number(f('totalTickets').value), maxPerPerson: Number(f('maxPerPerson').value),
-        opensAt: toIso(f('opensAt').value), closesAt: toIso(f('closesAt').value), drawAt: toIso(f('drawAt').value),
+        opensAt: toIso(f('opensAt').value), closesAt: toIso(f('closesAt').value), postalClosesAt: toIso(f('postalClosesAt').value), drawAt: toIso(f('drawAt').value),
         status: f('status').value, postalEntryEnabled: f('postalEntryEnabled').checked, eventSalesEnabled: f('eventSalesEnabled').checked,
       };
       if (!f('ticketPrice').disabled) body.ticketPrice = Number(f('ticketPrice').value);

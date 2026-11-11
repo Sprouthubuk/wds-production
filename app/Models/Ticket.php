@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
 {
-    protected $fillable = ['competition_id', 'number', 'channel', 'order_line_id', 'postal_entry_id', 'user_id', 'email', 'name'];
+    protected $fillable = ['competition_id', 'number', 'channel', 'order_line_id', 'postal_entry_id', 'user_id', 'entrant_id', 'email', 'name'];
 
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
     public function orderLine(): BelongsTo { return $this->belongsTo(OrderLine::class); }

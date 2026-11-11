@@ -9,13 +9,13 @@ const include = ['The competition name, e.g. “BMW E46 330Ci Clubsport”', 'Yo
 const steps = [
   ['01', 'Write your entry', 'On a postcard, or a letter in an envelope, write the competition name and your details (see the list).'],
   ['02', 'Post it to us', 'Send it by first or second class post to the address shown, with enough stamps.'],
-  ['03', 'Arrive before closing', "It must reach us before the competition's closing date and time."],
+  ['03', 'Arrive in time', "It must reach us by the competition's postal closing date, which is earlier than online entries: normally three days before the competition closes."],
   ['04', 'Get your number', 'We give you the next ticket number in sequence and email it to you.'],
 ];
 const rules = [
   'One entry per postcard or envelope. Multiple entries in one envelope count as one entry.',
   'Postal entries count towards the same maximum per person as online entries.',
-  'Entries must arrive before the closing date. Proof of posting is not proof of receipt.',
+  "Entries must arrive by the competition's postal closing date (shown below and on each competition page). Proof of posting is not proof of receipt.",
   'Hand-delivered, bulk, illegible or incomplete entries cannot be accepted.',
   "If a competition sells out before your entry arrives, we can't include it. We'll email you to let you know.",
   'Postal entries are entered into the same draw as online entries, with exactly the same chance of winning.',
@@ -61,7 +61,7 @@ const rules = [
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 24px">
       <h2 class="display display--s">Open for postal entry</h2>
-      <div class="rows">{competitions.map((c) => <div><span>{c.title}</span><span>{c.closesAt ? `Must arrive by ${new Date(c.closesAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}` : 'Open now'}</span></div>)}</div>
+      <div class="rows">{competitions.map((c) => <div><span>{c.title}</span><span>{c.postalClosesAt ? `Must arrive by ${new Date(c.postalClosesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : 'Open now'}</span></div>)}</div>
       <div><a href="/competitions" class="btn btn--outline">Prefer to enter online? View competitions</a></div>
     </div>
   </section>

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\EntryException;
 use App\Models\Competition;
+use App\Models\Entrant;
 use App\Models\Ticket;
 use Illuminate\Support\Facades\DB;
 
@@ -42,6 +43,7 @@ class TicketAllocator
             }
 
             $email = self::normaliseEmail($owner['email']);
+            $entrant = Entrant::forEmail($email);
             $start = $locked->tickets_allocated + 1;
             $now = now();
             $rows = [];
@@ -53,6 +55,7 @@ class TicketAllocator
                     'order_line_id' => $owner['order_line_id'] ?? null,
                     'postal_entry_id' => $owner['postal_entry_id'] ?? null,
                     'user_id' => $owner['user_id'] ?? null,
+                    'entrant_id' => $entrant->id,
                     'email' => $email,
                     'name' => $owner['name'],
                     'created_at' => $now,
@@ -69,15 +72,21 @@ class TicketAllocator
         });
     }
 
-    /** Tickets this person already holds (all channels) plus any they're holding in pending orders. */
+    /**
+     * Tickets this entrant (one per normalised email) already holds across every channel, plus any
+     * they're holding in pending orders. The per-person maximum is checked against this.
+     */
     public function heldBy(Competition $competition, string $email): int
     {
-        $email = self::normaliseEmail($email);
-        $allocated = Ticket::where('competition_id', $competition->id)->where('email', $email)->count();
+        $entrant = Entrant::findByEmail($email);
+        if (! $entrant) {
+            return 0;
+        }
+        $allocated = Ticket::where('competition_id', $competition->id)->where('entrant_id', $entrant->id)->count();
         $pending = (int) DB::table('order_lines')
             ->join('orders', 'orders.id', '=', 'order_lines.order_id')
             ->where('order_lines.competition_id', $competition->id)
-            ->where('orders.email', $email)
+            ->where('orders.entrant_id', $entrant->id)
             ->where('orders.status', 'pending')
             ->where('orders.reserved_until', '>', now())
             ->sum('order_lines.qty');

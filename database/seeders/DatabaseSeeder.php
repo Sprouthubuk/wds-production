@@ -42,7 +42,10 @@ class DatabaseSeeder extends Seeder
             'total_tickets' => 750,
             'max_per_person' => 50,
             'opens_at' => now(),
+            // Placeholder dates until Jason confirms them. Postal entries close three days before
+            // closes_at unless postal_closes_at is set (Competition::postalClosesAt()).
             'closes_at' => '2026-12-24 18:00:00',
+            'postal_closes_at' => null,
             'draw_at' => '2026-12-24 20:00:00',
             'postal_entry_enabled' => true,
             'event_sales_enabled' => true,
