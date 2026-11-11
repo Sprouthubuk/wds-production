@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "2a400471616a2849e53e2c8c5b24365c",
+    "content-hash": "34860679edd14d3c9946bea895bf7018",
     "packages": [
         {
             "name": "brick/math",
@@ -3383,16 +3383,16 @@
         },
         {
             "name": "sprouthub/verity-engine",
-            "version": "v3.0.2",
+            "version": "v3.0.3",
             "source": {
                 "type": "git",
                 "url": "git@github.com:Sprouthubuk/verity-engine.git",
-                "reference": "304bd535d4cc8050a576283bef4261f3894dae41"
+                "reference": "bcd3fd9026a125cb033f04c47b799f12d992c9ec"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Sprouthubuk/verity-engine/zipball/304bd535d4cc8050a576283bef4261f3894dae41",
-                "reference": "304bd535d4cc8050a576283bef4261f3894dae41",
+                "url": "https://api.github.com/repos/Sprouthubuk/verity-engine/zipball/bcd3fd9026a125cb033f04c47b799f12d992c9ec",
+                "reference": "bcd3fd9026a125cb033f04c47b799f12d992c9ec",
                 "shasum": ""
             },
             "require": {
@@ -3468,10 +3468,10 @@
                 "verifiable"
             ],
             "support": {
-                "source": "https://github.com/Sprouthubuk/verity-engine/tree/verity-v3.0.2",
+                "source": "https://github.com/Sprouthubuk/verity-engine/tree/v3.0.3",
                 "issues": "https://github.com/Sprouthubuk/verity-engine/issues"
             },
-            "time": "2026-11-11T15:37:37+00:00"
+            "time": "2026-11-11T17:01:31+00:00"
         },
         {
             "name": "symfony/clock",
