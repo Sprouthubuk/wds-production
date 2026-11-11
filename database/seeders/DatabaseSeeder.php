@@ -12,14 +12,7 @@ class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        $password = env('SEED_ADMIN_PASSWORD') ?: Str::password(16);
-        User::updateOrCreate(['email' => env('SEED_ADMIN_EMAIL', 'admin@wdscompetitions.co.uk')], [
-            'name' => 'WDS Admin', 'first_name' => 'WDS', 'last_name' => 'Admin',
-            'password' => $password, 'role' => 'admin', 'date_of_birth' => '1990-01-01',
-        ]);
-        if (! env('SEED_ADMIN_PASSWORD')) {
-            $this->command?->warn("Admin password: {$password}  (change it after first sign-in)");
-        }
+        $this->seedAdmin();
 
         Competition::updateOrCreate(['slug' => 'bmw-e46-330ci-clubsport'], [
             'title' => 'BMW E46 330Ci Clubsport',
@@ -58,5 +51,39 @@ class DatabaseSeeder extends Seeder
         Winner::firstOrCreate(['display_name' => 'Mark Robinson', 'prize' => 'Alpina D3 Coupé'], [
             'image' => '/images/winner-mark-robinson.jpg', 'verification' => 'approved', 'handover' => 'delivered', 'show_on_site' => true,
         ]);
+    }
+
+    /**
+     * Credentials come from config (not env()) so seeding still works after config:cache.
+     * An existing admin's password is only replaced when SEED_ADMIN_PASSWORD is set.
+     */
+    private function seedAdmin(): void
+    {
+        $email = config('raffle.seed_admin.email');
+        if (! $email) {
+            $this->command?->warn('SEED_ADMIN_EMAIL is not set; skipping admin account.');
+
+            return;
+        }
+
+        $configuredPassword = config('raffle.seed_admin.password');
+        $attributes = [
+            'name' => 'WDS Admin', 'first_name' => 'WDS', 'last_name' => 'Admin',
+            'role' => 'admin', 'date_of_birth' => '1990-01-01',
+        ];
+
+        $generatedPassword = null;
+        if ($configuredPassword) {
+            $attributes['password'] = $configuredPassword;
+        } elseif (! User::where('email', $email)->exists()) {
+            $generatedPassword = Str::password(16);
+            $attributes['password'] = $generatedPassword;
+        }
+
+        User::updateOrCreate(['email' => $email], $attributes);
+
+        if ($generatedPassword) {
+            $this->command?->warn("Admin password: {$generatedPassword}  (change it after first sign-in)");
+        }
     }
 }

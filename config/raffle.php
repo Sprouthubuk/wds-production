@@ -13,6 +13,12 @@ return [
     // Where to send the customer after the hosted checkout.
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:4321'),
 
+    // Admin account created by `php artisan db:seed`. Read via config() so it works with config:cache.
+    'seed_admin' => [
+        'email' => env('SEED_ADMIN_EMAIL'),
+        'password' => env('SEED_ADMIN_PASSWORD'),
+    ],
+
     'payments' => [
         // fake (local/testing) | cashflows
         'driver' => env('PAYMENT_DRIVER', 'fake'),
