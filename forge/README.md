@@ -296,3 +296,62 @@ php8.5 artisan schedule:list | grep verity   # the six Verity entries
       confirm the `late-close` email arrives in a VERITY_ALERT_EMAILS inbox.
 - [ ] A test competition drawn on drand on staging shows "Verified" on the verify page.
 - [ ] Backups include the `verity_*` tables; after any restore run `verity:anchor --after-restore="<why>"`.
+
+## 6. Staging (test purchases and draws)
+
+Production's database must never hold test data (Verity's records are permanent), so every test purchase,
+publish and draw happens on staging: its **own API site and its own MySQL database** on the same server,
+plus its own website site. Nothing is shared with production except the server and the code.
+
+**Database**
+- [ ] Forge → server → Database: create database `wds_staging` and a user with access to `wds_staging` only.
+      `log_bin_trust_function_creators` is server-wide, so section 4 step 1a already covers it.
+
+**Staging API site**
+- [ ] New site, e.g. `staging-api.wdscompetitions.co.uk` (or `*-staging-api.on-forge.com`): Laravel, PHP 8.5,
+      web directory `/public`, same repository. Branch `main`, or the branch under test.
+- [ ] Deploy script: `forge/api-deploy.sh`.
+- [ ] Its own queue worker and scheduler (`schedule:run` every minute): without the scheduler nothing closes or draws.
+- [ ] Environment: as section 4 step 4, with these differences:
+```
+APP_ENV=staging
+APP_DEBUG=false
+APP_URL=https://<staging-api-domain>
+FRONTEND_URL=https://<staging-website-domain>
+DB_DATABASE=wds_staging
+DB_USERNAME=<staging database user>
+DB_PASSWORD=<its password>
+SESSION_DOMAIN=<staging-website-domain>
+SANCTUM_STATEFUL_DOMAINS=<staging-website-domain>
+PAYMENT_DRIVER=fake                         # never a live payment account on staging
+VERITY_BEACON=drand                         # real drand rounds, so staging draws are verifiable
+VERITY_SEED_KEY=<a new key: php8.5 artisan verity:seal-seeds --new-key on the staging site>
+VERITY_OWNER_PEPPER=<a new value: php -r "echo bin2hex(random_bytes(32)), PHP_EOL;">
+VERITY_TSA_URL=http://timestamp.digicert.com
+VERITY_ALERT_EMAILS=liam@rafflelabs.co.uk
+VERITY_ANCHOR_EMAILS=liam@rafflelabs.co.uk
+VERITY_VERIFY_URL=https://<staging-website-domain>/verify
+SEED_ADMIN_EMAIL=<staging admin's email>
+```
+  The seed key and pepper must be **different from production's**: never copy production's secrets to staging.
+  Staging alerts and anchors go only to liam@rafflelabs.co.uk, so the independent production recipients never
+  receive test records.
+- [ ] First deploy: `php8.5 artisan config:cache`, `php8.5 artisan migrate --seed --force`, `php8.5 artisan queue:restart`,
+      then `php8.5 artisan verity:check` (rows OK apart from settings that are production-only).
+
+**Staging website site**
+- [ ] New site, e.g. `staging.wdscompetitions.co.uk`: Static HTML / Other, web directory `/web/public`, same repository
+      and branch, Nginx block `forge/web-nginx.conf`, deploy script `forge/web-deploy.sh`.
+- [ ] Background process `wds-web-staging`, directory `/home/forge/<staging-website-site>/web`, on a port of its own:
+      `env HOST=127.0.0.1 PORT=4322 NODE_ENV=production API_URL=https://<staging-api-domain> node dist/server/entry.mjs`
+      and change `proxy_pass` in that site's Nginx block from port 4321 to **4322**.
+- [ ] Note: `forge/web-deploy.sh` restarts every supervisor process (`supervisorctl restart all`), so a staging
+      website deploy also restarts production's `wds-web` for a second or two. Deploy staging outside busy times.
+- [ ] Protect it: Forge → site → Security → HTTP basic auth (staging is for testers only, and search engines stay out).
+
+**What to test there**
+- [ ] Publish a test competition closing in ~10 minutes; buy online (fake gateway), log a postal entry, sell at an event.
+- [ ] Refund one order before close (tickets withdrawn) and try one after close (refused, money-only refund works).
+- [ ] After the close and the drand round: Admin → Draws shows it drawn; Publish result; `/verify/{id}` shows every check passed.
+- [ ] The late-close alert reaches liam@rafflelabs.co.uk (section 5, go-live checks).
+- [ ] Staging data stays on staging: never copy `wds_staging` into `wds`.
