@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   api:
-    name: API (PHP 8.5)
+    name: "API (PHP 8.5): SQLite"
     runs-on: ubuntu-latest
 
     steps:
