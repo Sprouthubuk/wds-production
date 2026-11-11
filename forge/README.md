@@ -79,7 +79,58 @@ server starts with an empty database.
 - [ ] SSH as root: `sudo apt-get install -y php8.5-gmp && sudo service php8.5-fpm reload`;
       `php8.5 -m | grep gmp` shows `gmp`.
 - [ ] Forge → server → Database: create database `wds` and a user that can only access `wds`.
+- [ ] **MySQL: allow the site user to create Verity's triggers** (below), before the first deploy.
 - [ ] Composer access to the private Verity package (section 5, Prerequisites).
+
+**1a. MySQL setting for Verity's triggers** (once per server, before the first `migrate`)
+
+Verity protects its records with database triggers, created by its migration. MySQL 8.4 has binary
+logging on, and then only a SUPER user may create triggers unless `log_bin_trust_function_creators`
+is 1. Without it the first migrate stops with:
+`SQLSTATE[HY000]: General error: 1419 You do not have the SUPER privilege and binary logging is enabled`.
+Keep binary logging on (backups and point-in-time recovery need it); change only this setting.
+
+*Option A, SSH (recommended).* Forge → server → copy the SSH command, sign in as `forge`, then:
+```
+sudo mysql                                   # MySQL root over the local socket (needs the forge user's sudo password)
+# If that says "Access denied", use the MySQL root password instead:
+#   mysql -u root -p                         # the database password Forge showed (and emailed) when the server was created
+```
+At the `mysql>` prompt:
+```
+SET PERSIST log_bin_trust_function_creators = 1;
+SELECT @@log_bin, @@log_bin_trust_function_creators;   -- expect 1 and 1
+exit
+```
+`SET PERSIST` writes the setting to `/var/lib/mysql/mysqld-auto.cnf`, so it survives restarts and reboots.
+Check it again after a restart: `sudo service mysql restart`, then `sudo mysql -e "SELECT @@log_bin_trust_function_creators"` shows `1`.
+
+*Option B, Forge Recipe.* Forge → Recipes → New recipe, user **root**:
+```
+mysql -e "SET PERSIST log_bin_trust_function_creators = 1; SELECT @@log_bin, @@log_bin_trust_function_creators;"
+```
+Run it on the server and read the output in the recipe log (expect `1 1`). This works when MySQL's root
+user signs in over the local socket as the system root user, which is the usual setup on Ubuntu. If the
+log shows `Access denied for user 'root'@'localhost'`, use option A with the root password (don't put the
+password in a recipe).
+
+**1b. If a migration ever stops halfway** (for example the error above, before 1a was done)
+
+MySQL commits each `CREATE TABLE` at once, so a failed Verity migration leaves its `verity_*` tables in
+place without their triggers, and re-running `migrate` then fails with "table already exists". At that
+point they hold no engine data: nothing has been published. Check, then drop them and run again:
+```
+cd /home/forge/<api-site>
+php8.5 artisan migrate:status | grep verity                      # 2026_01_01_000100_create_verity_tables: Pending
+php8.5 artisan tinker --execute="foreach (['verity_competitions','verity_entry_groups','verity_entries','verity_winners'] as \$t) { echo \$t, ' ', Schema::hasTable(\$t) ? DB::table(\$t)->count() : '-', PHP_EOL; }"
+```
+Only if the migration is **Pending** and every count is `0` or `-`, drop the tables (as the site's MySQL user):
+```
+mysql -u <database user> -p wds -e "SET FOREIGN_KEY_CHECKS=0; DROP TABLE IF EXISTS verity_markers, verity_locks, verity_close_witnesses, verity_audit_events, verity_redraws, verity_winners, verity_entries, verity_entry_groups, verity_end_prizes, verity_instant_tickets, verity_instant_prizes, verity_competitions; SET FOREIGN_KEY_CHECKS=1;"
+```
+Do 1a if it isn't done, then `php8.5 artisan migrate --force` and `php8.5 artisan verity:check --strict`
+(the "Database integrity guards are installed" row must be OK). If the migration shows **Ran**, or any count
+is above 0, stop: don't drop anything, and ask for help, because Verity's records are permanent by design.
 
 **2. API site** (as in section 1)
 - [ ] New site, Laravel, PHP 8.5, web directory `/public`, repository `Sprouthubuk/wds-production`, branch `main`.
@@ -155,7 +206,7 @@ SEED_ADMIN_EMAIL=<first admin's email>
 SEED_ADMIN_PASSWORD=                     # empty: a random one is printed once by db:seed
 ```
 
-**5. First deploy** (Site → Commands, in order)
+**5. First deploy** (Site → Commands, in order; 1a must be done first)
 ```
 php8.5 artisan key:generate --force      # only if APP_KEY is empty
 php8.5 artisan config:cache
@@ -200,7 +251,7 @@ chat, tickets or the PR. Keep an offline copy of each (a password manager the ow
   `composer config --global github-oauth.github.com <token>`
   (or set `COMPOSER_AUTH={"github-oauth":{"github.com":"<token>"}}` in the deploy environment).
   Never commit `auth.json`.
-- MySQL 8.4 (section 4; not PostgreSQL) and the scheduler running `schedule:run` every minute (section 1).
+- MySQL 8.4 (section 4; not PostgreSQL) with `log_bin_trust_function_creators = 1` (section 4, step 1a), and the scheduler running `schedule:run` every minute (section 1).
 
 **Keys and settings** (Site → Environment)
 ```

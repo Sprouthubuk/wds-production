@@ -87,7 +87,10 @@ jobs:
           coverage: none
 
       - name: Create race-test database and an ordinary (non-root) user
+        # As on the Forge server (forge/README.md section 4): binary logging stays on, and
+        # log_bin_trust_function_creators = 1 lets an ordinary user create Verity's triggers.
         run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "SET PERSIST log_bin_trust_function_creators = 1;"
           mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE wds_race; CREATE USER 'wds'@'%' IDENTIFIED BY 'wds'; GRANT ALL PRIVILEGES ON wds_test.* TO 'wds'@'%'; GRANT ALL PRIVILEGES ON wds_race.* TO 'wds'@'%';"
           mysql -h 127.0.0.1 -uroot -proot -N -e "SELECT CONCAT('log_bin=', @@log_bin, ' log_bin_trust_function_creators=', @@log_bin_trust_function_creators)"
 
