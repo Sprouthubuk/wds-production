@@ -26,10 +26,13 @@ jobs:
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.5'
-          extensions: mbstring, pdo_sqlite, intl
+          extensions: mbstring, pdo_sqlite, intl, gmp
           coverage: none
 
       - name: Install Composer dependencies
+        # The Verity draw engine is a private package: read-only token, never in the repo or the logs.
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.VERITY_COMPOSER_TOKEN }}"}}'
         run: composer install --no-interaction --prefer-dist
 
       - name: Copy environment file
@@ -78,13 +81,16 @@ jobs:
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.5'
-          extensions: mbstring, pdo_sqlite, pdo_mysql, intl
+          extensions: mbstring, pdo_sqlite, pdo_mysql, intl, gmp
           coverage: none
 
       - name: Create race-test database
         run: mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE wds_race"
 
       - name: Install Composer dependencies
+        # The Verity draw engine is a private package: read-only token, never in the repo or the logs.
+        env:
+          COMPOSER_AUTH: '{"github-oauth":{"github.com":"${{ secrets.VERITY_COMPOSER_TOKEN }}"}}'
         run: composer install --no-interaction --prefer-dist
 
       - name: Copy environment file
