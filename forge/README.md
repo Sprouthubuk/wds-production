@@ -96,6 +96,13 @@ is 1. Without it the first migrate stops with:
 `SQLSTATE[HY000]: General error: 1419 You do not have the SUPER privilege and binary logging is enabled`.
 Keep binary logging on (backups and point-in-time recovery need it); change only this setting.
 
+**Forge servers may have binary logging off** (`SELECT @@log_bin` shows `0`, as on `wds-production-mysql`).
+Then MySQL lets any user with the TRIGGER privilege create triggers and the 1419 error can't happen, but
+**set `log_bin_trust_function_creators = 1` anyway**. If binary logging is turned on later (for
+point-in-time recovery, or by a MySQL or Forge change), migrations that create or reinstall Verity's
+triggers keep working instead of failing with 1419. Check both values with
+`SELECT @@log_bin, @@log_bin_trust_function_creators;`: `log_bin` may be 0 or 1; the second must be `1`.
+
 Since Verity v3.0.3 the migration checks this **before creating anything** (`IntegrityGuards::assertInstallable()`):
 without the setting (and without SUPER) it stops cleanly, creates no tables, and says how to fix it, so a
 re-run after 1a just works. `verity:check` also has a `trigger_privilege` row for it. Step 1b is only for a
@@ -335,6 +342,9 @@ is FAIL (with a reminder every 24 hours and an all-clear when fixed).
 - [ ] **A test alert reaches a real person**: on staging, close a test competition three minutes late and
       confirm the `late-close` email arrives in a VERITY_ALERT_EMAILS inbox.
 - [ ] A test competition drawn on drand on staging shows "Verified" on the verify page.
+- [ ] **Forge scheduled database backups for `wds`**: Forge → server → Database Backups → new backup to off-server
+      storage (S3-compatible), database `wds`, at least daily, with retention set. Run one, then download and restore it
+      onto a scratch database to prove it works. Staging (`wds_staging`) doesn't need one.
 - [ ] Backups include the `verity_*` tables; after any restore run `verity:anchor --after-restore="<why>"`.
 
 ## 6. Staging (test purchases and draws)
