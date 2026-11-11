@@ -67,8 +67,10 @@ jobs:
       DB_HOST: 127.0.0.1
       DB_PORT: 3306
       DB_DATABASE: wds_test
-      DB_USERNAME: root
-      DB_PASSWORD: root
+      # An ordinary user with rights on its own databases only, like Forge's site user (not root), so
+      # Verity's migration has to create its triggers the way it will on the server.
+      DB_USERNAME: wds
+      DB_PASSWORD: wds
       DB_RACE_DATABASE: wds_race
 
     steps:
@@ -84,8 +86,10 @@ jobs:
           extensions: mbstring, pdo_sqlite, pdo_mysql, intl, gmp
           coverage: none
 
-      - name: Create race-test database
-        run: mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE wds_race"
+      - name: Create race-test database and an ordinary (non-root) user
+        run: |
+          mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE wds_race; CREATE USER 'wds'@'%' IDENTIFIED BY 'wds'; GRANT ALL PRIVILEGES ON wds_test.* TO 'wds'@'%'; GRANT ALL PRIVILEGES ON wds_race.* TO 'wds'@'%';"
+          mysql -h 127.0.0.1 -uroot -proot -N -e "SELECT CONCAT('log_bin=', @@log_bin, ' log_bin_trust_function_creators=', @@log_bin_trust_function_creators)"
 
       - name: Install Composer dependencies
         # The Verity draw engine is a private package: read-only token, never in the repo or the logs.
