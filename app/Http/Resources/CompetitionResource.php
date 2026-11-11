@@ -28,11 +28,16 @@ class CompetitionResource extends JsonResource
             'bundles' => collect($this->bundles ?? [])->map(fn ($b) => ['qty' => (int) $b['qty'], 'price' => Money::pounds((int) $b['price_pence'])])->values(),
             'opensAt' => $this->opens_at?->toIso8601String(),
             'closesAt' => $this->closes_at?->toIso8601String(),
+            'postalClosesAt' => $this->postalClosesAt()?->toIso8601String(),   // effective deadline
+            'postalClosesAtCustom' => $this->postal_closes_at?->toIso8601String(), // null = the default
             'drawAt' => $this->draw_at->toIso8601String(),
             'cashAlternative' => Money::pounds($this->cash_alternative_pence),
             'buildVideoUrl' => $this->build_video_url,
             'postalEntryEnabled' => (bool) $this->postal_entry_enabled,
             'eventSalesEnabled' => (bool) $this->event_sales_enabled,
+            // Published on the Verity draw engine: the draw is locked in (null = still a draft).
+            'verityRef' => $this->verity_ref,
+            'publishedAt' => $this->published_at?->toIso8601String(),
         ];
     }
 }

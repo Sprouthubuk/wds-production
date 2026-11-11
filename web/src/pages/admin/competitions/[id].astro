@@ -14,9 +14,10 @@ if (!isNew) {
 }
 const v = c ?? {
   id: 0, slug: '', title: '', strapline: '', category: 'cars', badge: null, status: 'draft', images: [], description: [''], specs: [],
-  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
+  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, postalClosesAt: null, postalClosesAtCustom: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
 } as Competition;
-const locked = v.ticketsSold > 0;
+// Published on Verity = the draw is locked in: the terms that are part of it can't change.
+const locked = !!v.verityRef;
 ---
 <AdminLayout title={isNew ? 'New competition' : v.title} active="competitions">
   <a slot="actions" class="btn btn--outline" href="/admin/competitions">Back</a>
@@ -27,7 +28,7 @@ const locked = v.ticketsSold > 0;
       <h2>The prize</h2>
       <div class="stack" style="gap:14px">
         <div class="form-grid">
-          <div class="field"><label for="title">Title</label><input id="title" name="title" required value={v.title} /></div>
+          <div class="field"><label for="title">Title</label><input id="title" name="title" required value={v.title} disabled={locked} /></div>
           <div class="field"><label for="slug">Web address</label><input id="slug" name="slug" value={v.slug} pattern="[a-z0-9\-]*" placeholder="made from the title" /><span class="hint">wdscompetitions.co.uk/competitions/<b data-slug-preview>{v.slug || '…'}</b></span></div>
         </div>
         <div class="field"><label for="strapline">Short description (shown under the title)</label><input id="strapline" name="strapline" value={v.strapline} maxlength="300" /></div>
@@ -67,11 +68,11 @@ const locked = v.ticketsSold > 0;
 
     <section class="panel">
       <h2>Tickets</h2>
-      {locked ? <p class="small" style="margin:0 0 12px;color:var(--muted-2)">{v.ticketsSold} tickets sold — the ticket price is locked and total tickets can only go up.</p> : null}
+      {locked ? <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published: the draw is locked in. Title, ticket price, total tickets, maximum per person and dates can't change.</p> : null}
       <div class="form-grid">
         <div class="field"><label for="price">Ticket price £</label><input id="price" name="ticketPrice" type="number" step="0.01" min="0.1" required value={v.ticketPrice} disabled={locked} /></div>
-        <div class="field"><label for="total">Total tickets</label><input id="total" name="totalTickets" type="number" min={Math.max(1, v.ticketsSold)} required value={v.totalTickets} /></div>
-        <div class="field"><label for="max">Max per person</label><input id="max" name="maxPerPerson" type="number" min="1" required value={v.maxPerPerson} /><span class="hint">Includes free postal entries.</span></div>
+        <div class="field"><label for="total">Total tickets</label><input id="total" name="totalTickets" type="number" min="1" required value={v.totalTickets} disabled={locked} /></div>
+        <div class="field"><label for="max">Max per person</label><input id="max" name="maxPerPerson" type="number" min="1" required value={v.maxPerPerson} disabled={locked} /><span class="hint">Includes free postal entries.</span></div>
       </div>
       <h3 class="label" style="margin:18px 0 8px">Bundles</h3>
       <div class="stack" style="gap:8px" data-bundles>
@@ -84,10 +85,11 @@ const locked = v.ticketsSold > 0;
     <section class="panel">
       <h2>Dates &amp; entry</h2>
       <div class="form-grid">
-        <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} /></div>
-        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} /></div>
+        <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} disabled={locked} /></div>
+        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint">The draw runs automatically on the drand round about a minute after this.</span></div>
+        <div class="field"><label for="postal-closes">Postal entries close</label><input id="postal-closes" name="postalClosesAt" type="datetime-local" value={localInput(v.postalClosesAtCustom ?? null)} /><span class="hint">Leave empty for three days before closing. Envelopes received after this are rejected.</span></div>
         <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" required value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site.</span></div>
-        <div class="field"><label for="status">Status</label><select id="status" name="status">{[['draft', 'Draft (hidden)'], ['scheduled', 'Scheduled'], ['live', 'Live'], ['closed', 'Closed'], ['drawn', 'Drawn']].map(([val, l]) => <option value={val} selected={v.status === val}>{l}</option>)}</select></div>
+        <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status}</span></b><span class="hint">{locked ? 'Follows the draw engine: it closes and draws on its own.' : 'A draft until you publish it below.'}</span></div>
       </div>
       <div class="row" style="gap:24px;margin-top:14px">
         <label class="check"><input type="checkbox" name="postalEntryEnabled" checked={(c as any)?.postalEntryEnabled ?? true} />Free postal entry</label>
@@ -100,6 +102,30 @@ const locked = v.ticketsSold > 0;
       <a class="btn btn--outline" href="/admin/competitions">Cancel</a>
     </div>
   </form>
+
+  {!isNew && !locked ? (
+    <section class="panel" style="margin-top:20px">
+      <h2>Publish</h2>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and the winner is drawn automatically on the public drand round about a minute after closing. Check everything above (and save) first.</p>
+      <button class="btn" data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, max ${v.maxPerPerson} per person. It can't be undone.`} data-reload>Publish and lock the draw</button>
+    </section>
+  ) : null}
+  {locked ? (
+    <section class="panel" style="margin-top:20px">
+      <h2>Draw</h2>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published as <span class="mono">{v.verityRef}</span>. Draw status, the committed drand round and the audit trail are on <a href="/admin/draws">Draws</a>.</p>
+      {['live', 'scheduled'].includes(v.status) ? (
+        <form class="stack" style="gap:10px" data-admin-form={`/api/admin/competitions/${v.id}/extend`} data-confirm="Extend the closing time? The reason is published on the draw's public audit record." data-reload>
+          <h3 class="label" style="margin:0">Extend closing time</h3>
+          <div class="form-grid">
+            <div class="field"><label for="ext-closes">New closing time (UK)</label><input id="ext-closes" name="closesAt" type="datetime-local" required /></div>
+            <div class="field"><label for="ext-reason">Public reason</label><input id="ext-reason" name="reason" required minlength="10" maxlength="300" placeholder="e.g. Show moved to the following weekend" /></div>
+          </div>
+          <div><button class="btn btn--outline" type="submit">Extend</button></div>
+        </form>
+      ) : null}
+    </section>
+  ) : null}
 
   <script>
     import { say, send } from '../../../lib/admin-client';
@@ -188,10 +214,12 @@ const locked = v.ticketsSold > 0;
         specs: $$<HTMLElement>('[data-spec]').map((r) => ({ label: $<HTMLInputElement>('[data-k]', r).value.trim(), value: $<HTMLInputElement>('[data-v]', r).value.trim() })).filter((s) => s.label && s.value),
         bundles: $$<HTMLElement>('[data-bundle]').map((r) => ({ qty: Number($<HTMLInputElement>('[data-q]', r).value), price: Number($<HTMLInputElement>('[data-p]', r).value) })).filter((b) => b.qty > 1 && b.price > 0),
         totalTickets: Number(f('totalTickets').value), maxPerPerson: Number(f('maxPerPerson').value),
-        opensAt: toIso(f('opensAt').value), closesAt: toIso(f('closesAt').value), drawAt: toIso(f('drawAt').value),
-        status: f('status').value, postalEntryEnabled: f('postalEntryEnabled').checked, eventSalesEnabled: f('eventSalesEnabled').checked,
+        opensAt: toIso(f('opensAt').value), closesAt: toIso(f('closesAt').value), postalClosesAt: toIso(f('postalClosesAt').value), drawAt: toIso(f('drawAt').value),
+        postalEntryEnabled: f('postalEntryEnabled').checked, eventSalesEnabled: f('eventSalesEnabled').checked,
       };
       if (!f('ticketPrice').disabled) body.ticketPrice = Number(f('ticketPrice').value);
+      // Locked after publish: don't send the draw terms at all.
+      for (const k of ['title', 'totalTickets', 'maxPerPerson', 'opensAt', 'closesAt']) if (f(k)?.disabled) delete body[k];
       try {
         const res = await send(id ? `/api/admin/competitions/${id}` : '/api/admin/competitions', id ? 'PUT' : 'POST', JSON.stringify(body));
         say(res.message || 'Saved.');

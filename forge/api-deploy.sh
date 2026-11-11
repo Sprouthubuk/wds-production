@@ -13,6 +13,12 @@ $FORGE_COMPOSER install --no-dev --no-interaction --prefer-dist --optimize-autol
     echo 'Restarting FPM...'; sudo -S service $FORGE_PHP_FPM reload ) 9>/tmp/fpmlock
 
 $FORGE_PHP artisan migrate --force
+
+# Verity's settings and code check: shown in Forge's deploy log and kept in storage/logs. It never stops
+# the deploy (a FAIL here is a settings problem to fix, not a reason to leave the old code running);
+# the daily wds:verity-check-alert emails VERITY_ALERT_EMAILS while any row is FAIL.
+mkdir -p storage/logs
+{ echo "=== verity:check $(date -u +%Y-%m-%dT%H:%M:%SZ)"; $FORGE_PHP artisan verity:check 2>&1; echo "exit $?"; } | tee -a storage/logs/verity-check-deploy.log || true
 $FORGE_PHP artisan storage:link 2>/dev/null || true
 $FORGE_PHP artisan optimize
 $FORGE_PHP artisan queue:restart

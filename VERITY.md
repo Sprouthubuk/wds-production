@@ -1,33 +1,38 @@
-# Connecting the Verity draw engine
+# The Verity draw engine
 
-The API talks to any draw engine through one interface: `backend/app/Services/Draws/DrawEngine.php`.
-Until Verity is connected, the built-in `CommitRevealDrawEngine` runs draws (good for testing and
-as a fallback, but Verity should be live before the 24 December draw).
+Draws run on **Verity** (`sprouthub/verity-engine`, a private Composer package, pinned to `^3.0.3`).
+Verity owns the ticket numbers, the close, the draw, redraws and the proof. WDS decides who may enter
+(caps, responsible play, reservations, pricing, payment) and mirrors what Verity decided.
 
-## What the engine receives
+The package's own `vendor/sprouthub/verity-engine/INTEGRATION.md` is the reference. This page says how WDS uses it.
+Server setup and go-live checks: `forge/README.md`, sections 4 and 5.
 
-| Call | Input | Must return |
+## How a competition goes
+
+| Step | Who | What happens |
 |---|---|---|
-| `prepare()` | competition, ordered list of every valid ticket number, SHA-256 `entriesHash` of that list | `DrawPreparation(commitment, data)` — `commitment` is shown in Admin → Draws and can be read out on the Instagram live; `data` is private state kept until the draw |
-| `draw()` | same list + hash + the preparation | `DrawOutcome(winningNumber, proof[], externalId)` — `winningNumber` **must be one of the ticket numbers passed in** |
-| `verificationUrl()` | the outcome | public URL to Verity's proof page (or `null`) |
+| Publish | Admin → Competitions → **Publish** | `VerityDrawEngine::publish()` → `Verity::publish()` with sequential ticket numbers and one end prize. Terms (closing time, tickets, price, max per person, title) are fixed and the drand round is planned. One way. |
+| Entries | checkout webhook, postal log, event sale | `TicketAllocator` checks WDS's rules first, then `Verity::addEntries` / `addPostalEntry` (`source` paid / postal, `host_ref` = `order_line:{id}` / `postal:{id}`, `owner_ref` = `entrant:{id}`) in the same transaction, and copies Verity's numbers into `tickets`. A refusal rolls everything back. |
+| Refund | Admin → Orders | While open: `Verity::withdrawEntries` and the tickets get `withdrawn_at` (numbers are never reused). After close: money only, the tickets stay in the draw. |
+| Close | `verity:process-due` at the closing time | Entries frozen and hashed, a future drand round committed, the close timestamped (RFC 3161). WDS mirrors it as a `draws` row (`prepared`). |
+| Draw | `verity:process-due` once the round is out | BLS-verified drand round, winner drawn, seed revealed, audit chain written. WDS mirrors the winner (`drawn`). |
+| Reveal | Admin → Draws → **Publish result** | The result and `GET /api/draws/{id}/certificate` go public; the public page `/verify/{id}` re-runs every check in the visitor's browser. |
+| Forfeit / redraw | (not built in the admin yet) | `Verity::redraw()` / `forfeit()` with protocol R2 on a new future round; WDS mirrors it from the events. |
 
-Engines never receive names, emails or addresses — only ticket numbers and the hash.
+Nothing in WDS can pick a number or a winner, void a competition with entries, or change a result.
 
-`entriesHash = sha256("1,2,3,…")` — ticket numbers ascending, comma-joined, no spaces.
-Anyone can rebuild it from the published entry list.
+## Where it lives
 
-## Steps
+- `app/Services/Draws/VerityDrawEngine.php`: the only class that calls Verity.
+- `app/Services/DrawService.php`: mirrors Verity onto `competitions`, `draws` and `winners` (from Verity's events and after every `verity:process-due`), and the reveal.
+- `app/Services/TicketAllocator.php`: entries.
+- `routes/console.php`: `Verity::schedule()` (process-due every minute, chain checks, anchors, `verity:check`, invariants) and `wds:verity-check-alert` (daily email to `VERITY_ALERT_EMAILS` while `verity:check` has a FAIL row; Verity doesn't alert on it itself).
+- `web/public/vendor/verity/`: the package's browser verifier, byte-for-byte (`tests/Unit/WebVerifierCopyTest.php`); copy it again after a package upgrade.
+- Tests: `tests/Feature/VerityDrawFlowTest.php` (the whole flow, checked with Verity's `RecordVerifier`), `tests/Concerns/VerityFakes.php` (a real drand round served by `Http::fake`, a fake timestamp authority), `tests/Feature/VerityLiveTest.php` (real drand + TSA, `VERITY_LIVE_TEST=1`).
 
-1. Fill in `backend/app/Services/Draws/VerityDrawEngine.php` (`prepare`, `draw`, `verificationUrl`) using
-   Verity's API. Credentials come from `config('raffle.draws.verity')` (`VERITY_BASE_URL`, `VERITY_API_KEY`).
-2. Set `DRAW_ENGINE=verity` in the API `.env`. `RaffleServiceProvider` swaps it in — nothing else changes.
-3. Run a test draw on a draft competition with a few postal entries: Admin → Draws → Lock entries → Draw winner → Publish.
-4. Check the public proof at `GET /api/draws/{id}/certificate` and the Live draws page.
+## Upgrading the package
 
-## Draw flow in the admin
-
-1. **Lock entries** → competition closes, entries fingerprinted, engine `prepare()` called.
-2. **Draw winner** → re-checks the fingerprint (refuses if any ticket changed), calls `draw()`,
-   creates the Winner record (awaiting ID).
-3. **Publish** → result + proof appear on /live-draws.
+1. `composer update sprouthub/verity-engine` to the new tag; read its CHANGELOG.
+2. Copy `resources/js` into `web/public/vendor/verity/` (see `WebVerifierCopyTest`).
+3. `php artisan test`, then `php artisan verity:check` shows the new version and fingerprints; compare them with the tag's `SOURCE-MANIFEST.txt`.
+4. Never edit `vendor/sprouthub/verity-engine`: its fingerprints would no longer match the reviewed release.

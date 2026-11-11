@@ -6,32 +6,63 @@ use App\Http\Controllers\Controller;
 use App\Models\Competition;
 use App\Models\Draw;
 use App\Services\DrawService;
-use Illuminate\Http\Request;
+use App\Services\Draws\VerityDrawEngine;
 
+/**
+ * Draw status for the admin. The draw itself is Verity's: entries close at the closing time, a future
+ * drand round is committed, and verity:process-due draws once it's out. Admins see what happened and
+ * publish the result (the reveal); no action here can change a result.
+ */
 class DrawController extends Controller
 {
-    public function index()
+    /** Every published competition with its draw state, committed round and audit trail. */
+    public function index(DrawService $draws, VerityDrawEngine $verity)
     {
-        return Draw::with('competition:id,title,total_tickets', 'winningTicket')->latest()->get()->map(fn ($d) => [
-            'id' => $d->id, 'competition' => $d->competition->title, 'engine' => $d->engine, 'status' => $d->status,
-            'entries' => $d->entries_count, 'entriesHash' => $d->entries_hash, 'commitment' => $d->commitment,
-            'winningTicket' => $d->winningTicket?->display($d->competition->total_tickets),
-            'winnerName' => $d->winningTicket?->name, 'drawnAt' => $d->drawn_at?->toIso8601String(),
-        ]);
+        return Competition::whereNotNull('verity_ref')->orderByDesc('closes_at')->get()->map(function (Competition $c) use ($draws, $verity) {
+            $draw = $draws->sync($c);
+            $vc = $verity->verityCompetition($c);
+            $round = $vc->beacon_round ?? $vc->beacon_planned_round;
+
+            return [
+                'competitionId' => $c->id,
+                'competition' => $c->title,
+                'verityRef' => $c->verity_ref,
+                'status' => $vc->status,                                   // live | closed | drawn | void
+                'closesAt' => $c->closes_at?->toIso8601String(),
+                'ticketsSold' => (int) $c->tickets_allocated,
+                'totalTickets' => (int) $c->total_tickets,
+                'round' => $round ? (int) $round : null,
+                'roundCommitted' => $vc->beacon_round !== null,           // false = planned at publish, fixed at close
+                'roundAt' => VerityDrawEngine::roundTime($round ? (int) $round : null)?->toIso8601String(),
+                'roundLate' => (bool) $vc->beacon_late,
+                'commitment' => $vc->commitment,
+                'draw' => $draw ? [
+                    'id' => $draw->id,
+                    'status' => $draw->status,                             // prepared | drawn | published
+                    'entries' => $draw->entries_count,
+                    'entriesHash' => $draw->entries_hash,
+                    'winningTicket' => $draw->winningTicket?->display($c->total_tickets),
+                    'winnerName' => $draw->winningTicket?->name,
+                    'drawnAt' => $draw->drawn_at?->toIso8601String(),
+                    'publishedAt' => $draw->published_at?->toIso8601String(),
+                    'certificateUrl' => $draw->status === 'published' ? route('draws.certificate', $draw) : null,
+                    'verifyUrl' => $draw->status === 'published' ? config('raffle.draws.verify_page').'/'.$draw->id : null,
+                ] : null,
+                // Closes, extensions, voids, redraws and forfeits as recorded on Verity's public audit chain.
+                'trail' => collect($verity->auditTrail($c))
+                    ->whereIn('type', ['competition.published', 'competition.extended', 'competition.closed_early', 'competition.closed', 'close.witnessed',
+                        'competition.void', 'draw.completed', 'draw.winner_forfeited', 'draw.forfeited', 'draw.redraw_scheduled', 'redraw.witnessed', 'draw.redrawn', 'order.withdrawn'])
+                    ->map(fn ($e) => ['seq' => $e['seq'], 'type' => $e['type'], 'at' => $e['occurred_at'] ?? null, 'hash' => $e['hash']])
+                    ->values(),
+            ];
+        })->values();
     }
 
-    public function prepare(Request $request, Competition $competition, DrawService $draws)
-    {
-        $draw = $draws->prepare($competition, $request->user());
-
-        return response()->json(['message' => "Entries locked: {$draw->entries_count} tickets.", 'id' => $draw->id, 'commitment' => $draw->commitment, 'entriesHash' => $draw->entries_hash]);
-    }
-
-    /** Export the locked entry list (ticket number, first name + initial, channel) for the live draw. */
+    /** The frozen entry list (ticket number, first name + initial, channel), for showing on the live. */
     public function entries(Draw $draw)
     {
         $c = $draw->competition;
-        $rows = $c->tickets()->orderBy('number')->get(['number', 'name', 'channel']);
+        $rows = $c->tickets()->active()->orderBy('number')->get(['number', 'name', 'channel']);
 
         return response()->streamDownload(function () use ($rows, $c) {
             $out = fopen('php://output', 'w');
@@ -43,30 +74,11 @@ class DrawController extends Controller
         }, "entries-{$c->slug}.csv", ['Content-Type' => 'text/csv']);
     }
 
-    public function run(Request $request, Draw $draw, DrawService $draws)
-    {
-        $draw = $draws->run($draw, $request->user());
-        $t = $draw->winningTicket;
-
-        return response()->json([
-            'message' => 'Winning ticket '.$t->display($draw->competition->total_tickets),
-            'winningTicket' => $t->display($draw->competition->total_tickets),
-            'winner' => ['name' => $t->name, 'email' => $t->email, 'channel' => $t->channel],
-        ]);
-    }
-
+    /** The reveal: puts the result and its certificate on the Live draws page. */
     public function publish(Draw $draw, DrawService $draws)
     {
         $draws->publish($draw);
 
-        return response()->json(['message' => 'Result published on the Live draws page.']);
-    }
-
-    public function void(Draw $draw)
-    {
-        abort_unless($draw->status === 'prepared', 422, 'Only a prepared draw can be voided.');
-        $draw->update(['status' => 'void']);
-
-        return response()->json(['message' => 'Draw voided. You can prepare it again.']);
+        return response()->json(['message' => 'Result published on the Live draws page, with its certificate.']);
     }
 }

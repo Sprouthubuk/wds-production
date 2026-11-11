@@ -7,6 +7,7 @@ use App\Mail\TicketsIssued;
 use App\Models\Competition;
 use App\Models\CreditTransaction;
 use App\Models\DiscountCode;
+use App\Models\Entrant;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Payments\PaymentGateway;
@@ -117,6 +118,7 @@ class CheckoutService
                 'reference' => self::newReference(),
                 'access_key' => Str::random(40),
                 'user_id' => $user?->id,
+                'entrant_id' => Entrant::forEmail($email)->id,
                 'email' => $email,
                 'name' => trim($customer['name']),
                 'phone' => $customer['phone'] ?? null,
@@ -207,6 +209,10 @@ class CheckoutService
                     'name' => $order->name,
                     'user_id' => $order->user_id,
                     'order_line_id' => $line->id,
+                    // Committed before the close: Verity still enters it if the webhook lands between the
+                    // closing time and the close itself (verity:process-due, within a minute).
+                    'ordered_at' => $order->created_at,
+                    'total_pence' => (int) $line->line_total_pence,
                 ]);
             }
             if ($order->credit_used_pence > 0 && $order->user_id) {

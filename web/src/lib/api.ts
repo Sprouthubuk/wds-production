@@ -62,3 +62,24 @@ export async function getSettings(): Promise<SiteSettings> {
     return sampleSettings;
   }
 }
+
+export interface DrawCertificate {
+  competition: string; winningTicket: string | null; drawnAt: string | null; publishedAt: string | null;
+  reference: string; algorithm: string | null; ticketAllocation: string | null; commitment: string | null; revealedSeed: string | null;
+  entriesCount: number | null; entriesHash: string | null; drandChainHash: string; drandRound: number | null; drandRoundAt: string | null;
+  drandRandomness: string | null; drandSignature: string | null; drawSeed: string | null; winningTickets: number[];
+  auditEvent: { seq: number; hash: string } | null; closeTimestamp: { authority: string; witnessedAt: string; token: string } | null;
+  engine: { version: string; engine_sha256: string; draw_path_sha256: string } | null; howToVerify: string;
+}
+
+/** A published draw's certificate summary (null until the result is published). */
+export async function getCertificate(id: string): Promise<{ certificate: DrawCertificate; url: string } | null> {
+  if (usingSampleData) return null;
+  try {
+    const res = await api<{ certificate: DrawCertificate }>(`/draws/${encodeURIComponent(id)}/certificate`);
+    return { certificate: res.certificate, url: `${API_URL}/api/draws/${encodeURIComponent(id)}/certificate` };
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}

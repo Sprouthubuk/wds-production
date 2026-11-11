@@ -7,7 +7,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Ticket extends Model
 {
-    protected $fillable = ['competition_id', 'number', 'channel', 'order_line_id', 'postal_entry_id', 'user_id', 'email', 'name'];
+    protected $fillable = ['competition_id', 'number', 'channel', 'order_line_id', 'postal_entry_id', 'user_id', 'entrant_id', 'email', 'name', 'verity_entry_id', 'withdrawn_at'];
+
+    protected function casts(): array
+    {
+        return ['withdrawn_at' => 'datetime'];
+    }
+
+    /** Tickets still in the draw (not withdrawn by a refund while the competition was open). */
+    public function scopeActive(\Illuminate\Database\Eloquent\Builder $q): \Illuminate\Database\Eloquent\Builder
+    {
+        return $q->whereNull('withdrawn_at');
+    }
 
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
     public function orderLine(): BelongsTo { return $this->belongsTo(OrderLine::class); }

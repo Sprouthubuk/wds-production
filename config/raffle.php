@@ -30,12 +30,11 @@ return [
         ],
     ],
 
+    // Draws run on the Verity engine (package sprouthub/verity-engine); its settings are in config/verity.php.
     'draws' => [
-        // verity (Liam's Verity engine) | commit-reveal (built-in interim engine)
-        'engine' => env('DRAW_ENGINE', 'commit-reveal'),
-        'verity' => [
-            'base_url' => env('VERITY_BASE_URL'),
-            'api_key' => env('VERITY_API_KEY'),
-        ],
+        // The public page where anyone re-checks a draw in their own browser (web/src/pages/verify/[id].astro).
+        'verify_page' => rtrim((string) env('FRONTEND_URL', 'http://localhost:4321'), '/').'/verify',
+        // End-prize value recorded at publish when a competition has no cash alternative.
+        'default_prize_value_pence' => 0,
     ],
 ];

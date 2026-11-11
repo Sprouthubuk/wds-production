@@ -38,10 +38,13 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'busy_timeout' => null,
+            // SQLite is for tests and local dev only. IMMEDIATE transactions plus
+            // a busy timeout make two writers at the same moment queue instead of failing with
+            // "database is locked" (the Verity package requires this on SQLite).
+            'busy_timeout' => (int) env('DB_SQLITE_BUSY_TIMEOUT', 5000),
             'journal_mode' => null,
             'synchronous' => null,
-            'transaction_mode' => 'DEFERRED',
+            'transaction_mode' => env('DB_SQLITE_TRANSACTION_MODE', 'IMMEDIATE'),
         ],
 
         'mysql' => [

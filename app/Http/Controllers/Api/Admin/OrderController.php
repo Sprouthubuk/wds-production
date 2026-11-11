@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Money;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\Ticket;
+use App\Services\Draws\VerityDrawEngine;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -38,18 +41,41 @@ class OrderController extends Controller
     }
 
     /**
-     * Marks an order refunded (the refund itself is issued in the payment provider's dashboard).
-     * Tickets stay allocated but are flagged by the order status and excluded from the draw list
-     * only if `void_tickets` is true — normally refunds happen before the draw is prepared.
+     * Marks an order refunded (the money goes back in the payment provider's dashboard).
+     *
+     * With void_tickets, the order's tickets also come out of the draw, which Verity allows only while
+     * the competition is still open (withdrawEntries). Once it has closed the entry list is frozen: the
+     * refund is money only and the tickets stay in the draw. Withdrawn numbers are never reused.
      */
-    public function markRefunded(Request $request, Order $order)
+    public function markRefunded(Request $request, Order $order, VerityDrawEngine $verity)
     {
         $request->validate(['void_tickets' => ['boolean']]);
-        $order->update(['status' => 'refunded']);
+        $lines = $order->lines()->with('competition')->get();
+
         if ($request->boolean('void_tickets')) {
-            \App\Models\Ticket::whereIn('order_line_id', $order->lines()->pluck('id'))->delete();
+            foreach ($lines as $line) {
+                $c = $line->competition;
+                if ($c->isPublished() && ! $verity->isOpen($c)) {
+                    abort(422, "{$c->title} has closed, so its entries are frozen and these tickets stay in the draw. You can still refund the money: mark the order refunded without removing the tickets.");
+                }
+            }
         }
 
-        return response()->json(['message' => 'Order marked as refunded.']);
+        DB::transaction(function () use ($order, $lines, $request, $verity) {
+            $order->update(['status' => 'refunded']);
+            if (! $request->boolean('void_tickets')) {
+                return;
+            }
+            foreach ($lines as $line) {
+                if ($line->competition->isPublished()) {
+                    $verity->withdraw(VerityDrawEngine::hostRef(['order_line_id' => $line->id]), "Refunded (order {$order->reference})");
+                }
+                Ticket::where('order_line_id', $line->id)->whereNull('withdrawn_at')->update(['withdrawn_at' => now()]);
+            }
+        });
+
+        return response()->json(['message' => $request->boolean('void_tickets')
+            ? 'Order marked as refunded and its tickets taken out of the draw.'
+            : 'Order marked as refunded. The tickets stay in the draw.']);
     }
 }

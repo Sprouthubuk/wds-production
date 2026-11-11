@@ -18,6 +18,7 @@ const pct = percentSold(c.ticketsSold, c.totalTickets);
 const cd = countdownParts(c.drawAt);
 const options = [{ qty: 1, price: c.ticketPrice }, ...[...c.bundles].sort((a, b) => a.qty - b.qty)].filter((o) => o.qty <= cap);
 const soldOut = left === 0;
+const postalBy = c.postalClosesAt ? new Date(c.postalClosesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : null;
 const config = JSON.stringify({
   id: c.id, slug: c.slug, title: c.title, image: c.images[0]?.src ?? '', ticketPrice: c.ticketPrice,
   bundles: c.bundles, maxPerPerson: c.maxPerPerson, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
@@ -114,7 +115,7 @@ const config = JSON.stringify({
       <span class="label">Post a postcard or letter to</span>
       <address>{settings.postalEntryAddress.map((l, i) => <>{l}{i < settings.postalEntryAddress.length - 1 ? <br /> : null}</>)}</address>
       <ul><li>Competition: {c.title}</li><li>Full name, address and date of birth</li><li>Phone number and email address</li></ul>
-      <span class="small muted-2">One entry per envelope. Must arrive before the closing date. Same draw, same odds.</span>
+      <span class="small muted-2">One entry per envelope. Must arrive by {postalBy ?? 'the postal closing date'}. Same draw, same odds.</span>
       <a href="/free-postal-entry" class="btn btn--block btn--lg">Full postal entry guide</a>
     </div>
   ) : null}

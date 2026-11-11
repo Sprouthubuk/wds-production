@@ -1,6 +1,7 @@
-# Forge deploy script — website (wdscompetitions.co.uk / *.on-forge.com)
+# Forge deploy script — website (production: wdscompetitions.co.uk; staging: staging.wdscompetitions.co.uk)
 # Site type: Static HTML / "Other" · Web directory: /web/public · Same repository and branch.
-# Needs the "wds-web" background process (see forge/README.md) and the Nginx config in forge/web-nginx.conf.
+# Needs this site's own Forge background process (forge/README.md: wds-web on 4321, wds-web-staging on 4322),
+# started with this site's ABSOLUTE path: node $FORGE_SITE_PATH/web/dist/server/entry.mjs
 
 cd $FORGE_SITE_PATH
 
@@ -10,5 +11,13 @@ cd web
 npm ci --no-audit --no-fund
 npm run build
 
-# Restart the Node server so it picks up the new build (Forge's supervisor brings it straight back).
-sudo -S supervisorctl restart all 2>/dev/null | grep -i wds || pkill -f "web/dist/server/entry.mjs" || true
+# Restart only THIS site's Node server. The match is the exact command line with this site's absolute path
+# (pkill -x: the whole line, not a substring), so it can never hit the other site's process. Forge's
+# supervisor starts it again straight away with the new build. Never `supervisorctl restart all`: that
+# restarts every site's processes and queue workers on the server.
+ENTRY="$FORGE_SITE_PATH/web/dist/server/entry.mjs"
+if pkill -x -f "node $ENTRY"; then
+    echo "Restarted the Node server for $FORGE_SITE_PATH"
+else
+    echo "WARNING: no Node server running as 'node $ENTRY'. Check this site's background process command (forge/README.md)."
+fi

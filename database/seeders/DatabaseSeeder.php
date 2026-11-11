@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
             'strapline' => 'Estoril Blue. ZF manual. One of an estimated 600 ever built, refreshed in the WDS Originals workshop and drawn live on Christmas Eve.',
             'category' => 'cars',
             'badge' => 'Main event',
-            'status' => 'live',
+            // A draft until an admin publishes it on Verity (Admin → Competitions → Publish), which locks the draw in.
+            'status' => 'draft',
             'images' => [
                 ['src' => '/images/e46-clubsport-34.jpg', 'alt' => 'Estoril Blue BMW E46 330Ci Clubsport in the WDS Originals workshop'],
                 ['src' => '/images/e46-clubsport-front.jpg', 'alt' => 'Clubsport front view'],
@@ -42,7 +43,10 @@ class DatabaseSeeder extends Seeder
             'total_tickets' => 750,
             'max_per_person' => 50,
             'opens_at' => now(),
+            // Placeholder dates until Jason confirms them. Postal entries close three days before
+            // closes_at unless postal_closes_at is set (Competition::postalClosesAt()).
             'closes_at' => '2026-12-24 18:00:00',
+            'postal_closes_at' => null,
             'draw_at' => '2026-12-24 20:00:00',
             'postal_entry_enabled' => true,
             'event_sales_enabled' => true,

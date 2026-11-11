@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class PostalEntry extends Model
 {
-    protected $fillable = ['competition_id', 'user_id', 'name', 'address', 'date_of_birth', 'email', 'phone', 'received_on', 'status', 'rejection_reason', 'logged_by'];
+    protected $fillable = ['competition_id', 'user_id', 'entrant_id', 'name', 'address', 'date_of_birth', 'email', 'phone', 'received_on', 'status', 'rejection_reason', 'logged_by'];
 
     protected function casts(): array
     {
