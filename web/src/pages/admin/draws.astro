@@ -1,0 +1,49 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, when } from '../../lib/admin';
+import type { Competition } from '../../lib/types';
+interface DrawRow { id: number; competition: string; engine: string; status: string; entries: number; entriesHash: string; commitment: string | null; winningTicket: string | null; winnerName: string | null; drawnAt: string | null }
+const [draws, comps] = await Promise.all([
+  adminGet<DrawRow[]>(Astro.cookies, '/draws'),
+  adminGet<{ data: Competition[] }>(Astro.cookies, '/competitions'),
+]);
+const drawn = new Set(draws.filter((d) => d.status !== 'void').map((d) => d.competition));
+const ready = comps.data.filter((c) => ['live', 'closed'].includes(c.status) && !drawn.has(c.title));
+---
+<AdminLayout title="Draws" active="draws">
+  <section class="panel">
+    <h2>How a live draw works</h2>
+    <ol class="small" style="margin:0;padding-left:18px;line-height:1.9;color:var(--muted-2)">
+      <li><strong>Lock entries</strong> — closes the competition and fingerprints the full ticket list. Read the fingerprint out on the Instagram live.</li>
+      <li><strong>Download the entry list</strong> (optional) to show on screen.</li>
+      <li><strong>Draw winner</strong> — the draw engine picks the winning ticket. Ring the winner on the live.</li>
+      <li><strong>Publish</strong> — puts the result and proof on the Live draws page.</li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>Ready to draw</h2>
+    {ready.length ? <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Competition</th><th>Tickets</th><th>Draw time</th><th></th></tr></thead><tbody>
+      {ready.map((c) => <tr><td><strong>{c.title}</strong></td><td>{c.ticketsSold} / {c.totalTickets}</td><td class="small">{when(c.drawAt)}</td><td><button class="btn" data-admin-action={`/api/admin/competitions/${c.id}/draw`} data-confirm={`Lock entries for ${c.title}? This closes the competition to new entries.`} data-reload>Lock entries</button></td></tr>)}
+    </tbody></table></div> : <p class="muted">No competitions waiting for a draw.</p>}
+  </section>
+
+  <section class="panel">
+    <h2>Draws</h2>
+    {draws.length ? <div class="tbl-wrap"><table class="tbl"><thead><tr><th>Competition</th><th>Entries</th><th>Fingerprint</th><th>Result</th><th>Status</th><th></th></tr></thead><tbody>
+      {draws.map((d) => (
+        <tr>
+          <td><strong>{d.competition}</strong><div class="small muted">Engine: {d.engine}</div></td>
+          <td>{d.entries}<div class="small"><a href={`/api/admin/draws/${d.id}/entries.csv`}>Entry list (CSV)</a></div></td>
+          <td class="mono" style="max-width:240px">{d.entriesHash.slice(0, 16)}…{d.commitment ? <div class="muted">commit {d.commitment.slice(0, 12)}…</div> : null}</td>
+          <td>{d.winningTicket ? <><strong>#{d.winningTicket}</strong><div class="small muted">{d.winnerName} · {when(d.drawnAt)}</div></> : '—'}</td>
+          <td><span class={`pill pill--${d.status}`}>{d.status}</span></td>
+          <td class="row" style="gap:8px">
+            {d.status === 'prepared' ? <><button class="btn" data-admin-action={`/api/admin/draws/${d.id}/run`} data-confirm="Draw the winner now? Make sure you're live." data-reload>Draw winner</button><button class="adm-link" data-admin-action={`/api/admin/draws/${d.id}/void`} data-confirm="Void this preparation?" data-reload>Void</button></> : null}
+            {d.status === 'drawn' ? <button class="btn" data-admin-action={`/api/admin/draws/${d.id}/publish`} data-reload>Publish result</button> : null}
+          </td>
+        </tr>
+      ))}
+    </tbody></table></div> : <p class="muted">No draws yet.</p>}
+  </section>
+</AdminLayout>

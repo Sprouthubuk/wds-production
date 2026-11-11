@@ -1,0 +1,61 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+const next = Astro.url.searchParams.get('next') || '/account';
+const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/account';
+---
+<Layout title="Sign in">
+  <PageHero eyebrow="Account" title="Sign in or register" />
+  <section class="section" style="border-bottom: 0">
+    <div class="container grid grid--2" style="max-width: 1080px" data-next={safeNext}>
+      <form class="box box--light" data-auth="login" novalidate>
+        <h2 class="display display--s">Sign in</h2>
+        <div class="field"><label for="si-em">Email</label><input id="si-em" name="email" type="email" required autocomplete="email" /></div>
+        <div class="field"><label for="si-pw">Password</label><input id="si-pw" name="password" type="password" required autocomplete="current-password" /></div>
+        <a href="/forgot-password" class="small muted">Forgotten your password?</a>
+        <p class="alert alert--error" data-error role="alert" hidden></p>
+        <button class="btn btn--block" type="submit">Sign in</button>
+      </form>
+      <form class="box" data-auth="register" novalidate>
+        <h2 class="display display--s">Create an account</h2>
+        <div class="form-grid">
+          <div class="field"><label for="r-fn">First name</label><input id="r-fn" name="firstName" required autocomplete="given-name" /></div>
+          <div class="field"><label for="r-ln">Last name</label><input id="r-ln" name="lastName" required autocomplete="family-name" /></div>
+        </div>
+        <div class="field"><label for="r-em">Email</label><input id="r-em" name="email" type="email" required autocomplete="email" /></div>
+        <div class="form-grid">
+          <div class="field"><label for="r-dob">Date of birth</label><input id="r-dob" name="dateOfBirth" type="date" required autocomplete="bday" /></div>
+          <div class="field"><label for="r-tel">Mobile</label><input id="r-tel" name="phone" type="tel" required autocomplete="tel" /></div>
+        </div>
+        <div class="field"><label for="r-pw">Password</label><input id="r-pw" name="password" type="password" required minlength="10" autocomplete="new-password" /><span class="hint">At least 10 characters.</span></div>
+        <label class="check" for="r-age"><input id="r-age" name="ageConfirmed" type="checkbox" required />I'm 18 or over and a UK resident.</label>
+        <label class="check" for="r-mk"><input id="r-mk" name="marketingOptIn" type="checkbox" />Email me about new competitions and live draws (optional).</label>
+        <p class="alert alert--error" data-error role="alert" hidden></p>
+        <button class="btn btn--outline btn--block" type="submit">Create account</button>
+      </form>
+    </div>
+  </section>
+</Layout>
+<style>
+  .box { border: 1px solid var(--line-2); padding: 36px; display: flex; flex-direction: column; gap: 18px; }
+  .box--light { border-color: #fff; }
+  @media (max-width: 600px) { .box { padding: 22px; } }
+</style>
+<script>
+  const next = document.querySelector<HTMLElement>('[data-next]')!.dataset.next || '/account';
+  document.querySelectorAll<HTMLFormElement>('[data-auth]').forEach((form) => form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const err = form.querySelector<HTMLElement>('[data-error]')!;
+    err.hidden = true;
+    if (!form.reportValidity()) return;
+    const fd = new FormData(form);
+    const body: Record<string, unknown> = Object.fromEntries(fd.entries());
+    for (const k of ['ageConfirmed', 'marketingOptIn']) if (k in body || form.querySelector(`[name=${k}]`)) body[k] = fd.get(k) === 'on';
+    const res = await fetch(`/api/auth/${form.dataset.auth}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.ok) { window.location.href = next; return; }
+    const data = await res.json().catch(() => ({}));
+    const first = data.errors ? Object.values(data.errors)[0] : null;
+    err.textContent = (Array.isArray(first) ? first[0] : null) || data.message || 'Something went wrong. Please try again.';
+    err.hidden = false;
+  }));
+</script>

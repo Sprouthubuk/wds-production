@@ -1,0 +1,202 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { adminGet, localInput } from '../../../lib/admin';
+import { usingSampleData } from '../../../lib/api';
+import type { Competition } from '../../../lib/types';
+
+const { id } = Astro.params;
+const isNew = id === 'new';
+let c: Competition | null = null;
+if (!isNew) {
+  if (usingSampleData) c = (await adminGet<{ data: Competition[] }>(Astro.cookies, '/competitions')).data.find((x) => String(x.id) === id) ?? null;
+  else c = (await adminGet<{ data: Competition }>(Astro.cookies, `/competitions/${id}`).catch(() => null))?.data ?? null;
+  if (!c) return Astro.rewrite('/404');
+}
+const v = c ?? {
+  id: 0, slug: '', title: '', strapline: '', category: 'cars', badge: null, status: 'draft', images: [], description: [''], specs: [],
+  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
+} as Competition;
+const locked = v.ticketsSold > 0;
+---
+<AdminLayout title={isNew ? 'New competition' : v.title} active="competitions">
+  <a slot="actions" class="btn btn--outline" href="/admin/competitions">Back</a>
+  {!isNew ? <a slot="actions" class="btn btn--outline" href={`/competitions/${v.slug}`} target="_blank" rel="noopener">View on site ↗</a> : null}
+
+  <form class="stack" style="gap:20px" data-comp-form data-id={isNew ? '' : String(v.id)}>
+    <section class="panel">
+      <h2>The prize</h2>
+      <div class="stack" style="gap:14px">
+        <div class="form-grid">
+          <div class="field"><label for="title">Title</label><input id="title" name="title" required value={v.title} /></div>
+          <div class="field"><label for="slug">Web address</label><input id="slug" name="slug" value={v.slug} pattern="[a-z0-9\-]*" placeholder="made from the title" /><span class="hint">wdscompetitions.co.uk/competitions/<b data-slug-preview>{v.slug || '…'}</b></span></div>
+        </div>
+        <div class="field"><label for="strapline">Short description (shown under the title)</label><input id="strapline" name="strapline" value={v.strapline} maxlength="300" /></div>
+        <div class="field"><label for="desc">Full description</label><textarea id="desc" name="description" rows="7">{v.description.join('\n\n')}</textarea><span class="hint">Leave a blank line between paragraphs.</span></div>
+        <div class="form-grid">
+          <div class="field"><label for="cat">Category</label><select id="cat" name="category">{['cars', 'parts', 'cash', 'merch'].map((x) => <option selected={v.category === x}>{x}</option>)}</select></div>
+          <div class="field"><label for="badge">Badge (optional)</label><input id="badge" name="badge" value={v.badge ?? ''} placeholder="e.g. Main event" /></div>
+          <div class="field"><label for="video">Build video (YouTube link)</label><input id="video" name="buildVideoUrl" type="url" value={v.buildVideoUrl ?? ''} /></div>
+          <div class="field"><label for="cash">Cash alternative £ (optional)</label><input id="cash" name="cashAlternative" type="number" step="0.01" min="0" value={v.cashAlternative ?? ''} /></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Photos</h2>
+      <div class="row" style="gap:12px" data-images>
+        {v.images.map((img) => (
+          <figure class="stack" style="gap:6px;margin:0;width:180px" data-image>
+            <img src={img.src} alt="" style="width:180px;height:112px;object-fit:cover" />
+            <input value={img.alt} placeholder="Describe the photo" data-alt style="background:#000;border:1px solid var(--line-2);padding:6px 8px;font-size:12px" />
+            <input type="hidden" value={img.src} data-src />
+            <div class="row" style="gap:8px"><button type="button" class="adm-link" data-left>← Move</button><button type="button" class="adm-link" data-remove>Remove</button></div>
+          </figure>
+        ))}
+      </div>
+      <label class="btn btn--outline" style="margin-top:14px">Upload photos<input type="file" accept="image/*" multiple hidden data-upload /></label>
+      <p class="small muted" style="margin:8px 0 0">The first photo is the main image. Landscape photos at least 1600px wide look best.</p>
+    </section>
+
+    <section class="panel">
+      <h2>Highlights</h2>
+      <div class="stack" style="gap:8px" data-specs>
+        {[...v.specs, { label: '', value: '' }].map((s) => <div class="row" style="gap:8px" data-spec><input placeholder="Label e.g. Gearbox" value={s.label} data-k style="flex:1;background:#000;border:1px solid var(--line-2);padding:9px 12px" /><input placeholder="Value e.g. ZF manual" value={s.value} data-v style="flex:2;background:#000;border:1px solid var(--line-2);padding:9px 12px" /></div>)}
+      </div>
+      <button type="button" class="adm-link" style="margin-top:10px" data-add-spec>+ Add highlight</button>
+    </section>
+
+    <section class="panel">
+      <h2>Tickets</h2>
+      {locked ? <p class="small" style="margin:0 0 12px;color:var(--muted-2)">{v.ticketsSold} tickets sold — the ticket price is locked and total tickets can only go up.</p> : null}
+      <div class="form-grid">
+        <div class="field"><label for="price">Ticket price £</label><input id="price" name="ticketPrice" type="number" step="0.01" min="0.1" required value={v.ticketPrice} disabled={locked} /></div>
+        <div class="field"><label for="total">Total tickets</label><input id="total" name="totalTickets" type="number" min={Math.max(1, v.ticketsSold)} required value={v.totalTickets} /></div>
+        <div class="field"><label for="max">Max per person</label><input id="max" name="maxPerPerson" type="number" min="1" required value={v.maxPerPerson} /><span class="hint">Includes free postal entries.</span></div>
+      </div>
+      <h3 class="label" style="margin:18px 0 8px">Bundles</h3>
+      <div class="stack" style="gap:8px" data-bundles>
+        {[...v.bundles, { qty: '', price: '' }].map((b) => <div class="row" style="gap:8px;align-items:center" data-bundle><input type="number" min="2" placeholder="Qty" value={b.qty} data-q style="width:90px;background:#000;border:1px solid var(--line-2);padding:9px 12px" /><span class="muted">tickets for £</span><input type="number" step="0.01" min="0.1" placeholder="Price" value={b.price} data-p style="width:120px;background:#000;border:1px solid var(--line-2);padding:9px 12px" /><span class="small muted" data-bundle-note></span></div>)}
+      </div>
+      <button type="button" class="adm-link" style="margin-top:10px" data-add-bundle>+ Add bundle</button>
+      <p class="small muted" style="margin:12px 0 0" data-odds></p>
+    </section>
+
+    <section class="panel">
+      <h2>Dates &amp; entry</h2>
+      <div class="form-grid">
+        <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} /></div>
+        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} /></div>
+        <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" required value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site.</span></div>
+        <div class="field"><label for="status">Status</label><select id="status" name="status">{[['draft', 'Draft (hidden)'], ['scheduled', 'Scheduled'], ['live', 'Live'], ['closed', 'Closed'], ['drawn', 'Drawn']].map(([val, l]) => <option value={val} selected={v.status === val}>{l}</option>)}</select></div>
+      </div>
+      <div class="row" style="gap:24px;margin-top:14px">
+        <label class="check"><input type="checkbox" name="postalEntryEnabled" checked={(c as any)?.postalEntryEnabled ?? true} />Free postal entry</label>
+        <label class="check"><input type="checkbox" name="eventSalesEnabled" checked={(c as any)?.eventSalesEnabled ?? false} />Event ticket sales</label>
+      </div>
+    </section>
+
+    <div class="row" style="gap:10px;position:sticky;bottom:0;background:#050505;padding:14px 0;border-top:1px solid var(--line)">
+      <button class="btn" type="submit">{isNew ? 'Create competition' : 'Save changes'}</button>
+      <a class="btn btn--outline" href="/admin/competitions">Cancel</a>
+    </div>
+  </form>
+
+  <script>
+    import { say, send } from '../../../lib/admin-client';
+    const form = document.querySelector<HTMLFormElement>('[data-comp-form]')!;
+        const id = form.dataset.id;
+    const $ = <T extends Element>(s: string, r: ParentNode = form) => r.querySelector<T>(s)!;
+    const $$ = <T extends Element>(s: string, r: ParentNode = form) => Array.from(r.querySelectorAll<T>(s));
+    const slugify = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^\w\s-]/g, '').trim().replace(/[\s_]+/g, '-').replace(/-+/g, '-');
+
+    const title = $<HTMLInputElement>('#title'), slug = $<HTMLInputElement>('#slug');
+    let slugTouched = !!slug.value;
+    slug.addEventListener('input', () => { slugTouched = true; $('[data-slug-preview]').textContent = slug.value || '…'; });
+    title.addEventListener('input', () => { if (!slugTouched) { slug.value = slugify(title.value); $('[data-slug-preview]').textContent = slug.value || '…'; } });
+
+    // Repeatable rows
+    const addRow = (container: string, row: string) => {
+      const last = $$<HTMLElement>(row, $(container)).at(-1)!;
+      const copy = last.cloneNode(true) as HTMLElement;
+      copy.querySelectorAll('input').forEach((i) => (i.value = ''));
+      $(container).append(copy);
+    };
+    $('[data-add-spec]').addEventListener('click', () => addRow('[data-specs]', '[data-spec]'));
+    $('[data-add-bundle]').addEventListener('click', () => { addRow('[data-bundles]', '[data-bundle]'); update(); });
+
+    // Bundle savings + odds helper
+    function update() {
+      const price = Number($<HTMLInputElement>('#price').value) || 0;
+      const total = Number($<HTMLInputElement>('#total').value) || 0;
+      $$<HTMLElement>('[data-bundle]').forEach((r) => {
+        const q = Number($<HTMLInputElement>('[data-q]', r).value), p = Number($<HTMLInputElement>('[data-p]', r).value);
+        const note = $<HTMLElement>('[data-bundle-note]', r);
+        if (!q || !p) { note.textContent = ''; return; }
+        const save = q * price - p;
+        note.textContent = save > 0 ? `saves £${save.toFixed(2)} · odds 1 in ${Math.round(total / q)}` : 'not cheaper than single tickets — will be ignored';
+      });
+      $('[data-odds]').textContent = total ? `One ticket = 1 in ${total.toLocaleString('en-GB')} chance. Max revenue £${(price * total).toLocaleString('en-GB', { minimumFractionDigits: 2 })} at single-ticket price.` : '';
+    }
+    form.addEventListener('input', update); update();
+
+    // Photos
+    const images = $('[data-images]');
+    images.addEventListener('click', (e) => {
+      const t = e.target as HTMLElement, fig = t.closest('[data-image]');
+      if (!fig) return;
+      if (t.matches('[data-remove]')) fig.remove();
+      if (t.matches('[data-left]') && fig.previousElementSibling) fig.parentElement!.insertBefore(fig, fig.previousElementSibling);
+    });
+    $<HTMLInputElement>('[data-upload]').addEventListener('change', async (e) => {
+      const input = e.target as HTMLInputElement;
+      for (const file of Array.from(input.files ?? [])) {
+        const fd = new FormData(); fd.append('image', file);
+        try {
+          const res = await send('/api/admin/uploads/competition-image', 'POST', fd, false);
+          const src = res.src || URL.createObjectURL(file);
+          const fig = document.createElement('figure');
+          fig.className = 'stack'; fig.style.cssText = 'gap:6px;margin:0;width:180px'; fig.dataset.image = '';
+          fig.innerHTML = `<img alt="" style="width:180px;height:112px;object-fit:cover"><input placeholder="Describe the photo" data-alt style="background:#000;border:1px solid var(--line-2);padding:6px 8px;font-size:12px"><input type="hidden" data-src><div class="row" style="gap:8px"><button type="button" class="adm-link" data-left>← Move</button><button type="button" class="adm-link" data-remove>Remove</button></div>`;
+          (fig.querySelector('img') as HTMLImageElement).src = src;
+          (fig.querySelector('[data-src]') as HTMLInputElement).value = src;
+          images.append(fig);
+          if (res.preview) say('Preview mode — photo shown locally only.');
+        } catch (err) { say((err as Error).message, true); }
+      }
+      input.value = '';
+    });
+
+    const toIso = (v: string) => {
+      if (!v) return null;
+      // Treat the entered time as UK local time.
+      const guess = new Date(v + 'Z');
+      const uk = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+      const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+      return new Date(guess.getTime() - (uk.getTime() - utc.getTime())).toISOString();
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+      const f = (n: string) => (form.elements.namedItem(n) as HTMLInputElement);
+      const body: Record<string, unknown> = {
+        title: f('title').value, slug: f('slug').value || slugify(f('title').value), strapline: f('strapline').value,
+        description: f('description').value.split(/\n\s*\n/).map((s) => s.trim()).filter(Boolean),
+        category: f('category').value, badge: f('badge').value || null, buildVideoUrl: f('buildVideoUrl').value || null,
+        cashAlternative: f('cashAlternative').value ? Number(f('cashAlternative').value) : null,
+        images: $$<HTMLElement>('[data-image]').map((fig) => ({ src: $<HTMLInputElement>('[data-src]', fig).value, alt: $<HTMLInputElement>('[data-alt]', fig).value })),
+        specs: $$<HTMLElement>('[data-spec]').map((r) => ({ label: $<HTMLInputElement>('[data-k]', r).value.trim(), value: $<HTMLInputElement>('[data-v]', r).value.trim() })).filter((s) => s.label && s.value),
+        bundles: $$<HTMLElement>('[data-bundle]').map((r) => ({ qty: Number($<HTMLInputElement>('[data-q]', r).value), price: Number($<HTMLInputElement>('[data-p]', r).value) })).filter((b) => b.qty > 1 && b.price > 0),
+        totalTickets: Number(f('totalTickets').value), maxPerPerson: Number(f('maxPerPerson').value),
+        opensAt: toIso(f('opensAt').value), closesAt: toIso(f('closesAt').value), drawAt: toIso(f('drawAt').value),
+        status: f('status').value, postalEntryEnabled: f('postalEntryEnabled').checked, eventSalesEnabled: f('eventSalesEnabled').checked,
+      };
+      if (!f('ticketPrice').disabled) body.ticketPrice = Number(f('ticketPrice').value);
+      try {
+        const res = await send(id ? `/api/admin/competitions/${id}` : '/api/admin/competitions', id ? 'PUT' : 'POST', JSON.stringify(body));
+        say(res.message || 'Saved.');
+        if (!id && res.data?.id) setTimeout(() => (location.href = `/admin/competitions/${res.data.id}`), 600);
+      } catch (err) { say((err as Error).message, true); }
+    });
+  </script>
+</AdminLayout>

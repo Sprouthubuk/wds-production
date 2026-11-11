@@ -1,0 +1,29 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from './PageHero.astro';
+interface Props { title: string; heading: string; sections: [string, string[]][]; updated?: string }
+const { title, heading, sections, updated = '[DATE]' } = Astro.props;
+---
+<Layout title={title}>
+  <PageHero eyebrow="Legal" title={heading} />
+  <section class="section" style="border-bottom: 0">
+    <div class="container stack" style="gap: 32px">
+      <div class="alert">Draft for legal review — final wording must be approved by WDS Originals Limited and its legal adviser before launch. Last updated {updated}.</div>
+      <div class="cols">
+        <nav aria-label="Contents" class="toc"><span class="label">Contents</span>{sections.map(([t], i) => <a href={`#s${i + 1}`}>{i + 1}. {t}</a>)}</nav>
+        <div class="content">
+          {sections.map(([t, paras], i) => (
+            <section id={`s${i + 1}`}><h2 class="h3">{i + 1}. {t}</h2>{paras.map((p) => <p class="body" set:html={p} />)}</section>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>
+<style>
+  .cols { display: flex; flex-wrap: wrap; gap: 56px; align-items: flex-start; }
+  .toc { flex: 0 1 260px; display: flex; flex-direction: column; gap: 4px; }
+  .toc a { font-size: 14px; color: var(--muted-2); text-decoration: none; padding: 6px 0; }
+  .content { flex: 999 1 560px; min-width: 0; }
+  .content section { display: flex; flex-direction: column; gap: 12px; padding: 28px 0; border-top: 1px solid var(--line-2); scroll-margin-top: 24px; }
+</style>

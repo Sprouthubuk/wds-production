@@ -1,0 +1,46 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import { getSettings } from '../lib/api';
+const s = await getSettings();
+---
+<Layout title="About WDS">
+  <PageHero eyebrow="About us" title="About WDS" />
+  <section class="section">
+    <div class="container split">
+      <img src="/images/e46-clubsport-bonnet-720.jpg" alt="The Clubsport in the WDS Originals workshop" class="pic" loading="lazy" />
+      <div class="stack" style="gap: 20px; flex: 1 1 400px">
+        <span class="eyebrow">WDS Originals</span>
+        <h2 class="display display--s">Built in our own workshop</h2>
+        <p class="body">WDS Originals is an automotive brand built around a passion for high-performance and modern classic BMWs. From OEM+ refreshes to full race-inspired builds, we bring ambitious ideas to life through craftsmanship, engineering and storytelling.</p>
+        <p class="body">Many of our builds are documented on the WDS Originals YouTube channel, so you can see the work that goes into every car.</p>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container split">
+      <div class="stack" style="gap: 20px; flex: 1 1 400px">
+        <span class="eyebrow">WDS Competitions</span>
+        <h2 class="display display--s">Dream it. Build it.<br />Drive it. Win it.</h2>
+        <p class="body">WDS Competitions gives you the chance to win genuine WDS Originals builds, along with parts and merchandise from the workshop. Every competition has low ticket numbers, a free postal entry route and a live draw.</p>
+        <div class="row" style="gap: 12px"><a href="/competitions" class="btn">View competitions</a><a href={s.youtubeUrl} class="btn btn--outline">Watch the builds</a></div>
+      </div>
+      <img src="/images/e46-clubsport-34-720.jpg" alt="The Clubsport in the WDS Originals workshop" class="pic" loading="lazy" />
+    </div>
+  </section>
+  <section class="section" style="border-bottom: 0">
+    <div class="container stack" style="gap: 24px">
+      <h2 class="display display--s">Company details</h2>
+      <div class="rows">
+        <div><span>Promoter</span><span>{s.legalName}, trading as {s.tradingName}</span></div>
+        <div><span>Company number</span><span>{s.companyNumber}</span></div>
+        <div><span>Registered office</span><span>{s.registeredOffice}</span></div>
+        <div><span>Email</span><span><a href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></span></div>
+      </div>
+    </div>
+  </section>
+</Layout>
+<style>
+  .split { display: flex; flex-wrap: wrap; gap: 56px; align-items: center; }
+  .pic { flex: 1 1 480px; min-width: 0; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+</style>

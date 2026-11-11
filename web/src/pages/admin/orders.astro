@@ -1,0 +1,36 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp, when } from '../../lib/admin';
+interface Row { id: number; reference: string; name: string; email: string; competition: string; tickets: number; total: number; status: string; channel: string; paymentMethod: string | null; createdAt: string }
+const q = Astro.url.searchParams;
+const qs = new URLSearchParams([...q].filter(([, v]) => v)).toString();
+const page = await adminGet<{ data: Row[]; total: number; current_page: number; last_page: number }>(Astro.cookies, `/orders${qs ? `?${qs}` : ''}`);
+const link = (p: number) => { const n = new URLSearchParams(q); n.set('page', String(p)); return `?${n}`; };
+---
+<AdminLayout title="Orders" active="orders">
+  <form class="filters" method="get">
+    <input name="q" placeholder="Search reference, name or email" value={q.get('q') ?? ''} style="min-width:280px" />
+    <select name="status"><option value="">All statuses</option>{['paid', 'pending', 'failed', 'cancelled', 'refunded'].map((s) => <option selected={q.get('status') === s}>{s}</option>)}</select>
+    <select name="channel"><option value="">All channels</option>{['online', 'event'].map((s) => <option selected={q.get('channel') === s}>{s}</option>)}</select>
+    <button class="btn btn--outline" type="submit">Filter</button>
+  </form>
+  <p class="small muted">"Cancelled" orders with a payment taken need refunding in the payment provider's dashboard, then mark them refunded here.</p>
+  <section class="panel">
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Order</th><th>Customer</th><th>Competition</th><th>Tickets</th><th>Total</th><th>Paid by</th><th>Status</th><th>When</th><th></th></tr></thead>
+      <tbody>{page.data.map((o) => (
+        <tr>
+          <td><strong>{o.reference}</strong></td>
+          <td>{o.name}<div class="small muted">{o.email}</div></td>
+          <td class="small">{o.competition}</td>
+          <td>{o.tickets}</td><td>{gbp(o.total)}</td>
+          <td class="small">{o.channel === 'event' ? `Event · ${o.paymentMethod}` : o.paymentMethod ?? '—'}</td>
+          <td><span class={`pill pill--${o.status}`}>{o.status}</span></td>
+          <td class="small muted">{when(o.createdAt)}</td>
+          <td>{['paid', 'cancelled'].includes(o.status) ? <button class="adm-link" data-admin-action={`/api/admin/orders/${o.id}/refunded`} data-confirm={`Mark ${o.reference} as refunded? Issue the refund in the payment provider first.`} data-reload>Mark refunded</button> : null}</td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+    {page.last_page > 1 ? <div class="row small" style="gap:12px;margin-top:14px">{page.current_page > 1 ? <a href={link(page.current_page - 1)}>← Newer</a> : null}<span class="muted">Page {page.current_page} of {page.last_page} · {page.total} orders</span>{page.current_page < page.last_page ? <a href={link(page.current_page + 1)}>Older →</a> : null}</div> : null}
+  </section>
+</AdminLayout>

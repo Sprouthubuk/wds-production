@@ -1,0 +1,33 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet } from '../../lib/admin';
+import type { SiteSettings } from '../../lib/types';
+const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).data;
+---
+<AdminLayout title="Settings" active="settings">
+  <form class="stack" style="gap:20px;max-width:860px" data-admin-form="/api/admin/settings" data-method="PUT" data-settings>
+    <section class="panel">
+      <h2>Business details</h2>
+      <p class="small muted" style="margin:0 0 14px">Shown in the footer, terms and emails.</p>
+      <div class="form-grid">
+        <div class="field"><label for="tn">Trading name</label><input id="tn" name="tradingName" value={s.tradingName} /></div>
+        <div class="field"><label for="ln">Company name</label><input id="ln" name="legalName" value={s.legalName} /></div>
+        <div class="field"><label for="cn">Company number</label><input id="cn" name="companyNumber" value={s.companyNumber} /></div>
+        <div class="field"><label for="se">Support email</label><input id="se" name="supportEmail" type="email" value={s.supportEmail} /></div>
+      </div>
+      <div class="field" style="margin-top:14px"><label for="ro">Registered office</label><input id="ro" name="registeredOffice" value={s.registeredOffice} /></div>
+    </section>
+    <section class="panel">
+      <h2>Free postal entry</h2>
+      <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="4">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on every competition and the Free Postal Entry page.</span></div>
+    </section>
+    <section class="panel">
+      <h2>Live draws &amp; socials</h2>
+      <div class="form-grid">
+        <div class="field"><label for="ig">Instagram for live draws</label><input id="ig" name="drawsInstagram" value={s.drawsInstagram} /><span class="hint">Without the @</span></div>
+        <div class="field"><label for="yt">YouTube channel</label><input id="yt" name="youtubeUrl" type="url" value={s.youtubeUrl} /></div>
+      </div>
+    </section>
+    <div><button class="btn" type="submit">Save settings</button></div>
+  </form>
+</AdminLayout>

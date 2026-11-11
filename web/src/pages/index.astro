@@ -1,0 +1,261 @@
+---
+import Layout from '../layouts/Layout.astro';
+import EntryPanel from '../components/EntryPanel.astro';
+import CompetitionCard from '../components/CompetitionCard.astro';
+import ComingSoonCard from '../components/ComingSoonCard.astro';
+import { getCompetitions, getSettings, getWinners } from '../lib/api';
+import { money, odds, percentSold } from '../lib/pricing';
+import { countdownParts } from '../lib/countdown';
+
+const [competitions, settings, winners] = await Promise.all([getCompetitions(), getSettings(), getWinners()]);
+const featured = competitions.find((c) => c.badge) ?? competitions[0];
+const latestWinner = winners[0];
+const placeholders = Math.max(0, 3 - competitions.length);
+const ticker = featured
+  ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every competition', `Drawn live on Instagram @${settings.drawsInstagram}`, '18+ UK only']
+  : ['Free postal entry on every competition', `Drawn live on Instagram @${settings.drawsInstagram}`, '18+ UK only'];
+const specs = featured?.specs ?? [];
+const spec = (label: string) => specs.find((s) => s.label.toLowerCase() === label.toLowerCase())?.value;
+const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', timeZone: 'Europe/London' }).replace('/', '.') : '';
+---
+<Layout title="Home">
+  <div class="ticker" aria-hidden="true">
+    <div class="track">{[...ticker, ...ticker].map((t) => <span>{t}<i></i></span>)}</div>
+  </div>
+
+  {featured ? (
+    <section class="hero">
+      <img src={featured.images[0]?.src} alt={featured.images[0]?.alt} class="hero-img" fetchpriority="high" />
+      <div class="hero-shade"></div>
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <span class="chip chip--line hero-chip"><span class="dot"></span>Live now · Competition 01</span>
+          <div class="stack" style="gap: 6px">
+            <span class="kicker">Win this BMW</span>
+            <h1 class="display display--xl">{featured.title.replace(/^BMW\s+/i, '')}</h1>
+          </div>
+          <p class="lead hero-lead">{featured.strapline}</p>
+          <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>Free postal entry</span><span>Drawn live on Instagram</span></div>
+        </div>
+        <div class="hero-card">
+          <EntryPanel competition={featured} settings={settings} variant="hero" />
+        </div>
+      </div>
+    </section>
+  ) : null}
+
+  <section class="usp">
+    <div class="container usp-grid">
+      <div><b>01</b><span><strong>Better odds</strong><br />Low ticket numbers, always</span></div>
+      <div><b>02</b><span><strong>Instant numbers</strong><br />Emailed at checkout</span></div>
+      <div><b>03</b><span><strong>Drawn live</strong><br />Instagram @{settings.drawsInstagram}</span></div>
+      <div><b>04</b><span><strong>Free by post</strong><br />On every competition</span></div>
+    </div>
+  </section>
+
+  {featured ? (
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <div class="stack"><span class="eyebrow">The prize</span><h2 class="display display--m">Rare. Refreshed.<br />Ready to drive.</h2></div>
+          <a href={`/competitions/${featured.slug}`} class="btn btn--outline">Full spec &amp; photos →</a>
+        </div>
+        <div class="bento">
+          <div class="b-main zoom"><img src={featured.images[1]?.src ?? featured.images[0]?.src} alt={featured.images[1]?.alt ?? ''} loading="lazy" /></div>
+          {spec('Built') ? <div class="b-tile b-light"><span class="label">Production</span><b class="b-big">{spec('Built')}</b><span class="small">Clubsports estimated ever made</span></div> : null}
+          {spec('Gearbox') ? <div class="b-tile"><span class="label">Gearbox</span><b class="b-mid">{spec('Gearbox')}</b></div> : null}
+          {spec('Paint') ? <div class="b-tile"><span class="label">Paint</span><b class="b-mid">{spec('Paint')}</b></div> : null}
+          {featured.buildVideoUrl ? (
+            <a href={featured.buildVideoUrl} class="b-video zoom"><img src={featured.images[2]?.src ?? featured.images[0]?.src} alt="" loading="lazy" /><span class="b-play"><span class="play"><svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span>Watch the build</span></a>
+          ) : null}
+          <div class="b-wide">
+            {['Interior', 'Audio', 'Engine'].map((l) => spec(l) ? <div><span class="label">{l}</span><b>{spec(l)}</b></div> : null)}
+          </div>
+        </div>
+      </div>
+    </section>
+  ) : null}
+
+  <section class="section section--alt">
+    <div class="container">
+      <div class="section-head">
+        <div class="stack"><span class="eyebrow">Live competitions</span><h2 class="display display--m">Pick your prize</h2></div>
+        <a href="/competitions" class="link-caps">View all competitions →</a>
+      </div>
+      <div class="grid grid--cards">
+        {competitions.map((c) => <CompetitionCard competition={c} />)}
+        {Array.from({ length: placeholders }, (_, i) => <ComingSoonCard n={competitions.length + i + 1} />)}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="center-head"><span class="eyebrow">Two ways to enter</span><h2 class="display display--m">Same draw. Same odds.</h2></div>
+      <div class="grid grid--2">
+        <div class="way">
+          <div class="way-top"><span class="eyebrow">Option A</span></div>
+          <h3 class="display display--s">Enter online</h3>
+          <ol><li><b>1</b>Choose your tickets or a bundle</li><li><b>2</b>Check out securely by card</li><li><b>3</b>Numbers emailed instantly</li></ol>
+          <a href={featured ? `/competitions/${featured.slug}` : '/competitions'} class="btn btn--block">Enter online</a>
+        </div>
+        <div class="way">
+          <div class="way-top"><span class="eyebrow">Option B</span></div>
+          <h3 class="display display--s">Enter free by post</h3>
+          <ol><li><b>1</b>Write your details on a postcard</li><li><b>2</b>Post it before the closing date</li><li><b>3</b>Number emailed once allocated</li></ol>
+          <a href="/free-postal-entry" class="btn btn--block">Enter free by post</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {featured ? (
+    <section class="section section--light">
+      <div class="container split">
+        <div class="stack" style="gap: 8px; flex: 1 1 520px">
+          <span class="eyebrow" style="color:#555">Christmas Eve live draw</span>
+          <span class="date">{drawDay}</span>
+          <p class="body" style="color:#333; margin-top: 16px">The smaller prizes go first, then the Clubsport. Streamed live on Instagram @{settings.drawsInstagram}. Turn on notifications so you don't miss your number.</p>
+        </div>
+        <div class="stack" style="flex: 1 1 380px">
+          <div class="runorder"><span>Supporting prize draws</span><span>[TIME]</span></div>
+          <div class="runorder last"><span>{featured.title}</span><span>[TIME]</span></div>
+          <a href={`https://instagram.com/${settings.drawsInstagram}`} class="btn btn--dark btn--block" style="margin-top: 24px">Follow @{settings.drawsInstagram} for the live draw</a>
+        </div>
+      </div>
+    </section>
+  ) : null}
+
+  <section class="section">
+    <div class="container split">
+      <div class="stack" style="gap: 24px; flex: 1 1 520px">
+        <span class="eyebrow">From the WDS Originals workshop</span>
+        <h2 class="display display--l">Dream it.<br />Build it.<br />Drive it.<br /><span class="inv">Win it.</span></h2>
+        <p class="body">WDS Originals builds high-performance and modern classic BMWs, from OEM+ refreshes to full race-inspired projects. Now you can win them.</p>
+        <div class="row" style="gap: 24px"><a href="/about" class="link-caps">Our story →</a><a href="https://wdsoriginals.com" class="link-caps">WDS Originals ↗</a></div>
+      </div>
+      {latestWinner ? (
+        <div class="stack" style="gap: 16px; flex: 1 1 400px">
+          <span class="eyebrow">Latest winner</span>
+          <div class="card">
+            {latestWinner.image ? <img src={latestWinner.image.replace('.jpg', '-720.jpg')} alt={`${latestWinner.name} with the ${latestWinner.prize}`} class="winner-img" loading="lazy" /> : <div class="ph">Winner photo</div>}
+            <div class="card__body row-between"><div class="stack" style="gap: 6px"><span class="h3">{latestWinner.name}</span><span class="small muted">Won the {latestWinner.prize}</span></div><a href="/winners" class="link-caps small">All winners →</a></div>
+          </div>
+        </div>
+      ) : null}
+    </div>
+  </section>
+
+  <section class="section section--tight" id="notify">
+    <div class="container split" style="align-items: center">
+      <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">Get first access</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
+      <form class="notify" data-notify style="flex: 1 1 460px">
+        <label for="nl-email" class="sr-only">Email address</label>
+        <input id="nl-email" name="email" type="email" required placeholder="Your email address" autocomplete="email" />
+        <button class="btn" type="submit">Sign me up</button>
+        <p class="small" data-notify-msg role="status" hidden></p>
+      </form>
+    </div>
+  </section>
+
+  {featured ? (
+    <div class="sticky-bar" slot="after">
+      <div class="container">
+        <img src={featured.images[1]?.src.replace('.jpg', '-720.jpg') ?? ''} alt="" width="64" height="48" class="sb-img" />
+        <div class="stack sb-text"><strong>{featured.title}</strong><span class="small muted num">Live draw in <span data-countdown={featured.drawAt} data-countdown-text>{countdownParts(featured.drawAt).text}</span> · {percentSold(featured.ticketsSold, featured.totalTickets)}% sold</span></div>
+        <div class="btn-pair sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">Enter · {money(featured.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>
+      </div>
+    </div>
+  ) : null}
+</Layout>
+
+<style>
+  .ticker { overflow: hidden; border-bottom: 1px solid var(--line); background: var(--bg-2); }
+  .track { display: flex; width: max-content; padding: 14px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap; animation: marquee 40s linear infinite; }
+  .track span { padding: 0 28px; display: flex; align-items: center; gap: 28px; }
+  .track i { width: 6px; height: 6px; background: #fff; transform: rotate(45deg); }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
+
+  .hero { position: relative; border-bottom: 1px solid var(--line); overflow: hidden; }
+  .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
+  .hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.7) 38%, rgba(0,0,0,.15) 70%, rgba(0,0,0,.35) 100%), linear-gradient(0deg, #000 0%, rgba(0,0,0,0) 30%); }
+  .hero-inner { position: relative; min-height: 700px; padding-top: 96px; padding-bottom: 72px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-end; }
+  .hero-copy { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
+  .hero-chip { align-self: flex-start; background: rgba(0,0,0,.5); border-color: rgba(255,255,255,.4); }
+  .kicker { font-size: 22px; font-weight: 700; letter-spacing: 0.32em; text-transform: uppercase; color: #d0d0d0; }
+  .hero-lead { color: #d6d6d6; max-width: 500px; }
+  .hero-facts { display: flex; flex-wrap: wrap; gap: 10px 28px; font-size: 13px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted-2); }
+  .hero-facts strong { color: #fff; }
+  .hero-card :global(.btn-pair .btn) { padding: 0 8px; font-size: 12px; letter-spacing: 0.08em; }
+  .hero-card { flex: 0 1 400px; min-width: 0; background: rgba(8,8,8,.88); border: 1px solid rgba(255,255,255,.22); padding: 26px; }
+
+  .usp { border-bottom: 1px solid var(--line); }
+  .usp-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+  .usp-grid > div { padding: 28px 24px; display: flex; gap: 14px; align-items: center; }
+  .usp-grid > div + div { border-left: 1px solid var(--line); }
+  .usp-grid b { font-size: 36px; line-height: 1; }
+  .usp-grid span { font-size: 13px; line-height: 1.45; color: var(--muted-2); }
+  .usp-grid strong { color: #fff; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 210px; gap: 12px; }
+  .b-main { grid-column: span 2; grid-row: span 2; }
+  .b-main img, .b-video img { width: 100%; height: 100%; object-fit: cover; }
+  .b-tile { border: 1px solid var(--line-2); padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+  .b-light { background: #fff; color: #000; border-color: #fff; }
+  .b-light .label { color: #000; }
+  .b-big { font-size: 56px; line-height: .9; letter-spacing: -0.03em; }
+  .b-mid { font-size: 34px; line-height: .95; text-transform: uppercase; }
+  .b-video { text-decoration: none; }
+  .b-play { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 22px; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .play { width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; }
+  .b-wide { grid-column: 1 / -1; border: 1px solid var(--line-2); padding: 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end; }
+  .b-wide b { display: block; margin-top: 6px; font-size: 18px; text-transform: uppercase; }
+  @media (max-width: 900px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 170px; } .b-wide { grid-template-columns: minmax(0, 1fr); } .b-big { font-size: 40px; } .b-mid { font-size: 24px; } }
+
+  .center-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin-bottom: 40px; }
+  .way { border: 1px solid #fff; padding: 40px; display: flex; flex-direction: column; gap: 22px; }
+  .way ol { list-style: none; margin: 0; padding: 0; }
+  .way li { display: flex; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line-2); font-size: 15px; color: #d0d0d0; }
+  .way li:last-child { border-bottom: 1px solid var(--line-2); }
+  .way li b { color: #fff; }
+  .way .btn { margin-top: auto; }
+
+  .split { display: flex; flex-wrap: wrap; gap: 56px; }
+  .date { font-size: clamp(110px, 15vw, 200px); line-height: .82; font-weight: 700; letter-spacing: -0.05em; }
+  .runorder { display: flex; justify-content: space-between; gap: 16px; padding: 22px 0; border-top: 2px solid #000; font-size: 18px; font-weight: 700; text-transform: uppercase; }
+  .runorder span + span { color: #555; font-size: 15px; }
+  .runorder.last { border-bottom: 2px solid #000; }
+  .inv { display: inline-block; background: #fff; color: #000; padding: 4px 10px 0; margin-top: 6px; line-height: .95; }
+  .winner-img { width: 100%; height: 340px; object-fit: cover; object-position: 50% 62%; }
+  .row-between { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+
+  .notify { display: flex; flex-wrap: wrap; gap: 8px; }
+  .notify input { flex: 1 1 260px; min-width: 0; min-height: 56px; padding: 0 18px; background: #0d0d0d; border: 1px solid var(--line-3); color: #fff; font-size: 16px; }
+  .notify .btn { min-height: 56px; }
+  .notify p { flex: 1 1 100%; margin: 0; }
+
+  .sb-img { width: 64px; height: 48px; object-fit: cover; }
+  .sb-text { flex: 1 1 240px; gap: 2px; font-size: 14px; text-transform: uppercase; }
+  .sb-text .small { text-transform: none; }
+  .sb-btns { flex: 0 1 420px; }
+  .sb-btns .btn { min-height: 48px; font-size: 12px; padding: 0 10px; }
+  @media (max-width: 600px) { .sb-img, .sb-text { display: none; } .sb-btns { flex: 1 1 100%; } .hero-inner { min-height: 0; padding-top: 48px; } .hero-card { padding: 18px; } .usp-grid > div + div { border-left: 0; border-top: 1px solid var(--line); } }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-notify]').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = form.querySelector<HTMLElement>('[data-notify-msg]')!;
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      try {
+        const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        msg.textContent = res.ok ? "You're on the list. We'll be in touch before the next launch." : 'Something went wrong, please try again.';
+      } catch {
+        msg.textContent = 'Something went wrong, please try again.';
+      }
+      msg.hidden = false;
+    });
+  });
+</script>

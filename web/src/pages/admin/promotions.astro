@@ -1,0 +1,38 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, day } from '../../lib/admin';
+interface Code { id: number; code: string; type: 'percent' | 'amount'; value: number; competition_id: number | null; usage_limit: number | null; times_used: number; expires_at: string | null; active: boolean }
+const codes = await adminGet<Code[]>(Astro.cookies, '/promotions');
+---
+<AdminLayout title="Promotions" active="promotions">
+  <section class="panel">
+    <h2>Discount codes</h2>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Expires</th><th>Status</th><th></th></tr></thead>
+      <tbody>{codes.map((c) => (
+        <tr>
+          <td><strong class="mono" style="font-size:14px">{c.code}</strong></td>
+          <td>{c.type === 'percent' ? `${c.value}% off` : `£${(c.value / 100).toFixed(2)} off`}</td>
+          <td>{c.times_used}{c.usage_limit ? ` / ${c.usage_limit}` : ''}</td>
+          <td class="small">{day(c.expires_at)}</td>
+          <td><span class={`pill ${c.active ? 'pill--live' : ''}`}>{c.active ? 'active' : 'off'}</span></td>
+          <td><button class="adm-link" data-admin-action={`/api/admin/promotions/${c.id}`} data-method="PUT" data-body={JSON.stringify({ code: c.code, type: c.type, value: c.type === 'percent' ? c.value : c.value / 100, competitionId: c.competition_id, usageLimit: c.usage_limit, expiresAt: c.expires_at, active: !c.active })} data-reload>{c.active ? 'Turn off' : 'Turn on'}</button></td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+  </section>
+  <section class="panel" style="max-width:760px">
+    <h2>New code</h2>
+    <form class="stack" style="gap:14px" data-admin-form="/api/admin/promotions" data-reload>
+      <div class="form-grid">
+        <div class="field"><label for="pc">Code</label><input id="pc" name="code" required placeholder="e.g. XMAS10" style="text-transform:uppercase" /></div>
+        <div class="field"><label for="pt">Type</label><select id="pt" name="type"><option value="percent">% off</option><option value="amount">£ off</option></select></div>
+        <div class="field"><label for="pv">Amount</label><input id="pv" name="value" type="number" step="0.01" min="0.01" data-type="number" required /></div>
+        <div class="field"><label for="pl">Usage limit</label><input id="pl" name="usageLimit" type="number" min="1" data-type="number" placeholder="Unlimited" /></div>
+        <div class="field"><label for="pe">Expires</label><input id="pe" name="expiresAt" type="datetime-local" /></div>
+      </div>
+      <div><button class="btn" type="submit">Create code</button></div>
+    </form>
+    <p class="small muted" style="margin:12px 0 0">Codes apply after bundle pricing. Free postal entry is never affected.</p>
+  </section>
+</AdminLayout>

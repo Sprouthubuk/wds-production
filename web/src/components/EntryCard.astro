@@ -1,0 +1,27 @@
+---
+import { odds } from '../lib/pricing';
+interface Props { e: { competition: string; slug: string; image: string; drawAt: string; totalTickets: number; status: string; online: string[]; postal: string[]; won: boolean } }
+const { e } = Astro.props;
+const total = e.online.length + e.postal.length;
+const draw = new Date(e.drawAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' });
+---
+<article class="entry">
+  <img src={e.image.replace('.jpg', '-720.jpg')} alt="" loading="lazy" />
+  <div class="body">
+    <div class="top"><strong>{e.competition}</strong><span class="chip chip--solid">{e.won ? 'Winner' : e.status === 'live' ? `Live · draw ${draw}` : 'Drawn'}</span></div>
+    <span class="small muted">{total} ticket{total === 1 ? '' : 's'} · your odds {odds(e.totalTickets, total || 1)}</span>
+    {e.online.length ? <div class="stack" style="gap: 8px"><span class="label">Online · {e.online.length}</span><div class="chips">{e.online.map((n) => <span class="num">{n}</span>)}</div></div> : null}
+    {e.postal.length ? <div class="stack" style="gap: 8px"><span class="label">Postal · {e.postal.length}</span><div class="chips postal">{e.postal.map((n) => <span class="num">{n}</span>)}</div></div> : null}
+    {e.status === 'live' ? <div class="row" style="gap: 8px"><a href={`/competitions/${e.slug}`} class="btn">Add more tickets</a><a href="/live-draws" class="btn btn--outline">Watch the draw</a></div> : null}
+  </div>
+</article>
+<style>
+  .entry { border: 1px solid var(--line-2); display: flex; flex-wrap: wrap; }
+  .entry img { flex: 0 0 220px; width: 220px; min-height: 180px; object-fit: cover; }
+  .body { flex: 1 1 320px; padding: 22px; display: flex; flex-direction: column; gap: 14px; }
+  .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 10px; font-size: 18px; text-transform: uppercase; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips span { min-width: 64px; min-height: 40px; padding: 0 10px; border: 1px solid #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+  .chips.postal span { border-style: dashed; }
+  @media (max-width: 600px) { .entry img { flex-basis: 100%; width: 100%; aspect-ratio: 4 / 3; min-height: 0; } }
+</style>

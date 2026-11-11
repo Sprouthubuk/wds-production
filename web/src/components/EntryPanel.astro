@@ -1,0 +1,244 @@
+---
+/**
+ * The ticket entry panel. One script drives every panel on the page.
+ * variant="full"  → competition page / mobile (tabs for online vs free postal entry)
+ * variant="hero"  → compact card in the homepage hero
+ */
+import type { Competition, SiteSettings } from '../lib/types';
+import { money, odds, percentSold, priceFor, savingFor, statusLabel } from '../lib/pricing';
+import { countdownParts } from '../lib/countdown';
+
+interface Props { competition: Competition; settings: SiteSettings; variant?: 'full' | 'hero' }
+const { competition: c, settings, variant = 'full' } = Astro.props;
+
+const left = Math.max(0, c.totalTickets - c.ticketsSold);
+const cap = Math.max(1, Math.min(c.maxPerPerson || 50, left || 1));
+const startQty = Math.min(c.bundles.find((b) => b.qty === 3)?.qty ?? 1, cap);
+const pct = percentSold(c.ticketsSold, c.totalTickets);
+const cd = countdownParts(c.drawAt);
+const options = [{ qty: 1, price: c.ticketPrice }, ...[...c.bundles].sort((a, b) => a.qty - b.qty)].filter((o) => o.qty <= cap);
+const soldOut = left === 0;
+const config = JSON.stringify({
+  id: c.id, slug: c.slug, title: c.title, image: c.images[0]?.src ?? '', ticketPrice: c.ticketPrice,
+  bundles: c.bundles, maxPerPerson: c.maxPerPerson, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
+});
+---
+<div class={`entry entry--${variant}`} data-entry-panel data-config={config}>
+  <div class="odds-strip">
+    <div><span>Odds per ticket</span><b class="num">{odds(c.totalTickets)}</b></div>
+    <div><span>Only</span><b class="num">{c.totalTickets.toLocaleString('en-GB')} <small>tickets</small></b></div>
+  </div>
+
+  {variant === 'hero' ? (
+    <div class="drawline"><span><span class="dot"></span> Draw in</span><b class="num" data-countdown={c.drawAt} data-countdown-text>{cd.text}</b></div>
+  ) : null}
+
+  <div class="sold">
+    {variant === 'full' ? (
+      <div class="sold-head"><span class="pct num">{pct}%</span><span class="lbl">sold</span><span class="chip chip--line"><span class="dot"></span>{statusLabel(c.ticketsSold, c.totalTickets)}</span></div>
+    ) : null}
+    <div class={`progress ${variant === 'full' ? 'progress--ticks' : ''}`} role="progressbar" aria-label="Tickets sold" aria-valuemin="0" aria-valuemax="100" aria-valuenow={pct}><span style={`width:${pct}%`}></span></div>
+    <div class="sold-foot num"><span><strong>{variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}</strong> sold</span><span><strong>{left.toLocaleString('en-GB')}</strong> left</span></div>
+  </div>
+
+  {variant === 'full' ? (
+    <div class="countdown" data-countdown={c.drawAt}>
+      <div><b data-unit="d">{cd.d}</b><small>Days</small></div>
+      <div><b data-unit="h">{cd.h}</b><small>Hrs</small></div>
+      <div><b data-unit="m">{cd.m}</b><small>Mins</small></div>
+      <div><b data-unit="s">{cd.s}</b><small>Secs</small></div>
+    </div>
+  ) : null}
+
+  {variant === 'full' ? (
+    <div class="tabs" role="tablist" aria-label="How to enter">
+      <button role="tab" aria-selected="true" data-tab="online">Enter online</button>
+      <button role="tab" aria-selected="false" data-tab="post">Enter free by post</button>
+    </div>
+  ) : null}
+
+  <div class="online" data-pane="online">
+    {soldOut ? (
+      <p class="alert">This competition has sold out. Free postal entries already received are included in the draw.</p>
+    ) : (
+      <>
+        {variant === 'full' ? <span class="label">Choose a bundle</span> : null}
+        <div class="packs" style={`grid-template-columns: repeat(${options.length}, minmax(0, 1fr))`}>
+          {options.map((o) => {
+            const save = c.ticketPrice * o.qty - o.price;
+            return (
+              <button type="button" data-pack={o.qty} aria-pressed={o.qty === startQty ? 'true' : 'false'}>
+                <span class="p-label">{o.qty === 1 ? '1 ticket' : variant === 'hero' ? `${o.qty} for` : `${o.qty} tickets`}</span>
+                <span class="p-price">{money(o.price)}</span>
+                <span class="p-save">{save > 0.004 ? `Save ${money(save)}` : 'Single'}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        <div class="own">
+          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span><span class="small muted">Max {c.maxPerPerson} per person</span></div> : null}
+          <div class="stepper">
+            <button type="button" data-step="-1" aria-label="One fewer ticket">−</button>
+            <div><span class="qty num" data-qty aria-live="polite">{startQty}</span><span class="word" data-word>{startQty === 1 ? 'ticket' : 'tickets'}</span></div>
+            <button type="button" data-step="1" aria-label="One more ticket" class="plus">+</button>
+          </div>
+          {variant === 'full' ? (
+            <>
+              <label class="sr-only" for={`range-${c.id}`}>Number of tickets</label>
+              <input id={`range-${c.id}`} class="range" type="range" min="1" max={cap} step="1" value={startQty} data-range />
+            </>
+          ) : null}
+        </div>
+
+        <div class="totals">
+          <div><span class="label">Your odds</span><b class="num" data-odds>{odds(c.totalTickets, startQty)}</b></div>
+          <div class="r"><span class="label">Total</span><b class="num" data-total>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</b><span class="save" data-saving hidden={savingFor(startQty, c.ticketPrice, c.bundles) <= 0}>You save {money(savingFor(startQty, c.ticketPrice, c.bundles))}</span></div>
+        </div>
+        <button type="button" class="nudge" data-nudge hidden></button>
+
+        {variant === 'hero' ? (
+          <div class="btn-pair">
+            <button type="button" class="btn" data-enter>Enter online</button>
+            <a href="/free-postal-entry" class="btn">Free by post</a>
+          </div>
+        ) : (
+          <button type="button" class="btn btn--block btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>
+        )}
+      </>
+    )}
+  </div>
+
+  {variant === 'full' ? (
+    <div class="post" data-pane="post" hidden>
+      <span class="label">Post a postcard or letter to</span>
+      <address>{settings.postalEntryAddress.map((l, i) => <>{l}{i < settings.postalEntryAddress.length - 1 ? <br /> : null}</>)}</address>
+      <ul><li>Competition: {c.title}</li><li>Full name, address and date of birth</li><li>Phone number and email address</li></ul>
+      <span class="small muted-2">One entry per envelope. Must arrive before the closing date. Same draw, same odds.</span>
+      <a href="/free-postal-entry" class="btn btn--block btn--lg">Full postal entry guide</a>
+    </div>
+  ) : null}
+
+  {variant === 'hero' ? (
+    <span class="foot">Same draw, same chance · Max {c.maxPerPerson} per person</span>
+  ) : (
+    <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>Drawn live on Instagram @{settings.drawsInstagram}</span></div>
+  )}
+</div>
+
+<style>
+  .entry { display: flex; flex-direction: column; gap: 18px; }
+  .odds-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #fff; color: #000; }
+  .odds-strip > div { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+  .odds-strip > div + div { border-left: 1px solid #000; }
+  .odds-strip span { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .odds-strip b { font-size: 28px; line-height: 1; letter-spacing: -0.02em; }
+  .odds-strip small { font-size: 12px; letter-spacing: 0; }
+  .drawline { display: flex; justify-content: space-between; align-items: center; font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .drawline > span { display: flex; align-items: center; gap: 8px; }
+  .drawline b { font-size: 15px; letter-spacing: 0.04em; }
+  .sold { display: flex; flex-direction: column; gap: 8px; }
+  .sold-head { display: flex; align-items: baseline; gap: 10px; }
+  .sold-head .pct { font-size: 34px; font-weight: 700; line-height: .9; letter-spacing: -0.03em; }
+  .sold-head .lbl { font-size: 13px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+  .sold-head .chip { margin-left: auto; }
+  .entry--full .progress { height: 10px; }
+  .entry--hero .progress { height: 4px; background: rgba(255,255,255,.18); }
+  .sold-foot { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted-2); }
+  .sold-foot strong { color: #fff; }
+  .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+  .tabs button { min-height: 50px; border: 1px solid #fff; background: #000; color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; }
+  .tabs button[aria-selected='true'] { background: #fff; color: #000; }
+  .online, .post { display: flex; flex-direction: column; gap: 14px; }
+  .post[hidden], .online[hidden] { display: none; }
+  .packs { display: grid; gap: 6px; }
+  .packs button { min-height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 4px; border: 1px solid #3a3a3a; background: transparent; color: #fff; cursor: pointer; }
+  .packs button[aria-pressed='true'] { background: #fff; color: #000; border-color: #fff; }
+  .p-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .p-price { font-size: 24px; font-weight: 700; line-height: 1.05; }
+  .p-save { font-size: 11px; font-weight: 700; }
+  .entry--hero .packs button { min-height: 70px; }
+  .entry--hero .p-price { font-size: 18px; }
+  .own { display: flex; flex-direction: column; gap: 12px; }
+  .own-head { display: flex; justify-content: space-between; align-items: center; }
+  .stepper { display: flex; align-items: stretch; border: 1px solid #fff; }
+  .stepper button { width: 60px; flex: 0 0 60px; min-height: 56px; background: transparent; border: 0; border-right: 1px solid #fff; color: #fff; font-size: 26px; cursor: pointer; }
+  .stepper button.plus { border-right: 0; background: #fff; color: #000; }
+  .stepper > div { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .stepper .qty { font-size: 30px; font-weight: 700; line-height: 1; }
+  .stepper .word { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .entry--hero .stepper { border-color: #3a3a3a; }
+  .entry--hero .stepper button { width: 48px; flex-basis: 48px; min-height: 50px; border-right: 0; background: transparent; color: #fff; font-size: 22px; }
+  .entry--hero .stepper > div { flex-direction: row; gap: 6px; align-items: baseline; }
+  .entry--hero .stepper .qty { font-size: 17px; }
+  .range { -webkit-appearance: none; appearance: none; width: 100%; height: 6px; background: #333; cursor: pointer; }
+  .range::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 28px; height: 28px; background: #fff; border: 3px solid #000; box-shadow: 0 0 0 1px #fff; }
+  .range::-moz-range-thumb { width: 24px; height: 24px; background: #fff; border: 3px solid #000; border-radius: 0; }
+  .totals { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+  .totals > div { padding: 12px 0; display: flex; flex-direction: column; gap: 3px; }
+  .totals > div.r { padding-left: 16px; border-left: 1px solid var(--line-2); text-align: right; }
+  .totals b { font-size: 24px; line-height: 1; }
+  .save { font-size: 12px; font-weight: 700; }
+  .save[hidden] { display: none; }
+  .nudge { min-height: 44px; padding: 0 14px; background: transparent; border: 1px dashed #fff; color: #fff; font-size: 13px; text-align: left; cursor: pointer; }
+  .nudge[hidden] { display: none; }
+  address { font-style: normal; font-size: 17px; font-weight: 700; line-height: 1.45; text-transform: uppercase; background: #fff; color: #000; padding: 16px; }
+  ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.8; color: #d0d0d0; }
+  .muted-2 { color: var(--muted-2); }
+  .trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; font-size: 12px; color: var(--muted); }
+  .foot { font-size: 12px; color: #8a8a8a; text-align: center; }
+</style>
+
+<script>
+  import { addToBasket } from '../lib/basket';
+  import { money, odds, priceFor, savingFor } from '../lib/pricing';
+  import type { Bundle } from '../lib/types';
+
+  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number; cap: number; totalTickets: number; drawAt: string };
+
+  document.querySelectorAll<HTMLElement>('[data-entry-panel]').forEach((root) => {
+    const cfg: Cfg = JSON.parse(root.dataset.config || '{}');
+    let qty = Number(root.querySelector('[data-qty]')?.textContent || 1);
+    const $ = <T extends Element>(sel: string) => root.querySelector<T>(sel);
+
+    const render = () => {
+      const total = priceFor(qty, cfg.ticketPrice, cfg.bundles);
+      const saving = savingFor(qty, cfg.ticketPrice, cfg.bundles);
+      $('[data-qty]')!.textContent = String(qty);
+      $('[data-word]')!.textContent = qty === 1 ? 'ticket' : 'tickets';
+      $('[data-odds]')!.textContent = odds(cfg.totalTickets, qty);
+      $('[data-total]')!.textContent = money(total);
+      const tb = $('[data-total-btn]'); if (tb) tb.textContent = money(total);
+      const sv = $<HTMLElement>('[data-saving]');
+      if (sv) { sv.hidden = saving <= 0.004; sv.textContent = `You save ${money(saving)}`; }
+      const range = $<HTMLInputElement>('[data-range]'); if (range) range.value = String(qty);
+      root.querySelectorAll<HTMLButtonElement>('[data-pack]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.pack) === qty)));
+      const nudge = $<HTMLButtonElement>('[data-nudge]');
+      if (nudge) {
+        const next = [...cfg.bundles].sort((a, b) => a.qty - b.qty).find((b) => qty < b.qty && b.qty - qty <= 3 && b.qty <= cfg.cap);
+        nudge.hidden = !next;
+        if (next) {
+          nudge.textContent = `Add ${next.qty - qty} more: ${next.qty} for ${money(next.price)} (save ${money(cfg.ticketPrice * next.qty - next.price)}) →`;
+          nudge.onclick = () => set(next.qty);
+        }
+      }
+    };
+    const set = (n: number) => { qty = Math.min(cfg.cap, Math.max(1, Math.round(n) || 1)); render(); };
+
+    root.querySelectorAll<HTMLButtonElement>('[data-pack]').forEach((b) => b.addEventListener('click', () => set(Number(b.dataset.pack))));
+    root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => set(qty + Number(b.dataset.step))));
+    $<HTMLInputElement>('[data-range]')?.addEventListener('input', (e) => set(Number((e.target as HTMLInputElement).value)));
+
+    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((tab) => tab.addEventListener('click', () => {
+      const which = tab.dataset.tab;
+      root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
+      root.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== which; });
+    }));
+
+    root.querySelectorAll<HTMLButtonElement>('[data-enter]').forEach((b) => b.addEventListener('click', () => {
+      addToBasket({ competitionId: cfg.id, slug: cfg.slug, title: cfg.title, image: cfg.image, qty, ticketPrice: cfg.ticketPrice, bundles: cfg.bundles, maxPerPerson: cfg.maxPerPerson, drawAt: cfg.drawAt });
+      window.location.href = '/basket';
+    }));
+    render();
+  });
+</script>

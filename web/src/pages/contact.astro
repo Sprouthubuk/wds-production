@@ -1,0 +1,48 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import { getSettings } from '../lib/api';
+const s = await getSettings();
+---
+<Layout title="Contact">
+  <PageHero eyebrow="Contact" title="Get in touch" intro="Questions about a competition, your order or a draw? Send us a message." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container split">
+      <form class="stack" style="gap: 18px; flex: 1.4 1 520px" data-contact>
+        <div class="form-grid">
+          <div class="field"><label for="c-n">Name</label><input id="c-n" name="name" required autocomplete="name" /></div>
+          <div class="field"><label for="c-e">Email</label><input id="c-e" name="email" type="email" required autocomplete="email" /></div>
+        </div>
+        <div class="field"><label for="c-o">Order number (if relevant)</label><input id="c-o" name="order" /></div>
+        <div class="field"><label for="c-m">Message</label><textarea id="c-m" name="message" required rows="7"></textarea></div>
+        <div><button class="btn" type="submit">Send message</button></div>
+        <p class="alert" data-msg role="status" hidden></p>
+      </form>
+      <div class="stack" style="gap: 24px; flex: 1 1 320px">
+        <div class="rows">
+          <div><span>Email</span><span><a href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></span></div>
+          <div><span>Instagram</span><span><a href={`https://instagram.com/${s.drawsInstagram}`}>@{s.drawsInstagram}</a></span></div>
+          <div><span>Registered office</span><span>{s.registeredOffice}</span></div>
+        </div>
+        <div class="post-note"><h2 class="h3" style="font-size: 16px">Entering by post?</h2><p class="small muted" style="margin:0">Postal entries go to a different address. See the free postal entry page.</p><a href="/free-postal-entry" class="link-caps small">Free postal entry →</a></div>
+      </div>
+    </div>
+  </section>
+</Layout>
+<style>
+  .split { display: flex; flex-wrap: wrap; gap: 56px; align-items: flex-start; }
+  .post-note { border: 1px solid #fff; padding: 24px; display: flex; flex-direction: column; gap: 10px; }
+</style>
+<script>
+  document.querySelectorAll<HTMLFormElement>('[data-contact]').forEach((form) => form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const msg = form.querySelector<HTMLElement>('[data-msg]')!;
+    const body = Object.fromEntries(new FormData(form).entries());
+    try {
+      const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      msg.textContent = res.ok ? "Thanks, we've got your message and will reply by email." : 'Sorry, that didn’t send. Please email us instead.';
+      if (res.ok) form.reset();
+    } catch { msg.textContent = 'Sorry, that didn’t send. Please email us instead.'; }
+    msg.hidden = false;
+  }));
+</script>

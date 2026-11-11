@@ -1,0 +1,39 @@
+---
+import type { Competition } from '../lib/types';
+import { money, odds, percentSold, statusLabel } from '../lib/pricing';
+interface Props { competition: Competition }
+const { competition: c } = Astro.props;
+const pct = percentSold(c.ticketsSold, c.totalTickets);
+const left = Math.max(0, c.totalTickets - c.ticketsSold);
+const href = `/competitions/${c.slug}`;
+const drawDate = new Date(c.drawAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' });
+---
+<article class="card comp">
+  <a href={href} class="zoom media">
+    <img src={c.images[0]?.src.replace('.jpg', '-720.jpg')} alt={c.images[0]?.alt ?? c.title} loading="lazy" width="720" height="540" />
+    {c.badge ? <span class="badge">{c.badge}</span> : null}
+    <span class="when"><span>Live draw</span><span>{drawDate}</span></span>
+  </a>
+  <div class="card__body">
+    <h3 class="h3"><a href={href}>{c.title}</a></h3>
+    <div class="row-between"><strong>{pct}% sold</strong><span class="chip chip--solid">{statusLabel(c.ticketsSold, c.totalTickets)}</span></div>
+    <div class="progress"><span style={`width:${pct}%`}></span></div>
+    <div class="row-between small muted"><span>{left.toLocaleString('en-GB')} left</span><span>{odds(c.totalTickets)} odds</span></div>
+    <div class="row-between prices"><span><strong>{money(c.ticketPrice)}</strong> online</span><span><strong>Free</strong> by post</span></div>
+    <div class="btn-pair">
+      <a href={href} class="btn">Enter online</a>
+      <a href="/free-postal-entry" class="btn">Enter by post</a>
+    </div>
+  </div>
+</article>
+
+<style>
+  .media img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .badge { position: absolute; top: 14px; left: 14px; background: #fff; color: #000; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 7px 10px; }
+  .when { position: absolute; bottom: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; background: rgba(0,0,0,.78); padding: 10px 12px; font-size: 13px; font-weight: 700; }
+  .h3 a { text-decoration: none; }
+  .row-between { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+  .prices { font-size: 13px; color: var(--muted-2); }
+  .prices strong { font-size: 22px; color: #fff; }
+  .btn-pair .btn { min-height: 48px; padding: 0 8px; font-size: 12px; letter-spacing: 0.08em; }
+</style>

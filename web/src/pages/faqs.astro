@@ -1,0 +1,45 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import { getSettings } from '../lib/api';
+const settings = await getSettings();
+const groups: [string, [string, string][]][] = [
+  ['Entering', [
+    ['Who can enter?', 'Anyone aged 18 or over who lives in the UK. [Confirm any exclusions, e.g. employees and their households.]'],
+    ['Can I enter for free?', 'Yes. Every competition can be entered free by post. See the free postal entry page for the address and what to include.'],
+    ['Does a postal entry have the same chance of winning?', 'Yes. Postal entries get the next ticket number in sequence, from the same run as online entries, and go into the same draw.'],
+    ['How many times can I enter?', 'Each competition shows its maximum per person. Online and postal entries count towards the same limit.'],
+  ]],
+  ['Tickets & payment', [
+    ['How do I pay?', "Add your tickets to the basket, then pay by debit or credit card on our payment provider's secure checkout page. Any site credit in your account is applied first."],
+    ['Are there bundle deals?', 'Yes. Bundles (for example 3 or 10 tickets) are cheaper per ticket. The basket always uses the cheapest combination for the number of tickets you choose.'],
+    ['When do I get my ticket numbers?', 'Ticket numbers are issued in order as soon as payment completes, emailed to you and shown in your account. Postal entries are emailed once logged.'],
+    ['Can I get a refund?', '[To confirm in the terms: when entries can and cannot be refunded, including if a competition is cancelled.]'],
+  ]],
+  ['The draw', [
+    ['When and where are draws held?', `Live on Instagram @${settings.drawsInstagram}. Each competition page shows its draw date and time.`],
+    ['How is the winner chosen?', 'By a verified random draw from every allocated ticket number, shown live on stream, with a certificate published afterwards.'],
+    ['What if not every ticket sells?', '[To confirm: whether the draw goes ahead as planned or the closing date is extended.]'],
+  ]],
+  ['Winning', [
+    ["How will I know if I've won?", "We'll contact you by phone and email straight after the draw, and announce the winner live."],
+    ['Do I need to verify my identity?', 'Yes. Winners upload photo ID through their account before the prize is handed over. Under-18 wins are void.'],
+    ['Is there a cash alternative?', '[TBC per competition.]'],
+    ['How do I collect the car?', '[To confirm: collection from the WDS workshop or delivery.]'],
+  ]],
+];
+const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: groups.flatMap(([, items]) => items.filter(([, a]) => !a.startsWith('[')).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } }))) };
+---
+<Layout title="FAQs" active="faqs">
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <PageHero eyebrow="Help" title="Frequently asked questions" />
+  <section class="section" style="border-bottom: 0">
+    <div class="container faq" style="max-width: 960px">
+      {groups.map(([cat, items], gi) => (
+        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a], qi) => <details open={gi === 0 && qi === 1}><summary>{q}</summary><p>{a}</p></details>)}</div></div>
+      ))}
+      <p class="body">Can't find your answer? <a href="/contact">Contact us</a>.</p>
+    </div>
+  </section>
+</Layout>
+<style>.group { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; }</style>

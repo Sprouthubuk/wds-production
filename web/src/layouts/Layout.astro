@@ -1,0 +1,60 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import { getSettings } from '../lib/api';
+
+interface Props {
+  title: string;
+  description?: string;
+  active?: 'competitions' | 'winners' | 'postal' | 'faqs' | 'none';
+  image?: string;
+}
+const { title, description = 'Win genuine WDS Originals BMW builds, parts and merchandise. Low ticket numbers, better odds, free postal entry and every draw live on Instagram.', active = 'none', image = '/images/e46-clubsport-34.jpg' } = Astro.props;
+const settings = await getSettings();
+const fullTitle = title === 'Home' ? 'WDS Competitions — Win genuine WDS Originals builds' : `${title} — WDS Competitions`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+<!doctype html>
+<html lang="en-GB">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={new URL(image, Astro.site)} />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#000000" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="sr-only" href="#main">Skip to content</a>
+    <Header active={active} />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer settings={settings} />
+    <slot name="after" />
+    <script>
+      import { basketCount } from '../lib/basket';
+      const update = () => {
+        const n = basketCount();
+        document.querySelectorAll<HTMLElement>('[data-basket-count]').forEach((el) => {
+          el.textContent = String(n);
+          el.hidden = n === 0;
+        });
+      };
+      update();
+      window.addEventListener('basket:change', update);
+      window.addEventListener('storage', update);
+    </script>
+    <script>
+      import { startCountdowns } from '../lib/countdown';
+      startCountdowns();
+    </script>
+  </body>
+</html>

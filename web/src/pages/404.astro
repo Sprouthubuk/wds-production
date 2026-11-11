@@ -1,0 +1,10 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+---
+<Layout title="Page not found">
+  <PageHero eyebrow="404" title="Wrong turn" intro="The page you're looking for doesn't exist or has moved." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container row" style="gap: 12px"><a href="/" class="btn">Back to home</a><a href="/competitions" class="btn btn--outline">View competitions</a></div>
+  </section>
+</Layout>

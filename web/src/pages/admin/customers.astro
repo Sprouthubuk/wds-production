@@ -1,0 +1,62 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp, day, when } from '../../lib/admin';
+interface Row { id: number; name: string; email: string; phone: string | null; role: string; tickets: number; spent: number; credit: number; flags: string[]; joinedAt: string }
+interface Ver { id: number; created_at: string; user: { id: number; name: string; email: string } }
+const q = Astro.url.searchParams.get('q') ?? '';
+const [page, vers] = await Promise.all([
+  adminGet<{ data: Row[]; total: number }>(Astro.cookies, `/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  adminGet<Ver[]>(Astro.cookies, '/verifications'),
+]);
+---
+<AdminLayout title="Customers" active="customers">
+  <form class="filters" method="get"><input name="q" placeholder="Search name, email or phone" value={q} style="min-width:280px" /><button class="btn btn--outline">Search</button></form>
+
+  <section class="panel">
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Customer</th><th>Tickets</th><th>Spent</th><th>Credit</th><th>Flags</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody>{page.data.map((u) => (
+        <tr>
+          <td><strong>{u.name}</strong> {u.role !== 'customer' ? <span class="pill">{u.role}</span> : null}<div class="small muted">{u.email}{u.phone ? ` · ${u.phone}` : ''}</div></td>
+          <td>{u.tickets}</td><td>{gbp(u.spent)}</td><td>{gbp(u.credit)}</td>
+          <td>{u.flags.map((f) => <span class="pill" style="margin-right:4px">{f}</span>)}</td>
+          <td class="small muted">{day(u.joinedAt)}</td>
+          <td>
+            <details><summary class="adm-link">Manage</summary>
+              <div class="stack" style="gap:10px;padding:10px 0;min-width:260px">
+                <form class="row" style="gap:6px" data-admin-form={`/api/admin/customers/${u.id}/credit`} data-reload>
+                  <input name="amount" data-type="number" type="number" step="0.01" placeholder="£ ±" required style="width:80px;background:#000;border:1px solid var(--line-2);padding:6px" />
+                  <input name="reason" placeholder="Reason" required style="flex:1;background:#000;border:1px solid var(--line-2);padding:6px" />
+                  <button class="btn btn--outline" type="submit">Credit</button>
+                </form>
+                <button class="adm-link" data-admin-action={`/api/admin/customers/${u.id}/suspend`} data-body={JSON.stringify({ suspended: !u.flags.includes('suspended') })} data-confirm="Change this account's suspension?" data-reload>{u.flags.includes('suspended') ? 'Reinstate account' : 'Suspend account'}</button>
+                <form class="row" style="gap:6px" data-admin-form={`/api/admin/customers/${u.id}/role`} data-confirm="Change this person's access level?" data-reload>
+                  <select name="role" style="background:#000;border:1px solid var(--line-2);padding:6px">{['customer', 'staff', 'admin'].map((r) => <option selected={u.role === r}>{r}</option>)}</select>
+                  <button class="btn btn--outline" type="submit">Set role</button>
+                </form>
+              </div>
+            </details>
+          </td>
+        </tr>
+      ))}</tbody>
+    </table></div>
+  </section>
+
+  <section class="panel" id="verifications">
+    <h2>Winner ID checks</h2>
+    {vers.length ? <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Customer</th><th>Uploaded</th><th>Files</th><th>Decision</th></tr></thead>
+      <tbody>{vers.map((v) => (
+        <tr>
+          <td><strong>{v.user.name}</strong><div class="small muted">{v.user.email}</div></td>
+          <td class="small">{when(v.created_at)}</td>
+          <td class="small"><a href={`/api/admin/verifications/${v.id}/document`} target="_blank" rel="noopener">Photo ID</a> · <a href={`/api/admin/verifications/${v.id}/selfie`} target="_blank" rel="noopener">Selfie</a></td>
+          <td class="row" style="gap:12px">
+            <button class="btn" data-admin-action={`/api/admin/verifications/${v.id}`} data-body='{"status":"approved"}' data-reload>Approve</button>
+            <button class="btn btn--outline" data-admin-action={`/api/admin/verifications/${v.id}`} data-body='{"status":"denied"}' data-confirm="Deny this ID check?" data-reload>Deny</button>
+          </td>
+        </tr>
+      ))}</tbody>
+    </table></div> : <p class="muted">Nothing to review.</p>}
+  </section>
+</AdminLayout>

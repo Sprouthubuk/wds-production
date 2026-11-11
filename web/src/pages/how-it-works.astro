@@ -1,0 +1,54 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import { getSettings } from '../lib/api';
+const settings = await getSettings();
+const journey = [
+  ['01', 'Entries open', 'Each competition has a fixed, low number of tickets, shown on the page, so you always know your odds.'],
+  ['02', 'Numbers issued in order', 'Online, postal and event entries get the next ticket numbers in sequence from one run.'],
+  ['03', 'Competition closes', 'Entries close at the advertised date and time, or when every ticket is gone.'],
+  ['04', 'Live draw', `The winning number is drawn live on Instagram @${settings.drawsInstagram} using a verified random draw.`],
+  ['05', 'Winner verified', 'We contact the winner, check their ID and arrange handover of the prize.'],
+];
+const fair = [
+  ['Better odds', 'Low ticket numbers on every competition.'],
+  ['Free entry route', 'Every competition can be entered free by post.'],
+  ['Verified draws', 'Every draw is streamed live and the result published with a certificate.'],
+  ['18+ only', 'All entrants and winners must be 18 or over and UK residents.'],
+];
+---
+<Layout title="How it works">
+  <PageHero eyebrow="How it works" title="How WDS Competitions works" intro="Pick a prize, enter online or free by post, and watch the winner drawn live." />
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><h2 class="display display--s">Two ways to enter</h2></div>
+      <div class="grid grid--2">
+        <div class="way"><span class="label">Option 1</span><h3 class="display display--s">Enter online</h3><ol><li>Choose a competition and your tickets or a bundle</li><li>Check out on our payment provider's secure page</li><li>Your ticket numbers are emailed straight away</li></ol><a href="/competitions" class="btn btn--block">Enter online</a></div>
+        <div class="way"><span class="label">Option 2</span><h3 class="display display--s">Enter free by post</h3><ol><li>Write your details and the competition name on a postcard or letter</li><li>Post it so it arrives before the closing date</li><li>Your ticket number is emailed once allocated</li></ol><a href="/free-postal-entry" class="btn btn--block">Enter free by post</a></div>
+      </div>
+      <p class="body" style="margin-top: 24px">Both routes go into the same draw with exactly the same chance of winning.</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><h2 class="display display--s">From entry to winner</h2></div>
+      <div class="journey">{journey.map(([n, t, d]) => <div><b>{n}</b><div class="stack" style="gap: 8px"><h3 class="h3">{t}</h3><p class="body muted">{d}</p></div></div>)}</div>
+    </div>
+  </section>
+  <section class="section" style="border-bottom: 0">
+    <div class="container">
+      <div class="section-head"><h2 class="display display--s">Fair and transparent</h2></div>
+      <div class="grid grid--4">{fair.map(([t, d]) => <div class="tile"><h3 class="h3" style="font-size: 16px">{t}</h3><p class="small muted">{d}</p></div>)}</div>
+    </div>
+  </section>
+</Layout>
+<style>
+  .way { border: 1px solid #fff; padding: 36px; display: flex; flex-direction: column; gap: 18px; }
+  .way ol { margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.8; color: #d0d0d0; }
+  .way .btn { margin-top: auto; }
+  .journey > div { display: flex; gap: 32px; padding: 26px 0; border-top: 1px solid var(--line-2); }
+  .journey b { flex: 0 0 72px; font-size: 40px; line-height: 1; color: #5c5c5c; }
+  .journey p { margin: 0; }
+  .tile { border: 1px solid var(--line-2); padding: 26px; display: flex; flex-direction: column; gap: 10px; }
+  .tile p { margin: 0; }
+</style>

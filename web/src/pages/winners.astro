@@ -1,0 +1,34 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import { getCompetitions, getWinners } from '../lib/api';
+const [winners, competitions] = await Promise.all([getWinners(), getCompetitions()]);
+const next = competitions.find((c) => c.badge) ?? competitions[0];
+---
+<Layout title="Winners" active="winners">
+  <PageHero eyebrow="Winners" title="Our winners" intro="Every winner is drawn live and verified before their prize is handed over." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container grid grid--cards">
+      {winners.map((w) => (
+        <div class="card">
+          {w.image ? <img src={w.image.replace('.jpg', '-720.jpg')} alt={`${w.name} with the ${w.prize}`} class="w-img" loading="lazy" /> : <div class="ph">Winner photo</div>}
+          <div class="card__body"><span class="label">Winner</span><h2 class="h3">{w.name}</h2><span class="muted-2">{w.prize}</span>{w.ticketNumber ? <span class="small muted">Ticket {w.ticketNumber}</span> : null}</div>
+        </div>
+      ))}
+      {next ? (
+        <div class="card card--dashed next">
+          <span class="label">Next winner</span>
+          <h2 class="h3" style="font-size: 22px">Drawn live {new Date(next.drawAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}</h2>
+          <p class="body">The {next.title} could be yours.</p>
+          <div class="btn-pair"><a href={`/competitions/${next.slug}`} class="btn">Enter online</a><a href="/free-postal-entry" class="btn">Enter free by post</a></div>
+        </div>
+      ) : null}
+    </div>
+  </section>
+</Layout>
+<style>
+  .w-img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; object-position: 50% 62%; }
+  .muted-2 { color: var(--muted-2); }
+  .next { padding: 32px; gap: 14px; justify-content: center; }
+  .btn-pair .btn { padding: 0 8px; font-size: 12px; }
+</style>

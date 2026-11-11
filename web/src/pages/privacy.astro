@@ -1,0 +1,16 @@
+---
+import LegalPage from '../components/LegalPage.astro';
+import { getSettings } from '../lib/api';
+const s = await getSettings();
+const sections: [string, string[]][] = [
+  ['Who we are', [`${s.legalName} (company no. ${s.companyNumber}), trading as ${s.tradingName}, is the data controller. Registered office: ${s.registeredOffice}. Contact: ${s.supportEmail}.`]],
+  ['What we collect', ['Your name, contact details, date of birth and address; your entries and orders; and, if you win, the ID you upload for verification. Card details are handled by our payment provider on their secure checkout page, not stored by us.']],
+  ['How we use it', ['To run competitions and draws, issue ticket numbers, contact winners, prevent fraud, enforce spending limits and self-exclusion, and, if you opt in, send you news about competitions.']],
+  ['Lawful basis', ['[Set out the lawful basis for each use: contract, legal obligation, legitimate interests, consent.]']],
+  ['Who we share it with', ['Our payment provider, website host, email provider and, where required, regulators. [List processors.]']],
+  ['How long we keep it', ['[Retention periods for accounts, orders and ID documents.]']],
+  ['Your rights', ["Under UK data protection law you can ask to access, correct or delete your data, object to some uses, and withdraw consent to marketing at any time. You can also complain to the Information Commissioner's Office (ico.org.uk)."]],
+  ['Cookies', ['We use essential cookies to run the site, your basket and your account. With your consent we may also use analytics and marketing cookies. [List cookies and providers.]']],
+];
+---
+<LegalPage title="Privacy & cookies" heading="Privacy & cookies" sections={sections} />

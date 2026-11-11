@@ -1,0 +1,112 @@
+---
+import '../styles/global.css';
+import { currentAdmin } from '../lib/admin';
+import { usingSampleData } from '../lib/api';
+
+interface Props { title: string; active: string; staffOk?: boolean }
+const { title, active, staffOk = false } = Astro.props;
+const admin = await currentAdmin(Astro.cookies);
+if (!admin) return Astro.redirect('/admin/sign-in');
+if (!admin.isAdmin && !staffOk) return Astro.redirect('/admin/event-sales');
+
+const nav = [
+  ['dashboard', 'Dashboard', '/admin', true],
+  ['competitions', 'Competitions', '/admin/competitions', true],
+  ['orders', 'Orders', '/admin/orders', true],
+  ['customers', 'Customers', '/admin/customers', true],
+  ['postal', 'Postal entries', '/admin/postal', false],
+  ['draws', 'Draws', '/admin/draws', true],
+  ['winners', 'Winners', '/admin/winners', true],
+  ['event-sales', 'Event sales', '/admin/event-sales', false],
+  ['promotions', 'Promotions', '/admin/promotions', true],
+  ['settings', 'Settings', '/admin/settings', true],
+] as const;
+---
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" href="/favicon.svg" />
+  <title>{title} · WDS Admin</title>
+</head>
+<body class="adm">
+  <aside class="adm-side">
+    <a href="/admin" class="adm-logo"><img src="/images/wds-logo.png" alt="WDS Competitions" width="120" height="40" /></a>
+    <nav aria-label="Admin">
+      {nav.filter(([, , , adminOnly]) => admin.isAdmin || !adminOnly).map(([key, label, href]) => (
+        <a href={href} class:list={['adm-nav', { on: key === active }]} aria-current={key === active ? 'page' : undefined}>{label}</a>
+      ))}
+    </nav>
+    <div class="adm-side-foot">
+      <a href="/" target="_blank" rel="noopener" class="adm-nav">View site ↗</a>
+      <div class="small muted">{admin.firstName} {admin.lastName}</div>
+      <form method="post" action="/api/admin-auth/logout"><button class="adm-link" type="submit">Sign out</button></form>
+    </div>
+  </aside>
+  <main class="adm-main">
+    {usingSampleData ? <div class="adm-preview">Preview mode — showing sample data. Set <code>API_URL</code> to connect the live API.</div> : null}
+    <header class="adm-head">
+      <h1 class="adm-title">{title}</h1>
+      <div class="adm-head-actions"><slot name="actions" /></div>
+    </header>
+    <slot />
+  </main>
+  <div class="adm-toast" role="status" aria-live="polite" hidden></div>
+
+  <style is:global>
+    .adm { display: grid; grid-template-columns: 232px 1fr; min-height: 100vh; background: #050505; }
+    .adm-side { position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; gap: 24px; padding: 24px 16px; border-right: 1px solid var(--line); background: #000; }
+    .adm-logo img { width: 120px; }
+    .adm-side nav { display: flex; flex-direction: column; gap: 2px; }
+    .adm-nav { display: block; padding: 10px 12px; font-size: 14px; text-decoration: none; color: var(--muted-2); border-radius: 6px; }
+    .adm-nav:hover { background: #111; color: #fff; }
+    .adm-nav.on { background: #fff; color: #000; font-weight: 700; }
+    .adm-side-foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding: 0 12px; }
+    .adm-side-foot .adm-nav { padding: 0; }
+    .adm-link { background: none; border: 0; padding: 0; color: var(--muted); cursor: pointer; text-decoration: underline; font-size: 13px; text-align: left; }
+    .adm-main { padding: 28px 36px 64px; min-width: 0; }
+    .adm-preview { margin-bottom: 20px; padding: 10px 14px; border: 1px dashed var(--line-3); font-size: 13px; color: var(--muted-2); }
+    .adm-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+    .adm-title { margin: 0; font-size: 28px; font-weight: 700; letter-spacing: -0.01em; }
+    .adm-head-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .adm .btn { min-height: 40px; padding: 0 18px; font-size: 12px; }
+    .adm .btn:hover { transform: none; }
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px; }
+    .kpi { border: 1px solid var(--line); background: #0b0b0b; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+    .kpi b { font-size: 26px; font-variant-numeric: tabular-nums; }
+    .panel { border: 1px solid var(--line); background: #0b0b0b; padding: 20px; margin-bottom: 20px; }
+    .panel h2 { margin: 0 0 14px; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+    .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(380px, 1fr)); gap: 20px; }
+    .tbl { width: 100%; border-collapse: collapse; font-size: 14px; }
+    .tbl th { text-align: left; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); font-weight: 700; padding: 8px 10px; border-bottom: 1px solid var(--line-2); }
+    .tbl td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+    .tbl tr:hover td { background: #0f0f0f; }
+    .tbl-wrap { overflow-x: auto; }
+    .pill { display: inline-block; padding: 2px 8px; border: 1px solid var(--line-3); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+    .pill--paid, .pill--live, .pill--allocated, .pill--approved, .pill--delivered, .pill--published { background: #fff; color: #000; border-color: #fff; }
+    .pill--failed, .pill--rejected, .pill--denied, .pill--cancelled, .pill--void { color: #ff8a8a; border-color: #5a2a2a; }
+    .filters { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; }
+    .filters input, .filters select, .adm .field input, .adm .field select, .adm .field textarea { background: #000; border: 1px solid var(--line-2); padding: 9px 12px; min-height: 40px; }
+    .adm .field { display: flex; flex-direction: column; gap: 6px; }
+    .adm .field label { font-size: 12px; font-weight: 700; color: var(--muted-2); }
+    .adm .field .hint { font-size: 12px; color: var(--muted); }
+    .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+    .bar { height: 6px; background: #222; border-radius: 3px; overflow: hidden; min-width: 120px; }
+    .bar > span { display: block; height: 100%; background: #fff; }
+    .adm-toast { position: fixed; right: 24px; bottom: 24px; max-width: 380px; padding: 14px 18px; background: #fff; color: #000; font-weight: 700; font-size: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.6); z-index: 50; }
+    .adm-toast.err { background: #ff8a8a; }
+    .chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; }
+    .chart div { flex: 1; background: #fff; min-height: 2px; position: relative; }
+    .chart div:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #222; color: #fff; padding: 3px 6px; font-size: 11px; margin-bottom: 4px; }
+    .mono { font-family: Menlo, Consolas, monospace; font-size: 12px; word-break: break-all; }
+    @media (max-width: 860px) { .adm { grid-template-columns: 1fr; } .adm-side { position: static; height: auto; } .adm-side nav { flex-direction: row; flex-wrap: wrap; } .adm-main { padding: 20px; } }
+  </style>
+
+  <script>
+    import { initAdmin } from '../lib/admin-client';
+    initAdmin();
+  </script>
+</body>
+</html>

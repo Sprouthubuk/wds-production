@@ -1,0 +1,151 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import EntryPanel from '../../components/EntryPanel.astro';
+import { getCompetition, getSettings } from '../../lib/api';
+import { money, percentSold, priceFor } from '../../lib/pricing';
+import { countdownParts } from '../../lib/countdown';
+
+const { slug } = Astro.params;
+const [c, settings] = await Promise.all([getCompetition(slug!), getSettings()]);
+if (!c) return Astro.rewrite('/404');
+const drawDate = new Date(c.drawAt);
+const drawLabel = drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const closesLabel = c.closesAt ? new Date(c.closesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'When sold out or before the draw';
+const faqs = [
+  { q: 'When is the draw?', a: `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}. Follow @${settings.drawsInstagram} on Instagram to watch it live.` },
+  { q: 'Can I enter for free?', a: 'Yes. Post a postcard or letter with your details to the free entry address. Postal entries have exactly the same chance of winning.' },
+  { q: 'How do I get my ticket numbers?', a: 'Ticket numbers are issued in order. Online entries get theirs by email straight after payment and can see them in their account. Postal entries are emailed once logged.' },
+  { q: 'What happens if I win?', a: 'We contact you straight after the draw, verify your ID and arrange handover. Winners must be 18 or over.' },
+];
+const jsonLd = {
+  '@context': 'https://schema.org', '@type': 'Product', name: c.title, image: c.images.map((i) => new URL(i.src, Astro.site).toString()),
+  description: c.strapline, offers: { '@type': 'Offer', priceCurrency: 'GBP', price: c.ticketPrice.toFixed(2), availability: c.ticketsSold < c.totalTickets ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut' },
+};
+---
+<Layout title={c.title} description={`Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. Drawn live on Instagram.`} active="competitions" image={c.images[0]?.src}>
+  <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+  <div class="container crumbs"><a href="/">Home</a> / <a href="/competitions">Competitions</a> / <span>{c.title}</span></div>
+
+  <div class="container layout">
+    <div class="main">
+      <div class="gallery" data-gallery>
+        <div class="zoom main-img">
+          <img src={c.images[0]?.src} alt={c.images[0]?.alt} data-main width="1024" height="768" />
+          <span class="chip chip--solid live"><span class="dot"></span>Live now</span>
+          <span class="count" data-count>1 / {c.images.length}</span>
+        </div>
+        <div class="thumbs">
+          {c.images.map((im, i) => (
+            <button type="button" data-thumb={i} data-src={im.src} data-alt={im.alt} aria-label={`Show photo ${i + 1}: ${im.alt}`} aria-pressed={i === 0 ? 'true' : 'false'}><img src={im.src.replace('.jpg', '-720.jpg')} alt="" loading="lazy" /></button>
+          ))}
+        </div>
+      </div>
+
+      <section class="stack block">
+        <span class="eyebrow">The prize</span>
+        <h2 class="display display--m">{c.title}</h2>
+        {c.description.map((p) => <p class="body">{p}</p>)}
+        <div class="specs">
+          {c.specs.map((s, i) => <div class={i === 0 ? 'light' : ''}><span class="label">{s.label}</span><b>{s.value}</b></div>)}
+          <div><span class="label">Cash alternative</span><b>{c.cashAlternative ? money(c.cashAlternative) : 'TBC'}</b></div>
+        </div>
+        {c.buildVideoUrl ? (
+          <a href={c.buildVideoUrl} class="zoom video"><img src={c.images[2]?.src ?? c.images[0]?.src} alt="" loading="lazy" /><span class="overlay"><span class="play"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span><span class="stack" style="gap: 6px"><b>Watch the build</b><span class="small">See every step on the WDS Originals YouTube channel</span></span></span></a>
+        ) : null}
+      </section>
+
+      <section class="stack block">
+        <span class="eyebrow">Draw details</span>
+        <div class="details">
+          <div><span class="label">Closes</span><b>{closesLabel}</b></div>
+          <div><span class="label">Live draw</span><b>{drawLabel}</b></div>
+          <div><span class="label">Watch on</span><b>Instagram @{settings.drawsInstagram}</b></div>
+          <div><span class="label">Ticket numbers</span><b>Issued in order</b></div>
+        </div>
+      </section>
+
+      <section class="stack block faq">
+        <span class="eyebrow">Questions</span>
+        <div>{faqs.map((f, i) => <details open={i === 0}><summary>{f.q}</summary><p>{f.a}</p></details>)}</div>
+        <a href="/faqs" class="link-caps">All FAQs →</a>
+      </section>
+    </div>
+
+    <aside class="panel">
+      <div class="stack" style="gap: 10px">
+        <span class="eyebrow">Win this {c.category === 'cars' ? 'car' : 'prize'}</span>
+        <h1 class="display panel-title">{c.title}</h1>
+      </div>
+      <div class="prices"><div><span class="label">Online</span><b>{money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
+      <EntryPanel competition={c} settings={settings} />
+    </aside>
+  </div>
+
+  <div class="sticky-bar" slot="after">
+    <div class="container">
+      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · {percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
+      <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>Enter · from {money(c.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>
+    </div>
+  </div>
+</Layout>
+
+<style>
+  .crumbs { padding-top: 24px; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
+  .crumbs a { color: var(--muted); text-decoration: none; }
+  .crumbs span { color: #fff; }
+  .layout { padding-top: 24px; padding-bottom: 96px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-start; }
+  .main { flex: 1.35 1 560px; min-width: 0; display: flex; flex-direction: column; gap: 72px; }
+  .panel { flex: 1 1 400px; min-width: 0; position: sticky; top: 24px; border: 1px solid #fff; padding: 28px; display: flex; flex-direction: column; gap: 20px; background: #000; }
+  .panel-title { font-size: clamp(34px, 3.4vw, 46px); }
+  .prices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+  .prices > div { padding: 14px 0; display: flex; flex-direction: column; gap: 4px; }
+  .prices > div + div { padding-left: 20px; border-left: 1px solid var(--line-2); }
+  .prices b { font-size: 30px; }
+  .gallery { display: flex; flex-direction: column; gap: 10px; }
+  .main-img img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .live { position: absolute; top: 16px; left: 16px; }
+  .count { position: absolute; bottom: 16px; right: 16px; background: rgba(0,0,0,.75); padding: 8px 12px; font-size: 12px; font-weight: 700; }
+  .thumbs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .thumbs button { padding: 0; background: none; border: 2px solid transparent; opacity: .55; cursor: pointer; }
+  .thumbs button[aria-pressed='true'] { border-color: #fff; opacity: 1; }
+  .thumbs img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
+  .block { gap: 24px; }
+  .specs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .specs > div { border: 1px solid var(--line-2); padding: 22px; display: flex; flex-direction: column; justify-content: space-between; gap: 18px; min-height: 130px; }
+  .specs > div.light { background: #fff; color: #000; border-color: #fff; }
+  .specs > div.light .label { color: #000; }
+  .specs b { font-size: 22px; line-height: 1.05; text-transform: uppercase; }
+  .specs > div.light b { font-size: 44px; letter-spacing: -0.03em; }
+  .video img { width: 100%; aspect-ratio: 21 / 9; object-fit: cover; }
+  .video { text-decoration: none; }
+  .overlay { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; gap: 20px; padding: 32px; }
+  .overlay b { font-size: 26px; text-transform: uppercase; }
+  .play { width: 72px; height: 72px; flex: 0 0 72px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; }
+  .details { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line-2); }
+  .details > div { padding: 22px 0; border-bottom: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 6px; }
+  .details > div:nth-child(even) { padding-left: 24px; border-left: 1px solid var(--line-2); }
+  .details b { font-size: 19px; }
+  .sb-text { flex: 1 1 240px; gap: 2px; font-size: 14px; text-transform: uppercase; }
+  .sb-text .small { text-transform: none; }
+  .sb-btns { flex: 0 1 420px; }
+  .sb-btns .btn { min-height: 48px; font-size: 12px; padding: 0 10px; }
+  @media (max-width: 1000px) { .panel { position: static; order: -1; } .main { order: 1; } }
+  @media (max-width: 600px) { .specs { grid-template-columns: repeat(2, minmax(0, 1fr)); } .panel { padding: 18px; } .sb-text { display: none; } .sb-btns { flex: 1 1 100%; } .overlay b { font-size: 18px; } .play { width: 52px; height: 52px; flex-basis: 52px; } }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-gallery]').forEach((g) => {
+    const main = g.querySelector<HTMLImageElement>('[data-main]')!;
+    const count = g.querySelector<HTMLElement>('[data-count]')!;
+    const thumbs = Array.from(g.querySelectorAll<HTMLButtonElement>('[data-thumb]'));
+    thumbs.forEach((t, i) => t.addEventListener('click', () => {
+      main.src = t.dataset.src!; main.alt = t.dataset.alt || '';
+      thumbs.forEach((x) => x.setAttribute('aria-pressed', String(x === t)));
+      count.textContent = `${i + 1} / ${thumbs.length}`;
+    }));
+  });
+  document.querySelectorAll<HTMLAnchorElement>('[data-scroll-panel]').forEach((a) => a.addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelector('.panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }));
+</script>

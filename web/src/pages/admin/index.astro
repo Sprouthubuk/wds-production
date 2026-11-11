@@ -1,0 +1,52 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp, when, day } from '../../lib/admin';
+
+interface Dash {
+  revenueToday: number; ordersToday: number; revenueTotal: number; customers: number; postalThisWeek: number; idToReview: number; refundsNeeded: number;
+  daily: { day: string; revenue: number; orders: number }[];
+  live: { id: number; title: string; sold: number; total: number; drawAt: string; revenue: number }[];
+  recentOrders: { reference: string; name: string; tickets: number; total: number; status: string; channel: string; createdAt: string }[];
+}
+const d = (await adminGet<{ data: Dash }>(Astro.cookies, '/dashboard')).data;
+const max = Math.max(1, ...d.daily.map((x) => x.revenue));
+---
+<AdminLayout title="Dashboard" active="dashboard">
+  <a slot="actions" class="btn" href="/admin/competitions/new">New competition</a>
+  <div class="kpis">
+    <div class="kpi"><span class="label">Revenue today</span><b>{gbp(d.revenueToday)}</b><span class="small muted">{d.ordersToday} orders</span></div>
+    <div class="kpi"><span class="label">Revenue to date</span><b>{gbp(d.revenueTotal)}</b></div>
+    <div class="kpi"><span class="label">Customers</span><b>{d.customers}</b></div>
+    <div class="kpi"><span class="label">Postal entries this week</span><b>{d.postalThisWeek}</b><a class="small" href="/admin/postal">Log entries →</a></div>
+    <div class="kpi"><span class="label">ID to review</span><b>{d.idToReview}</b><a class="small" href="/admin/customers#verifications">Review →</a></div>
+    {d.refundsNeeded > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Refunds needed</span><b>{d.refundsNeeded}</b><a class="small" href="/admin/orders?status=cancelled">See orders →</a></div> : null}
+  </div>
+
+  <div class="panels">
+    <section class="panel">
+      <h2>Live competitions</h2>
+      {d.live.length ? d.live.map((c) => (
+        <div class="stack" style="gap:8px;padding:10px 0;border-bottom:1px solid var(--line)">
+          <div class="row" style="justify-content:space-between;gap:12px"><a href={`/admin/competitions/${c.id}`}><strong>{c.title}</strong></a><span class="small muted">Draw {when(c.drawAt)}</span></div>
+          <div class="bar"><span style={`width:${Math.round((c.sold / c.total) * 100)}%`}></span></div>
+          <div class="row small muted" style="justify-content:space-between"><span>{c.sold} / {c.total} sold ({Math.round((c.sold / c.total) * 100)}%)</span><span>{gbp(c.revenue)}</span></div>
+        </div>
+      )) : <p class="muted">Nothing live. <a href="/admin/competitions/new">Create a competition</a>.</p>}
+    </section>
+    <section class="panel">
+      <h2>Revenue · last 14 days</h2>
+      <div class="chart" role="img" aria-label="Daily revenue">
+        {d.daily.map((x) => <div style={`height:${Math.max(2, (x.revenue / max) * 100)}%`} data-tip={`${day(x.day)} · ${gbp(x.revenue)} · ${x.orders} orders`}></div>)}
+      </div>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Latest orders</h2>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Order</th><th>Customer</th><th>Tickets</th><th>Total</th><th>Channel</th><th>Status</th><th>When</th></tr></thead>
+      <tbody>{d.recentOrders.map((o) => <tr><td><strong>{o.reference}</strong></td><td>{o.name}</td><td>{o.tickets}</td><td>{gbp(o.total)}</td><td>{o.channel}</td><td><span class={`pill pill--${o.status}`}>{o.status}</span></td><td class="muted">{when(o.createdAt)}</td></tr>)}</tbody>
+    </table></div>
+    <p class="small" style="margin:12px 0 0"><a href="/admin/orders">All orders →</a></p>
+  </section>
+</AdminLayout>

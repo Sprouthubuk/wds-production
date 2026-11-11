@@ -1,0 +1,70 @@
+---
+interface Props { active?: string }
+const { active = 'none' } = Astro.props;
+const nav = [
+  { key: 'competitions', label: 'Competitions', href: '/competitions' },
+  { key: 'winners', label: 'Winners', href: '/winners' },
+  { key: 'postal', label: 'Free postal entry', href: '/free-postal-entry' },
+  { key: 'faqs', label: 'FAQs', href: '/faqs' },
+];
+---
+<div class="announce">Christmas Eve live draw — 24 December · <a href="/free-postal-entry">Free postal entry on every competition</a></div>
+<header class="site-header">
+  <div class="container bar">
+    <a href="/" class="logo" aria-label="WDS Competitions home"><img src="/images/wds-logo.png" alt="WDS Competitions" width="180" height="25" /></a>
+    <nav aria-label="Main" class="nav" id="site-nav">
+      {nav.map((n) => (
+        <a href={n.href} aria-current={active === n.key ? 'page' : undefined}>{n.label}</a>
+      ))}
+    </nav>
+    <div class="actions">
+      <a href="/account" class="icon" aria-label="My account">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"></path></svg>
+      </a>
+      <a href="/basket" class="icon basket" aria-label="Basket">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 8h14l-1.2 12H6.2z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg>
+        <span class="count" data-basket-count hidden>0</span>
+      </a>
+      <a href="/competitions" class="btn enter">Enter now</a>
+      <button class="icon menu" aria-label="Menu" aria-controls="site-nav" aria-expanded="false" data-menu>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<style>
+  .announce { background: #fff; color: #000; text-align: center; padding: 10px 16px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+  .announce a { color: #000; }
+  .site-header { border-bottom: 1px solid var(--line); background: #000; position: relative; z-index: 30; }
+  .bar { display: flex; align-items: center; gap: 40px; padding-top: 18px; padding-bottom: 18px; white-space: nowrap; }
+  .logo img { height: 26px; width: auto; }
+  .nav { flex: 1 1 auto; display: flex; justify-content: center; gap: 36px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+  .nav a { text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent; }
+  .nav a[aria-current='page'] { border-bottom-color: #fff; }
+  .actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #fff; position: relative; cursor: pointer; }
+  .count { position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; background: #fff; color: #000; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .count[hidden] { display: none; }
+  .enter { min-height: 44px; padding: 0 20px; margin-left: 8px; font-size: 12px; }
+  .menu { display: none; }
+  @media (max-width: 1000px) {
+    .bar { gap: 12px; }
+    .logo img { height: 18px; }
+    .menu { display: flex; }
+    .enter { display: none; }
+    .nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #000; border-bottom: 1px solid var(--line); flex-direction: column; gap: 0; padding: 8px var(--pad) 16px; }
+    .nav a { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+    .nav.open { display: flex; }
+    .actions { margin-left: auto; }
+  }
+</style>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('[data-menu]');
+  const nav = document.getElementById('site-nav');
+  btn?.addEventListener('click', () => {
+    const open = nav?.classList.toggle('open') ?? false;
+    btn.setAttribute('aria-expanded', String(open));
+  });
+</script>

@@ -1,0 +1,90 @@
+---
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+import { getCompetitions, getSettings } from '../lib/api';
+
+const [settings, competitions] = await Promise.all([getSettings(), getCompetitions()]);
+const address = settings.postalEntryAddress;
+const include = ['The competition name, e.g. “BMW E46 330Ci Clubsport”', 'Your full name', 'Your full postal address', 'Your date of birth', 'Your phone number', 'Your email address (the one on your WDS account, if you have one)'];
+const steps = [
+  ['01', 'Write your entry', 'On a postcard, or a letter in an envelope, write the competition name and your details (see the list).'],
+  ['02', 'Post it to us', 'Send it by first or second class post to the address shown, with enough stamps.'],
+  ['03', 'Arrive before closing', "It must reach us before the competition's closing date and time."],
+  ['04', 'Get your number', 'We give you the next ticket number in sequence and email it to you.'],
+];
+const rules = [
+  'One entry per postcard or envelope. Multiple entries in one envelope count as one entry.',
+  'Postal entries count towards the same maximum per person as online entries.',
+  'Entries must arrive before the closing date. Proof of posting is not proof of receipt.',
+  'Hand-delivered, bulk, illegible or incomplete entries cannot be accepted.',
+  "If a competition sells out before your entry arrives, we can't include it. We'll email you to let you know.",
+  'Postal entries are entered into the same draw as online entries, with exactly the same chance of winning.',
+];
+---
+<Layout title="Free postal entry" active="postal" description="Every WDS competition can be entered free by post, with exactly the same chance of winning as online entries.">
+  <PageHero eyebrow="Free entry" title="Enter free by post" intro="Every WDS competition can be entered free by post. Postal entries go into the same draw as online entries, with exactly the same chance of winning." />
+  <section class="section">
+    <div class="container row" style="gap: 32px">
+      <div class="addr-box">
+        <span class="label">Post your entry to</span>
+        <address data-address>{address.map((l, i) => <>{l}{i < address.length - 1 ? <br /> : null}</>)}</address>
+        <div><button type="button" class="btn" data-copy={address.join(', ')}>Copy address</button></div>
+      </div>
+      <div class="incl">
+        <span class="label">Include on your entry</span>
+        <ul>{include.map((i) => <li>{i}</li>)}</ul>
+      </div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container">
+      <div class="section-head"><h2 class="display display--s">How it works</h2></div>
+      <div class="grid grid--4">{steps.map(([n, t, d]) => <div class="step"><b>{n}</b><h3 class="h3">{t}</h3><p class="small muted">{d}</p></div>)}</div>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container row" style="gap: 40px; align-items: center">
+      <div class="postcard" aria-label="Example postcard">
+        <div class="pc-left">Competition: BMW E46 330Ci Clubsport<br />Name: [Full name]<br />Address: [Full address]<br />DOB: [DD/MM/YYYY]<br />Phone: [Number]<br />Email: [Email]</div>
+        <div class="pc-right"><span class="stamp">Stamp</span><b>{address.map((l, i) => <>{l}{i < address.length - 1 ? <br /> : null}</>)}</b></div>
+      </div>
+      <p class="body" style="flex: 1 1 320px">Write clearly in capitals so we can read every detail. If we can't read it, we can't enter it.</p>
+    </div>
+  </section>
+  <section class="section">
+    <div class="container stack" style="gap: 24px">
+      <h2 class="display display--s">Postal entry rules</h2>
+      <ol class="rules">{rules.map((r) => <li>{r}</li>)}</ol>
+      <p class="small muted">These rules sit alongside our <a href="/terms">terms &amp; conditions</a>.</p>
+    </div>
+  </section>
+  <section class="section" style="border-bottom: 0">
+    <div class="container stack" style="gap: 24px">
+      <h2 class="display display--s">Open for postal entry</h2>
+      <div class="rows">{competitions.map((c) => <div><span>{c.title}</span><span>{c.closesAt ? `Must arrive by ${new Date(c.closesAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}` : 'Open now'}</span></div>)}</div>
+      <div><a href="/competitions" class="btn btn--outline">Prefer to enter online? View competitions</a></div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .addr-box { flex: 1 1 520px; border: 2px solid #fff; padding: 40px; display: flex; flex-direction: column; gap: 20px; }
+  .addr-box address { font-style: normal; font-size: clamp(22px, 2.6vw, 34px); font-weight: 700; line-height: 1.25; text-transform: uppercase; }
+  .incl { flex: 1 1 380px; border: 1px solid var(--line-2); padding: 40px; display: flex; flex-direction: column; gap: 16px; }
+  .incl ul, .rules { margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.9; color: #d0d0d0; }
+  .step { border-top: 1px solid #fff; padding-top: 20px; display: flex; flex-direction: column; gap: 12px; }
+  .step b { font-size: 44px; line-height: 1; color: #5c5c5c; }
+  .step p { margin: 0; }
+  .postcard { flex: 0 1 520px; aspect-ratio: 3 / 2; background: #f2f2f2; color: #111; padding: 28px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; font-size: 15px; line-height: 1.7; }
+  .pc-left { border-right: 1px solid #bbb; padding-right: 20px; font-style: italic; }
+  .pc-right { display: flex; flex-direction: column; justify-content: space-between; }
+  .pc-right b { font-size: 13px; line-height: 1.6; }
+  .stamp { align-self: flex-end; width: 56px; height: 64px; border: 1px dashed #777; display: flex; align-items: center; justify-content: center; font-size: 10px; text-transform: uppercase; }
+  @media (max-width: 600px) { .addr-box, .incl { padding: 24px; } .postcard { grid-template-columns: minmax(0, 1fr); aspect-ratio: auto; } .pc-left { border-right: 0; border-bottom: 1px solid #bbb; padding: 0 0 12px; } }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy || ''); b.textContent = 'Address copied'; } catch { b.textContent = 'Select the address to copy'; }
+  }));
+</script>

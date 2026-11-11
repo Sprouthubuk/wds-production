@@ -1,0 +1,52 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import CompetitionCard from '../../components/CompetitionCard.astro';
+import ComingSoonCard from '../../components/ComingSoonCard.astro';
+import { getCompetitions } from '../../lib/api';
+
+const competitions = await getCompetitions();
+const filters = [
+  { key: 'all', label: 'All' },
+  { key: 'cars', label: 'Cars' },
+  { key: 'parts', label: 'Parts & accessories' },
+  { key: 'merch', label: 'Merch' },
+];
+---
+<Layout title="Competitions" active="competitions">
+  <PageHero eyebrow="Competitions" title="Live competitions" intro="Low ticket numbers and a live draw on every competition. Enter online, or enter free by post with exactly the same chance of winning." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container stack" style="gap: 32px">
+      <div class="row filters" role="group" aria-label="Filter competitions">
+        {filters.map((f, i) => <button type="button" data-filter={f.key} aria-pressed={i === 0 ? 'true' : 'false'}>{f.label}</button>)}
+      </div>
+      <div class="grid grid--cards" data-grid>
+        {competitions.map((c) => <div data-cat={c.category}><CompetitionCard competition={c} /></div>)}
+        {competitions.length < 3 ? [1, 2].map((n) => <div data-cat="parts"><ComingSoonCard n={competitions.length + n} /></div>) : null}
+      </div>
+      <p class="body muted" data-empty hidden>No competitions here right now. Follow @wds_originals on Instagram to hear about new prizes first.</p>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .filters { gap: 8px; }
+  .filters button { min-height: 44px; padding: 0 20px; border: 1px solid #fff; background: #000; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  .filters button[aria-pressed='true'] { background: #fff; color: #000; }
+  [data-cat] { display: flex; }
+  [data-cat] > :global(*) { flex: 1; }
+  [data-cat][hidden] { display: none; }
+</style>
+
+<script>
+  const buttons = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-filter]'));
+  const items = Array.from(document.querySelectorAll<HTMLElement>('[data-grid] > [data-cat]'));
+  const empty = document.querySelector<HTMLElement>('[data-empty]')!;
+  buttons.forEach((b) => b.addEventListener('click', () => {
+    const f = b.dataset.filter;
+    buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    let shown = 0;
+    items.forEach((it) => { const show = f === 'all' || it.dataset.cat === f; it.hidden = !show; if (show) shown++; });
+    empty.hidden = shown > 0;
+  }));
+</script>

@@ -1,0 +1,197 @@
+---
+import Layout from '../layouts/Layout.astro';
+import EntryCard from '../components/EntryCard.astro';
+import { api, usingSampleData } from '../lib/api';
+import { currentUser, getToken } from '../lib/session';
+import { money, odds } from '../lib/pricing';
+import { countdownParts } from '../lib/countdown';
+
+interface Entry { competition: string; slug: string; image: string; drawAt: string; totalTickets: number; status: string; online: string[]; postal: string[]; won: boolean }
+interface OrderRow { reference: string; createdAt: string; competition: string; tickets: number; total: number; status: string; key: string }
+
+const me = await currentUser(Astro.cookies);
+if (!me) return Astro.redirect('/sign-in?next=/account');
+let entries: Entry[] = [];
+let orders: OrderRow[] = [];
+if (usingSampleData) {
+  entries = [{ competition: 'BMW E46 330Ci Clubsport', slug: 'bmw-e46-330ci-clubsport', image: '/images/e46-clubsport-front.jpg', drawAt: '2026-12-24T20:00:00Z', totalTickets: 750, status: 'live', online: ['0466', '0467', '0468'], postal: [], won: false }];
+  orders = [{ reference: 'DEMO-1001', createdAt: new Date().toISOString(), competition: 'BMW E46 330Ci Clubsport', tickets: 3, total: 40, status: 'paid', key: 'demo' }];
+} else {
+  const token = getToken(Astro.cookies);
+  [entries, orders] = await Promise.all([
+    api<{ data: Entry[] }>('/me/entries', { token }).then((r) => r.data),
+    api<{ data: OrderRow[] }>('/me/orders', { token }).then((r) => r.data),
+  ]);
+}
+const live = entries.filter((e) => e.status === 'live');
+const ticketsHeld = live.reduce((n, e) => n + e.online.length + e.postal.length, 0);
+const next = [...live].sort((a, b) => Date.parse(a.drawAt) - Date.parse(b.drawAt))[0];
+const tabs = [['overview', 'Overview'], ['entries', 'My entries'], ['orders', 'Orders'], ['wallet', 'Wallet'], ['details', 'My details'], ['verify', 'Winner ID'], ['limits', 'Responsible play']];
+const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+---
+<Layout title="My account">
+  <section class="page-hero">
+    <div class="container head">
+      <div class="stack" style="gap: 10px"><span class="eyebrow">My account</span><h1 class="display display--l">Hi, {me.firstName}</h1></div>
+      <a href="/competitions" class="btn">Enter a competition</a>
+    </div>
+  </section>
+  {usingSampleData ? <div class="container"><p class="alert" style="margin-top: 24px">Preview mode: this account page is showing sample data until the API is connected.</p></div> : null}
+  {me.selfExcludedUntil ? <div class="container"><p class="alert" style="margin-top: 24px">Your account is self-excluded until {fmtDate(me.selfExcludedUntil)}. You can't enter competitions until then.</p></div> : null}
+
+  <div class="container layout" data-account>
+    <nav class="tabs" aria-label="Account sections">
+      {tabs.map(([k, l]) => <a href={`#${k}`} data-tab={k}>{l}</a>)}
+      <form method="post" action="/api/auth/logout"><button type="submit" class="signout">Sign out</button></form>
+    </nav>
+
+    <div class="panes">
+      <section data-pane="overview" class="pane">
+        <div class="stats">
+          <div class="stat light"><span class="label">Next draw</span>{next ? <b class="num" data-countdown={next.drawAt} data-countdown-text>{countdownParts(next.drawAt).text}</b> : <b>—</b>}<span class="small">{next ? `${next.competition}, live on Instagram` : 'No live entries'}</span></div>
+          <div class="stat"><span class="label">Active entries</span><b>{live.length}</b><span class="small muted">competition{live.length === 1 ? '' : 's'}</span></div>
+          <div class="stat"><span class="label">Tickets held</span><b>{ticketsHeld}</b><span class="small muted">{next ? `Your odds ${odds(next.totalTickets, next.online.length + next.postal.length)}` : ''}</span></div>
+          <div class="stat"><span class="label">Site credit</span><b>{money(me.siteCredit)}</b><span class="small muted">Used at checkout</span></div>
+        </div>
+        <h2 class="h3">Your live entries</h2>
+        {live.length ? live.map((e) => <EntryCard e={e} />) : <p class="body muted">No live entries yet. <a href="/competitions">See what's on</a>.</p>}
+      </section>
+
+      <section data-pane="entries" class="pane" hidden>
+        <h2 class="display display--s">My entries</h2>
+        {entries.length ? entries.map((e) => <EntryCard e={e} />) : <p class="body muted">You haven't entered any competitions yet.</p>}
+        <p class="small muted">Dashed numbers are free postal entries. They're in the same draw with the same chance of winning.</p>
+      </section>
+
+      <section data-pane="orders" class="pane" hidden>
+        <h2 class="display display--s">Orders</h2>
+        <div class="table-wrap"><table>
+          <thead><tr><th scope="col">Order</th><th scope="col">Date</th><th scope="col">Competition</th><th scope="col">Tickets</th><th scope="col">Total</th><th scope="col">Status</th><th scope="col"><span class="sr-only">Receipt</span></th></tr></thead>
+          <tbody>{orders.map((o) => <tr><td><strong>{o.reference}</strong></td><td>{fmtDate(o.createdAt)}</td><td>{o.competition}</td><td>{o.tickets}</td><td>{money(o.total)}</td><td>{o.status}</td><td><a href={`/order/${o.reference}?key=${o.key}`}>View</a></td></tr>)}</tbody>
+        </table></div>
+      </section>
+
+      <section data-pane="wallet" class="pane" hidden>
+        <h2 class="display display--s">Wallet</h2>
+        <div class="stat light" style="max-width: 360px"><span class="label">Site credit</span><b>{money(me.siteCredit)}</b><span class="small">Applied automatically at checkout</span></div>
+      </section>
+
+      <section data-pane="details" class="pane" hidden>
+        <h2 class="display display--s">My details</h2>
+        <form class="stack" style="gap: 14px" data-account-form="details">
+          <div class="form-grid">
+            <div class="field"><label for="a-fn">First name</label><input id="a-fn" name="firstName" value={me.firstName} autocomplete="given-name" /></div>
+            <div class="field"><label for="a-ln">Last name</label><input id="a-ln" name="lastName" value={me.lastName} autocomplete="family-name" /></div>
+            <div class="field"><label for="a-em">Email</label><input id="a-em" name="email" type="email" value={me.email} autocomplete="email" /></div>
+            <div class="field"><label for="a-t">Mobile</label><input id="a-t" name="phone" type="tel" value={me.phone ?? ''} autocomplete="tel" /></div>
+          </div>
+          <div class="field"><label for="a-ad">Address (needed if you win)</label><input id="a-ad" name="address" value={me.address ?? ''} autocomplete="street-address" /></div>
+          <label class="check" for="a-mk"><input id="a-mk" name="marketingOptIn" type="checkbox" checked={me.marketingOptIn} />Email me about new competitions and live draws.</label>
+          <div><button class="btn" type="submit">Save changes</button></div>
+          <p class="alert" data-msg role="status" hidden></p>
+        </form>
+      </section>
+
+      <section data-pane="verify" class="pane" hidden>
+        <h2 class="display display--s">Winner ID verification</h2>
+        <p class="body">If you win, upload a passport or driving licence and a selfie holding it, so we can confirm you're 18+ and hand over your prize.</p>
+        <form class="stack" style="gap: 14px" data-account-form="id-upload" enctype="multipart/form-data">
+          <div class="form-grid">
+            <div class="field"><label for="v-id">Photo ID</label><input id="v-id" name="document" type="file" accept="image/*,application/pdf" required /></div>
+            <div class="field"><label for="v-self">Selfie holding your ID</label><input id="v-self" name="selfie" type="file" accept="image/*" required /></div>
+          </div>
+          <div><button class="btn btn--outline" type="submit">Upload securely</button></div>
+          <p class="alert" data-msg role="status" hidden></p>
+        </form>
+      </section>
+
+      <section data-pane="limits" class="pane" hidden>
+        <h2 class="display display--s">Responsible play</h2>
+        <form class="stack" style="gap: 14px" data-account-form="limits">
+          <div class="form-grid three">
+            {(['daily', 'weekly', 'monthly'] as const).map((p) => (
+              <div class="field"><label for={`l-${p}`}>{p[0].toUpperCase() + p.slice(1)} spend limit</label>
+                <select id={`l-${p}`} name={p}>
+                  {[null, 10, 25, 50, 100, 250, 500].map((v) => <option value={v ?? ''} selected={(me.limits[p] ?? null) === v}>{v ? `£${v}` : 'No limit'}</option>)}
+                </select>
+              </div>
+            ))}
+          </div>
+          <span class="small muted">Lowering a limit applies straight away. Raising one takes effect after 24 hours.</span>
+          <div><button class="btn" type="submit">Save limits</button></div>
+          <p class="alert" data-msg role="status" hidden></p>
+        </form>
+        <div class="stack sub"><h3 class="h3">Take a break</h3>{me.breakUntil ? <p class="body">You're on a break until {fmtDate(me.breakUntil)}.</p> : null}
+          <form class="row" style="gap: 8px" data-account-form="break">{[['1', '24 hours'], ['7', '7 days'], ['30', '30 days']].map(([d, l]) => <button class="btn btn--outline" type="submit" name="days" value={d}>{l}</button>)}<p class="alert" data-msg role="status" hidden style="flex-basis: 100%"></p></form>
+        </div>
+        <div class="stack sub"><h3 class="h3">Self-exclude</h3><p class="body">Close your account for 6 months or more. This can't be undone early.</p>
+          <form class="row" style="gap: 8px" data-account-form="self-exclude" data-confirm="Self-exclude now? You won't be able to enter any competition until the period ends.">{[['6', '6 months'], ['12', '1 year'], ['60', '5 years']].map(([m, l]) => <button class="btn btn--outline" type="submit" name="months" value={m}>{l}</button>)}<p class="alert" data-msg role="status" hidden style="flex-basis: 100%"></p></form>
+        </div>
+      </section>
+    </div>
+  </div>
+</Layout>
+
+
+<style>
+  .head { flex-direction: row !important; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; }
+  .layout { padding-top: 36px; padding-bottom: 96px; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; }
+  .tabs { flex: 1 1 220px; max-width: 100%; display: flex; flex-direction: column; gap: 2px; }
+  .tabs a, .signout { min-height: 46px; padding: 0 16px; display: flex; align-items: center; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: none; color: var(--muted-2); background: none; border: 0; width: 100%; cursor: pointer; }
+  .tabs a[aria-current='true'] { background: #fff; color: #000; }
+  .signout { color: #8a8a8a; text-transform: none; font-weight: 400; letter-spacing: 0; }
+  .panes { flex: 999 1 560px; min-width: 0; }
+  .pane { display: flex; flex-direction: column; gap: 24px; }
+  .pane[hidden] { display: none; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .stat { border: 1px solid var(--line-2); padding: 22px; display: flex; flex-direction: column; gap: 10px; justify-content: space-between; min-height: 130px; }
+  .stat b { font-size: 30px; line-height: .95; letter-spacing: -0.02em; }
+  .stat.light { background: #fff; color: #000; border-color: #fff; }
+  .stat.light .label { color: #333; }
+  .three { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
+  .sub { gap: 12px; border-top: 1px solid var(--line-2); padding-top: 22px; }
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line-2); }
+  table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; padding: 14px 16px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-2); }
+  td { padding: 16px; border-bottom: 1px solid var(--line); }
+</style>
+
+<script>
+  const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-tab]'));
+  const panes = Array.from(document.querySelectorAll<HTMLElement>('[data-pane]'));
+  const show = (key: string) => {
+    const k = panes.some((p) => p.dataset.pane === key) ? key : 'overview';
+    panes.forEach((p) => { p.hidden = p.dataset.pane !== k; });
+    tabs.forEach((t) => t.setAttribute('aria-current', String(t.dataset.tab === k)));
+  };
+  tabs.forEach((t) => t.addEventListener('click', (e) => { e.preventDefault(); history.replaceState(null, '', `#${t.dataset.tab}`); show(t.dataset.tab!); }));
+  show(location.hash.slice(1));
+
+  document.querySelectorAll<HTMLFormElement>('[data-account-form]').forEach((form) => form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const confirmText = form.dataset.confirm;
+    if (confirmText && !window.confirm(confirmText)) return;
+    const msg = form.querySelector<HTMLElement>('[data-msg]');
+    const action = form.dataset.accountForm!;
+    const fd = new FormData(form);
+    const submitter = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (submitter?.name) fd.set(submitter.name, submitter.value);
+    let init: RequestInit;
+    if (action === 'id-upload') {
+      init = { method: 'POST', body: fd };
+    } else {
+      const body: Record<string, unknown> = Object.fromEntries(fd.entries());
+      if (action === 'details') body.marketingOptIn = fd.get('marketingOptIn') === 'on';
+      if (action === 'limits') for (const k of ['daily', 'weekly', 'monthly']) body[k] = body[k] ? Number(body[k]) : null;
+      init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
+    }
+    const res = await fetch(`/api/account/${action}`, init);
+    const data = await res.json().catch(() => ({}));
+    if (msg) {
+      msg.textContent = res.ok ? (data.message || 'Saved.') : (data.message || 'Something went wrong. Please try again.');
+      msg.hidden = false;
+    }
+    if (res.ok && (action === 'break' || action === 'self-exclude')) setTimeout(() => location.reload(), 1200);
+  }));
+</script>
+

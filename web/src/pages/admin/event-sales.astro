@@ -1,0 +1,95 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp } from '../../lib/admin';
+import type { Competition } from '../../lib/types';
+const [comps, sum] = await Promise.all([
+  adminGet<{ data: Competition[] }>(Astro.cookies, '/event-sales/competitions'),
+  adminGet<{ data: { orders: number; cash: number; card: number } }>(Astro.cookies, '/event-sales/summary'),
+]);
+---
+<AdminLayout title="Event sales" active="event-sales" staffOk>
+  <div class="kpis">
+    <div class="kpi"><span class="label">Sales today</span><b>{sum.data.orders}</b></div>
+    <div class="kpi"><span class="label">Cash</span><b>{gbp(sum.data.cash)}</b></div>
+    <div class="kpi"><span class="label">Card reader</span><b>{gbp(sum.data.card)}</b></div>
+  </div>
+  {comps.data.length ? (
+    <section class="panel" style="max-width:720px">
+      <h2>New sale</h2>
+      <form class="stack" style="gap:14px" data-pos data-competitions={JSON.stringify(comps.data.map((c) => ({ id: c.id, title: c.title, price: c.ticketPrice, bundles: c.bundles, left: c.totalTickets - c.ticketsSold, max: c.maxPerPerson })))}>
+        <div class="field"><label for="ec">Competition</label><select id="ec" name="competitionId">{comps.data.map((c) => <option value={c.id}>{c.title}</option>)}</select></div>
+        <div class="row" style="gap:8px" data-packs></div>
+        <div class="row" style="gap:12px;align-items:center">
+          <button type="button" class="btn btn--outline" data-step="-1" aria-label="One fewer">−</button>
+          <input name="qty" type="number" min="1" value="1" style="width:90px;text-align:center;font-size:22px;background:#000;border:1px solid var(--line-2);padding:8px" aria-label="Tickets" />
+          <button type="button" class="btn btn--outline" data-step="1" aria-label="One more">+</button>
+          <b style="font-size:30px;margin-left:auto" class="num" data-total>£0.00</b>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label for="en">Customer name</label><input id="en" name="name" required /></div>
+          <div class="field"><label for="ee">Email (tickets are emailed)</label><input id="ee" name="email" type="email" required /></div>
+          <div class="field"><label for="ep">Mobile</label><input id="ep" name="phone" type="tel" /></div>
+          <div class="field"><label for="ed">Date of birth</label><input id="ed" name="dateOfBirth" type="date" required /></div>
+        </div>
+        <label class="check"><input type="checkbox" name="marketingOptIn" />Customer wants emails about new competitions</label>
+        <div class="row" style="gap:10px">
+          <button class="btn" type="submit" name="paymentMethod" value="card_reader">Paid by card reader</button>
+          <button class="btn btn--outline" type="submit" name="paymentMethod" value="cash">Paid cash</button>
+        </div>
+        <div class="panel" hidden data-result style="margin:0;background:#fff;color:#000"></div>
+      </form>
+    </section>
+  ) : <p class="muted">No competitions have event sales turned on. Enable "Event ticket sales" on a competition.</p>}
+
+  <script>
+    import { priceFor } from '../../lib/pricing';
+    import { say, send } from '../../lib/admin-client';
+    const form = document.querySelector<HTMLFormElement>('[data-pos]');
+    if (form) {
+      const comps = JSON.parse(form.dataset.competitions!) as { id: number; title: string; price: number; bundles: { qty: number; price: number }[]; left: number; max: number }[];
+      const sel = form.querySelector<HTMLSelectElement>('[name=competitionId]')!;
+      const qty = form.querySelector<HTMLInputElement>('[name=qty]')!;
+      const total = form.querySelector<HTMLElement>('[data-total]')!;
+      const packs = form.querySelector<HTMLElement>('[data-packs]')!;
+      const result = form.querySelector<HTMLElement>('[data-result]')!;
+      const cur = () => comps.find((c) => String(c.id) === sel.value)!;
+      const render = () => {
+        const c = cur(); qty.max = String(Math.min(c.left, c.max));
+        const n = Math.max(1, Number(qty.value) || 1);
+        total.textContent = `£${priceFor(n, c.price, c.bundles).toFixed(2)}`;
+      };
+      const drawPacks = () => {
+        const c = cur();
+        packs.innerHTML = '';
+        [1, ...c.bundles.map((b) => b.qty)].forEach((n) => {
+          const b = document.createElement('button'); b.type = 'button'; b.className = 'btn btn--outline';
+          b.textContent = `${n} · £${priceFor(n, c.price, c.bundles).toFixed(2)}`;
+          b.onclick = () => { qty.value = String(n); render(); };
+          packs.append(b);
+        });
+        render();
+      };
+      sel.addEventListener('change', drawPacks); qty.addEventListener('input', render);
+      form.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => { qty.value = String(Math.max(1, (Number(qty.value) || 1) + Number(b.dataset.step))); render(); }));
+      drawPacks();
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        if (!form.reportValidity()) return;
+        const method = ((e as SubmitEvent).submitter as HTMLButtonElement).value;
+        const fd = new FormData(form);
+        try {
+          const res = await send('/api/admin/event-sales', 'POST', JSON.stringify({
+            competitionId: Number(sel.value), qty: Number(qty.value), name: fd.get('name'), email: fd.get('email'),
+            phone: fd.get('phone') || null, dateOfBirth: fd.get('dateOfBirth'), paymentMethod: method, marketingOptIn: fd.get('marketingOptIn') === 'on',
+          }));
+          if (res.preview) { say(res.message); return; }
+          const nums = (res.data?.lines ?? []).flatMap((l: any) => l.ticketNumbers);
+          result.innerHTML = `<strong style="font-size:18px">Sale ${res.data.reference} complete</strong><p style="margin:8px 0 0">Tickets: <strong>${nums.map((n: string) => '#' + n).join(', ')}</strong></p><p class="small" style="margin:6px 0 0">Emailed to the customer.</p>`;
+          result.hidden = false;
+          ['name', 'email', 'phone', 'dateOfBirth'].forEach((n) => ((form.elements.namedItem(n) as HTMLInputElement).value = ''));
+          qty.value = '1'; render();
+        } catch (err) { say((err as Error).message, true); }
+      });
+    }
+  </script>
+</AdminLayout>

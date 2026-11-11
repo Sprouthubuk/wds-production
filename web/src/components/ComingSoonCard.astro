@@ -1,0 +1,16 @@
+---
+interface Props { n: number }
+const { n } = Astro.props;
+---
+<div class="card card--dashed">
+  <div class="ph"><span class="big">{String(n).padStart(2, '0')}</span></div>
+  <div class="card__body">
+    <h3 class="h3">Prize reveal soon</h3>
+    <p class="small muted" style="margin:0">Drawn live on Christmas Eve, just before the Clubsport.</p>
+    <a href="#notify" class="link-caps small">Notify me →</a>
+  </div>
+</div>
+<style>
+  .ph { flex-direction: column; gap: 10px; }
+  .big { font-size: 48px; font-weight: 700; color: #3a3a3a; letter-spacing: 0; }
+</style>
