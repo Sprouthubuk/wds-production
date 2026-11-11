@@ -41,6 +41,61 @@ jobs:
       - name: Execute tests
         run: php artisan test
 
+  api-mysql:
+    name: API (PHP 8.5, MySQL 8.4)
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: wds_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_DATABASE: wds_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+      DB_RACE_DATABASE: wds_race
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, pdo_sqlite, pdo_mysql, intl
+          coverage: none
+
+      - name: Create race-test database
+        run: mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE wds_race"
+
+      - name: Install Composer dependencies
+        run: composer install --no-interaction --prefer-dist
+
+      - name: Copy environment file
+        run: cp .env.example .env
+
+      - name: Generate app key
+        run: php artisan key:generate
+
+      - name: Execute tests
+        run: php artisan test
+
   web:
     name: Website build
     runs-on: ubuntu-latest
