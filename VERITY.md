@@ -17,7 +17,7 @@ Server setup and go-live checks: `forge/README.md`, sections 4 and 5.
 | Close | `verity:process-due` at the closing time | Entries frozen and hashed, a future drand round committed, the close timestamped (RFC 3161). WDS mirrors it as a `draws` row (`prepared`). |
 | Draw | `verity:process-due` once the round is out | BLS-verified drand round, winner drawn, seed revealed, audit chain written. WDS mirrors the winner (`drawn`). |
 | Reveal | Admin → Draws → **Publish result** | The result and `GET /api/draws/{id}/certificate` go public; the public page `/verify/{id}` re-runs every check in the visitor's browser. |
-| Forfeit / redraw | (not built in the admin yet) | `Verity::redraw()` / `forfeit()` with protocol R2 on a new future round; WDS mirrors it from the events. |
+| Forfeit / redraw | Admin → Draws or Winners → **Forfeit prize** (reason category, private note, redraw or not, confirmation) | `Verity::redraw()` forfeits and commits the replacement to a future drand round in one step (protocol R2); `verity:process-due` draws it once that round is out. `Verity::forfeit()` = no redraw, prize unawarded. Only the category goes on the public chain; the forfeited winner stays (ticket + reason, no name) and the replacement shows as "Redraw 1". |
 
 Nothing in WDS can pick a number or a winner, void a competition with entries, or change a result.
 

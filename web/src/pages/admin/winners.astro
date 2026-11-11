@@ -1,7 +1,9 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, day } from '../../lib/admin';
-interface W { id: number; display_name: string; prize: string; image: string | null; verification: string; handover: string; show_on_site: boolean; drawn_at: string | null; user: { email: string; phone: string | null } | null }
+import ForfeitForm from '../../components/ForfeitForm.astro';
+interface W { id: number; display_name: string; prize: string; image: string | null; verification: string; handover: string; show_on_site: boolean; drawn_at: string | null; user: { email: string; phone: string | null } | null;
+  competition: { title: string } | null; redraw_number: number | null; forfeited_at: string | null; forfeit_label: string | null; forfeit_note: string | null; can_forfeit: boolean }
 const winners = await adminGet<W[]>(Astro.cookies, '/winners');
 ---
 <AdminLayout title="Winners" active="winners">
@@ -15,12 +17,14 @@ const winners = await adminGet<W[]>(Astro.cookies, '/winners');
             <form class="row" style="gap:10px;align-items:center" data-admin-form={`/api/admin/winners/${w.id}`} data-method="PUT">
               <input name="displayName" value={w.display_name} style="width:160px;background:#000;border:1px solid var(--line-2);padding:7px" aria-label="Name shown on site" />
               <input name="prize" value={w.prize} style="width:200px;background:#000;border:1px solid var(--line-2);padding:7px" aria-label="Prize" />
-              <select name="verification" style="background:#000;border:1px solid var(--line-2);padding:7px" aria-label="ID check">{['awaiting_id', 'to_review', 'approved', 'denied'].map((s) => <option value={s} selected={w.verification === s}>{s.replace('_', ' ')}</option>)}</select>
-              <select name="handover" style="background:#000;border:1px solid var(--line-2);padding:7px" aria-label="Handover">{['not_started', 'contacted', 'booked', 'delivered'].map((s) => <option value={s} selected={w.handover === s}>{s.replace('_', ' ')}</option>)}</select>
-              <label class="check small"><input type="checkbox" name="showOnSite" checked={w.show_on_site} />Show on site</label>
+              <select name="verification" style="background:#000;border:1px solid var(--line-2);padding:7px" aria-label="ID check" disabled={!!w.forfeited_at}>{['awaiting_id', 'to_review', 'approved', 'denied'].map((s) => <option value={s} selected={w.verification === s}>{s.replace('_', ' ')}</option>)}</select>
+              <select name="handover" style="background:#000;border:1px solid var(--line-2);padding:7px" aria-label="Handover" disabled={!!w.forfeited_at}>{['not_started', 'contacted', 'booked', 'delivered'].map((s) => <option value={s} selected={w.handover === s}>{s.replace('_', ' ')}</option>)}</select>
+              <label class="check small"><input type="checkbox" name="showOnSite" checked={w.show_on_site} disabled={!!w.forfeited_at} />Show on site</label>
               <button class="btn btn--outline" type="submit">Save</button>
               <span class="small muted">{w.user ? `${w.user.email}${w.user.phone ? ` · ${w.user.phone}` : ''}` : ''} {w.drawn_at ? `· drawn ${day(w.drawn_at)}` : ''}</span>
             </form>
+            {w.redraw_number || w.forfeited_at ? <p class="small" style="margin:8px 0 0">{w.redraw_number ? `Redraw ${w.redraw_number} winner. ` : ''}{w.forfeited_at ? <><span class="pill pill--forfeited">forfeited</span> {w.forfeit_label ?? 'Forfeited'} · {day(w.forfeited_at)}{w.forfeit_note ? ` · note: ${w.forfeit_note}` : ''}. ID check and handover are locked.</> : null}</p> : null}
+            {w.can_forfeit ? <div style="margin-top:8px"><ForfeitForm winnerId={w.id} ticket={null} name={w.display_name} competition={w.competition?.title} /></div> : null}
             <form class="row" style="gap:8px;margin-top:8px" data-admin-form={`/api/admin/winners/${w.id}/image`} data-reload>
               <input type="file" name="image" accept="image/*" required class="small" /><button class="adm-link" type="submit">Upload winner photo</button>
             </form>

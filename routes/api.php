@@ -87,6 +87,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/winners', [Admin\WinnerController::class, 'index']);
     Route::post('/winners', [Admin\WinnerController::class, 'store']);
     Route::put('/winners/{winner}', [Admin\WinnerController::class, 'update']);
+    // Permanent and public (Verity's audit chain). There is no separate redraw route: a redraw is chosen
+    // at the forfeit and committed to a future drand round there and then (protocol R2).
+    Route::post('/winners/{winner}/forfeit', [Admin\WinnerController::class, 'forfeit']);
     Route::post('/winners/{winner}/image', [Admin\WinnerController::class, 'uploadImage']);
 
     Route::get('/promotions', [Admin\PromotionController::class, 'index']);

@@ -63,6 +63,9 @@ export interface DrawResult {
   /** The public page that re-checks the draw in the visitor's browser. */
   verifyUrl: string | null;
   drandRound?: number | null;
+  /** "Redraw pending" / "Prize unawarded" when the winner was forfeited and there's no current winner. */
+  note?: string | null;
+  redraws?: number;
 }
 
 export interface SiteSettings {

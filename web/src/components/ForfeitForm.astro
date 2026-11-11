@@ -1,0 +1,35 @@
+---
+/**
+ * Forfeit a drawn winner (Admin → Draws and Admin → Winners). Permanent and public: it goes on the draw's
+ * audit chain through Verity. Choosing a redraw commits it to a future drand round straight away (protocol
+ * R2); it runs on its own about a minute later. Only the reason category is public; the note stays in WDS.
+ */
+interface Props { winnerId: number; ticket: string | null; name: string | null; competition?: string }
+const { winnerId, ticket, name, competition } = Astro.props;
+const reasons: [string, string][] = [
+  ['failed_id', 'Failed ID check'],
+  ['no_response', 'No response within the claim period'],
+  ['ineligible', 'Ineligible under the terms'],
+  ['other', 'Other reason under the terms'],
+];
+const who = `${name ?? 'this winner'}${ticket ? ` (ticket #${ticket})` : ''}${competition ? `, ${competition}` : ''}`;
+---
+<details class="forfeit">
+  <summary class="adm-link">Forfeit prize…</summary>
+  <form class="stack" style="gap:10px;margin-top:10px" data-admin-form={`/api/admin/winners/${winnerId}/forfeit`} data-reload
+    data-confirm={`Forfeit the prize for ${who}? This is PERMANENT and PUBLIC: it is recorded on the draw's audit chain and shown on the certificate and the verify page. It can't be undone.`}>
+    <div class="field"><label>Reason (public)</label>
+      <select name="reason" required>{reasons.map(([v, l]) => <option value={v}>{l}</option>)}</select>
+    </div>
+    <div class="field"><label>Note (private, admin only)</label>
+      <input name="note" maxlength="500" placeholder="e.g. what was checked and when. Never shown publicly." />
+    </div>
+    <fieldset class="stack" style="gap:6px;border:0;padding:0;margin:0">
+      <legend class="label">Then</legend>
+      <label class="check small"><input type="radio" name="redraw" value="1" checked />Redraw: the replacement is drawn automatically from the next drand round (about a minute)</label>
+      <label class="check small"><input type="radio" name="redraw" value="0" />No redraw: the prize is unawarded</label>
+    </fieldset>
+    <label class="check small"><input type="checkbox" name="confirm" required />I understand this is permanent and public, and can't be undone.</label>
+    <div><button class="btn btn--danger" type="submit">Forfeit prize</button></div>
+  </form>
+</details>

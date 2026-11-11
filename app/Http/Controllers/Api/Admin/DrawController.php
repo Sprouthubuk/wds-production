@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Competition;
 use App\Models\Draw;
+use App\Models\Winner;
 use App\Services\DrawService;
 use App\Services\Draws\VerityDrawEngine;
 
@@ -47,6 +48,25 @@ class DrawController extends Controller
                     'publishedAt' => $draw->published_at?->toIso8601String(),
                     'certificateUrl' => $draw->status === 'published' ? route('draws.certificate', $draw) : null,
                     'verifyUrl' => $draw->status === 'published' ? config('raffle.draws.verify_page').'/'.$draw->id : null,
+                    // Original winner and every redraw's, forfeited ones included (never deleted).
+                    'winners' => Winner::with('ticket')->where('draw_id', $draw->id)->get()
+                        ->sortBy(fn (Winner $w) => [(int) $w->redraw_number, $w->id])->values()
+                        ->map(fn (Winner $w) => [
+                            'id' => $w->id,
+                            'label' => $w->redraw_number ? "Redraw {$w->redraw_number}" : 'Original draw',
+                            'ticket' => $w->ticket?->display($c->total_tickets),
+                            'name' => $w->ticket?->name,
+                            'forfeited' => $w->isForfeited(),
+                            'reason' => $w->isForfeited() ? Winner::forfeitLabel($w->forfeit_category) : null,
+                            'note' => $w->forfeit_note,
+                            'canForfeit' => $vc->status === 'drawn' && $w->verity_winner_id && ! $w->isForfeited()
+                                && ! \Sprouthub\Verity\Services\Redraws::pending($vc),
+                        ]),
+                    'redrawPending' => ($p = \Sprouthub\Verity\Services\Redraws::pending($vc)) ? [
+                        'number' => (int) $p->number,
+                        'round' => (int) $p->beacon_round,
+                        'roundAt' => VerityDrawEngine::roundTime((int) $p->beacon_round)?->toIso8601String(),
+                    ] : null,
                 ] : null,
                 // Closes, extensions, voids, redraws and forfeits as recorded on Verity's public audit chain.
                 'trail' => collect($verity->auditTrail($c))
