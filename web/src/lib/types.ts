@@ -35,6 +35,9 @@ export interface Competition {
   postalClosesAt: string | null;
   /** Only set when an admin chose a postal close; null means the default. */
   postalClosesAtCustom?: string | null;
+  /** Set once published on the Verity draw engine (the draw is then locked in). */
+  verityRef?: string | null;
+  publishedAt?: string | null;
   drawAt: string;
   cashAlternative: number | null;
   buildVideoUrl: string | null;
@@ -46,14 +49,20 @@ export interface Winner {
   image: string | null;
   drawnAt: string | null;
   ticketNumber: string | null;
+  /** The public verify page for the draw this winner came from (once published). */
+  verifyUrl?: string | null;
 }
 
 export interface DrawResult {
+  id: number | null;
   competition: string;
   drawAt: string;
   winningTicket: string | null;
   winner: string | null;
   certificateUrl: string | null;
+  /** The public page that re-checks the draw in the visitor's browser. */
+  verifyUrl: string | null;
+  drandRound?: number | null;
 }
 
 export interface SiteSettings {

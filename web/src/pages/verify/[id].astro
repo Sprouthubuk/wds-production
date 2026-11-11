@@ -1,0 +1,61 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { getCertificate } from '../../lib/api';
+
+const { id } = Astro.params;
+const found = await getCertificate(id!);
+if (!found) return Astro.rewrite('/404');   // not drawn, or not published yet: nothing is revealed early
+const { certificate: c, url } = found;
+const utc = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—');
+const facts: [string, string | number | null][] = [
+  ['Draw reference', c.reference],
+  ['Winning ticket', c.winningTicket],
+  ['Entries', c.entriesCount],
+  ['Entry list fingerprint (SHA-256)', c.entriesHash],
+  ['Seed commitment (published at launch)', c.commitment],
+  ['Seed (revealed after the draw)', c.revealedSeed],
+  ['drand round', c.drandRound ? `${c.drandRound}, published ${utc(c.drandRoundAt)}` : null],
+  ['drand randomness', c.drandRandomness],
+  ['drand signature (BLS)', c.drandSignature],
+  ['Algorithm', c.algorithm ? `${c.algorithm}, ${c.ticketAllocation} ticket numbers` : null],
+  ['Audit record', c.auditEvent ? `#${c.auditEvent.seq} · ${c.auditEvent.hash}` : null],
+  ['Close timestamped', c.closeTimestamp ? `${utc(c.closeTimestamp.witnessedAt)} by ${c.closeTimestamp.authority}` : null],
+  ['Engine', c.engine ? `${c.engine.version} · engine ${c.engine.engine_sha256}` : null],
+];
+---
+<Layout title={`Verify the draw: ${c.competition}`} description={`Re-check the ${c.competition} draw yourself: every step re-run in your browser from the published record.`}>
+  <PageHero eyebrow="Verify a draw" title={c.competition} intro="Every check below runs in your own browser, from the published record, with code you can read. Nothing is taken on trust from us." />
+  <section class="section">
+    <div class="container stack" style="gap:28px">
+      <div class="verify-box" data-reveal>
+        <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
+        <verity-verify src={url}></verity-verify>
+      </div>
+
+      <div class="stack" style="gap:12px">
+        <h2 class="display display--s">The certificate</h2>
+        <dl class="facts">{facts.filter(([, v]) => v !== null && v !== '').map(([k, v]) => <><dt>{k}</dt><dd class="mono">{v}</dd></>)}</dl>
+      </div>
+
+      <div class="stack" style="gap:10px">
+        <h2 class="display display--s">How it works</h2>
+        <ol class="body how">
+          <li>When the competition was published, the draw engine committed to a secret seed (its SHA-256 is the commitment above) and fixed the drand round: the first one after the closing time.</li>
+          <li>At the closing time every entry (online, postal and event) was frozen and fingerprinted, and that close was timestamped by an independent timestamp authority, before the drand round existed.</li>
+          <li>The round's randomness comes from <a href="https://drand.love" rel="noopener">drand</a>, a public randomness network run by independent organisations. Its BLS signature proves nobody chose it.</li>
+          <li>The seed, the fingerprint and the round's randomness give the winning ticket. Anyone can re-run it: this page does, and so does the <a href={url}>raw record (JSON)</a> with Verity's open verifiers.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+</Layout>
+<style>
+  .verify-box { border: 1px solid var(--line-2); padding: 28px; --verity-ok: #3ddc84; --verity-bad: #ff6b6b; --verity-muted: var(--muted); }
+  .facts { display: grid; grid-template-columns: minmax(180px, max-content) 1fr; gap: 10px 20px; margin: 0; }
+  .facts dt { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  .facts dd { margin: 0; word-break: break-all; font-size: 14px; }
+  .how { margin: 0; padding-left: 20px; line-height: 1.8; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  @media (max-width: 700px) { .verify-box { padding: 18px; } .facts { grid-template-columns: 1fr; gap: 4px; } .facts dd { margin-bottom: 10px; } }
+</style>
