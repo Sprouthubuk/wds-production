@@ -7,16 +7,18 @@ use App\Models\User;
 use App\Services\PostalEntryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Tests\Concerns\VerityFakes;
 use Tests\TestCase;
 
 class PostalCloseTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, VerityFakes;
 
     protected function setUp(): void
     {
         parent::setUp();
         Carbon::setTestNow('2026-12-01 12:00:00');
+        $this->fakeVerity();
     }
 
     protected function tearDown(): void
@@ -27,8 +29,8 @@ class PostalCloseTest extends TestCase
 
     private function competition(array $overrides = []): Competition
     {
-        return Competition::create(array_merge([
-            'slug' => 'test', 'title' => 'Test car', 'category' => 'cars', 'status' => 'live',
+        return $this->publishedCompetition(array_merge([
+            'slug' => 'test', 'title' => 'Test car', 'category' => 'cars',
             'ticket_price_pence' => 1495, 'bundles' => [], 'total_tickets' => 100, 'max_per_person' => 10,
             'closes_at' => '2026-12-24 18:00:00', 'draw_at' => '2026-12-24 20:00:00', 'postal_entry_enabled' => true,
         ], $overrides));

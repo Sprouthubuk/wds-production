@@ -62,6 +62,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::post('/competitions', [Admin\CompetitionController::class, 'store']);
     Route::get('/competitions/{competition}', [Admin\CompetitionController::class, 'show']);
     Route::put('/competitions/{competition}', [Admin\CompetitionController::class, 'update']);
+    Route::post('/competitions/{competition}/publish', [Admin\CompetitionController::class, 'publish']);
+    Route::post('/competitions/{competition}/extend', [Admin\CompetitionController::class, 'extend']);
     Route::post('/uploads/competition-image', [Admin\CompetitionController::class, 'uploadImage']);
 
     Route::get('/orders', [Admin\OrderController::class, 'index']);
@@ -77,12 +79,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/verifications/{verification}/{which}', [Admin\CustomerController::class, 'verificationFile']);
     Route::post('/verifications/{verification}', [Admin\CustomerController::class, 'reviewVerification']);
 
+    // Draws run on Verity (verity:process-due). Admins see the state and publish the result; nothing here changes one.
     Route::get('/draws', [Admin\DrawController::class, 'index']);
-    Route::post('/competitions/{competition}/draw', [Admin\DrawController::class, 'prepare']);
     Route::get('/draws/{draw}/entries.csv', [Admin\DrawController::class, 'entries']);
-    Route::post('/draws/{draw}/run', [Admin\DrawController::class, 'run']);
     Route::post('/draws/{draw}/publish', [Admin\DrawController::class, 'publish']);
-    Route::post('/draws/{draw}/void', [Admin\DrawController::class, 'void']);
 
     Route::get('/winners', [Admin\WinnerController::class, 'index']);
     Route::post('/winners', [Admin\WinnerController::class, 'store']);

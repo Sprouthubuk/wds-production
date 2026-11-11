@@ -12,16 +12,23 @@ use App\Services\Payments\PaymentResult;
 use App\Services\PostalEntryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Tests\Concerns\VerityFakes;
 use Tests\TestCase;
 
 class EntrantTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, VerityFakes;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->fakeVerity();
+    }
 
     private function competition(int $maxPerPerson = 10): Competition
     {
-        return Competition::create([
-            'slug' => 'test', 'title' => 'Test car', 'category' => 'cars', 'status' => 'live',
+        return $this->publishedCompetition([
+            'slug' => 'test', 'title' => 'Test car', 'category' => 'cars',
             'ticket_price_pence' => 1495, 'bundles' => [], 'total_tickets' => 100, 'max_per_person' => $maxPerPerson,
             'closes_at' => now()->addWeeks(2), 'draw_at' => now()->addWeeks(2)->addHour(), 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
         ]);

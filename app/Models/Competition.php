@@ -12,6 +12,7 @@ class Competition extends Model
         'slug', 'title', 'strapline', 'category', 'badge', 'status', 'images', 'description', 'specs',
         'ticket_price_pence', 'bundles', 'total_tickets', 'max_per_person', 'cash_alternative_pence',
         'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order',
+        'verity_ref', 'verity_status', 'published_at',
     ];
 
     protected function casts(): array
@@ -25,6 +26,7 @@ class Competition extends Model
             'closes_at' => 'datetime',
             'postal_closes_at' => 'datetime',
             'draw_at' => 'datetime',
+            'published_at' => 'datetime',
             'postal_entry_enabled' => 'boolean',
             'event_sales_enabled' => 'boolean',
         ];
@@ -56,6 +58,12 @@ class Competition extends Model
             ->where('competition_id', $this->id)
             ->whereHas('order', fn ($q) => $q->where('status', 'pending')->where('reserved_until', '>', now()))
             ->sum('qty');
+    }
+
+    /** Published on the Verity draw engine: the draw is locked in (terms fixed, drand round committed). */
+    public function isPublished(): bool
+    {
+        return $this->verity_ref !== null;
     }
 
     /** Default gap between the postal deadline and the online close, when postal_closes_at isn't set. */

@@ -16,6 +16,7 @@ class WinnerResource extends JsonResource
             'image' => $this->image,
             'drawnAt' => $this->drawn_at?->toIso8601String(),
             'ticketNumber' => $this->ticket ? $this->ticket->display($this->competition?->total_tickets ?? 0) : null,
+            'verifyUrl' => $this->draw?->status === 'published' ? config('raffle.draws.verify_page').'/'.$this->draw_id : null,
         ];
     }
 }

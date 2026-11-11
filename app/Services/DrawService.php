@@ -6,107 +6,130 @@ use App\Exceptions\EntryException;
 use App\Models\Competition;
 use App\Models\Draw;
 use App\Models\Ticket;
-use App\Models\User;
 use App\Models\Winner;
-use App\Services\Draws\DrawEngine;
-use App\Services\Draws\DrawOutcome;
-use App\Services\Draws\DrawPreparation;
+use App\Services\Draws\VerityDrawEngine;
 use Illuminate\Support\Facades\DB;
+use Sprouthub\Verity\Models\Competition as VerityCompetition;
+use Sprouthub\Verity\Models\Winner as VerityWinner;
 
+/**
+ * Mirrors Verity's draw onto WDS's competitions, draws and winners. Verity closes the entries at the
+ * closing time, commits to a future drand round and draws once it's out (verity:process-due); this
+ * class only copies the outcome across, so the admin, the Live draws page and the winner's claim work
+ * from WDS's own tables. It never decides anything: the numbers and the winner are read from Verity.
+ *
+ * sync() is idempotent and is called from Verity's events (after commit) and after every
+ * verity:process-due run, so a missed event is caught up a minute later.
+ *
+ * The one WDS step left is publish(): the reveal. Until then the certificate is a 404 and nothing
+ * public shows the result (Verity's own public routes stay off, VERITY_ROUTES=false).
+ */
 class DrawService
 {
-    public function __construct(private DrawEngine $engine) {}
+    public function __construct(private VerityDrawEngine $verity) {}
 
-    /** Close the competition, lock the entry list and get a commitment from the engine. */
-    public function prepare(Competition $competition, User $admin): Draw
+    /** Copy Verity's state for one competition (by its Verity ref) onto WDS's tables. */
+    public function syncRef(string $verityRef): ?Draw
     {
-        if ($competition->draws()->whereIn('status', ['prepared', 'drawn', 'published'])->exists()) {
-            throw new EntryException('This competition already has a draw.');
-        }
+        $competition = Competition::where('verity_ref', $verityRef)->first();
 
-        return DB::transaction(function () use ($competition, $admin) {
-            $competition->update(['status' => 'closed']);
-            $numbers = $this->ticketNumbers($competition);
-            if (! $numbers) {
-                throw new EntryException('There are no tickets to draw.');
-            }
-            $hash = self::entriesHash($numbers);
-            $prep = $this->engine->prepare($competition, $numbers, $hash);
-
-            return Draw::create([
-                'competition_id' => $competition->id,
-                'engine' => $this->engine->name(),
-                'status' => 'prepared',
-                'entries_count' => count($numbers),
-                'entries_hash' => $hash,
-                'commitment' => $prep->commitment,
-                'proof' => json_encode(['preparation' => $prep->data]),
-                'run_by' => $admin->id,
-            ]);
-        });
+        return $competition ? $this->sync($competition) : null;
     }
 
-    /** Run the draw (live on Instagram) and create the winner record. */
-    public function run(Draw $draw, User $admin): Draw
+    public function sync(Competition $competition): ?Draw
     {
-        if ($draw->status !== 'prepared') {
-            throw new EntryException('This draw has already been run.');
-        }
-        $competition = $draw->competition;
-        $numbers = $this->ticketNumbers($competition);
-        $hash = self::entriesHash($numbers);
-        if ($hash !== $draw->entries_hash) {
-            throw new EntryException('The entry list changed after the draw was prepared. Void and prepare again.');
+        if (! $competition->isPublished()) {
+            return null;
         }
 
-        $stored = json_decode($draw->proof ?? '{}', true);
-        $prep = new DrawPreparation($draw->commitment, $stored['preparation'] ?? []);
-        $outcome = $this->engine->draw($competition, $numbers, $hash, $prep);
+        return DB::transaction(function () use ($competition) {
+            $competition = Competition::query()->whereKey($competition->id)->lockForUpdate()->firstOrFail();
+            $vc = VerityCompetition::query()->where('ref', $competition->verity_ref)->firstOrFail();
 
-        return DB::transaction(function () use ($draw, $competition, $outcome, $admin) {
-            $ticket = Ticket::where('competition_id', $competition->id)->where('number', $outcome->winningNumber)->firstOrFail();
+            $status = match ($vc->status) {
+                'closed', 'void' => 'closed',
+                'drawn' => 'drawn',
+                default => $competition->status,
+            };
+            $competition->update(['verity_status' => $vc->status, 'status' => $status]);
 
-            $draw->update([
-                'status' => 'drawn',
-                'proof' => json_encode($this->publicProof($outcome)),
-                'winning_number' => $outcome->winningNumber,
-                'winning_ticket_id' => $ticket->id,
-                'run_by' => $admin->id,
-                'drawn_at' => now(),
-            ]);
-            $competition->update(['status' => 'drawn']);
+            if (! in_array($vc->status, ['closed', 'drawn'], true)) {
+                return $competition->draws()->latest('id')->first();
+            }
 
-            Winner::create([
-                'competition_id' => $competition->id,
-                'draw_id' => $draw->id,
-                'ticket_id' => $ticket->id,
-                'user_id' => $ticket->user_id,
-                'display_name' => self::displayName($ticket->name),
-                'prize' => $competition->title,
-                'drawn_at' => now(),
-            ]);
+            // Closed: entries frozen and hashed, a future drand round committed. Nothing that decides the
+            // winner exists yet (the seed is sealed in Verity until the draw, the round isn't out).
+            $draw = Draw::firstOrCreate(
+                ['competition_id' => $competition->id, 'verity_ref' => $vc->ref],
+                [
+                    'engine' => 'verity',
+                    'status' => 'prepared',
+                    'entries_count' => (int) $vc->entries_count,
+                    'entries_hash' => (string) $vc->entries_hash,
+                    'commitment' => $vc->commitment,
+                    'beacon_round' => $vc->beacon_round,
+                    'beacon_round_at' => VerityDrawEngine::roundTime($vc->beacon_round ? (int) $vc->beacon_round : null),
+                ],
+            );
+
+            if ($vc->status === 'drawn') {
+                $this->mirrorWinners($competition, $vc, $draw);
+            }
 
             return $draw->fresh();
         });
     }
 
+    private function mirrorWinners(Competition $competition, VerityCompetition $vc, Draw $draw): void
+    {
+        $main = VerityWinner::query()->with('entry')->where('competition_id', $vc->id)->where('type', 'main')
+            ->orderBy('position')->orderBy('id')->get();
+        $current = $main->where('status', 'active')->sortBy('position')->first() ?? $main->first();
+
+        foreach ($main as $vw) {
+            $ticket = Ticket::where('verity_entry_id', $vw->entry_id)->first()
+                ?? Ticket::where('competition_id', $competition->id)->where('number', $vw->entry->number)->firstOrFail();
+            Winner::firstOrCreate(
+                ['draw_id' => $draw->id, 'ticket_id' => $ticket->id],
+                [
+                    'competition_id' => $competition->id,
+                    'user_id' => $ticket->user_id,
+                    'display_name' => self::displayName($ticket->name),
+                    'prize' => $vw->prize_name,
+                    'drawn_at' => $vc->drawn_at,
+                ],
+            );
+        }
+
+        $winningTicket = Ticket::where('verity_entry_id', $current->entry_id)->first();
+        $draw->update([
+            'status' => $draw->status === 'published' ? 'published' : 'drawn',
+            'winning_number' => (int) $current->entry->number,
+            'winning_ticket_id' => $winningTicket?->id,
+            'drawn_at' => $vc->drawn_at,
+            'beacon_round' => $vc->beacon_round,
+            'beacon_round_at' => VerityDrawEngine::roundTime($vc->beacon_round ? (int) $vc->beacon_round : null),
+            'proof' => json_encode([
+                'spec' => $vc->spec,
+                'beacon_round' => (int) $vc->beacon_round,
+                'beacon_randomness' => $vc->beacon_randomness,
+                'beacon_signature' => $vc->beacon_signature,
+                'draw_seed' => $vc->draw_seed,
+                'revealed_seed' => $vc->revealed_seed,
+            ]),
+        ]);
+    }
+
+    /** The reveal: puts the result and the certificate on the Live draws page. */
     public function publish(Draw $draw): Draw
     {
+        $draw = $this->sync($draw->competition) ?? $draw;
+        if ($draw->status !== 'drawn') {
+            throw new EntryException($draw->status === 'published' ? 'This result is already published.' : 'The draw hasn\'t run yet: Verity draws once the committed drand round is out.');
+        }
         $draw->update(['status' => 'published', 'published_at' => now()]);
 
         return $draw;
-    }
-
-    /** @return list<int> */
-    public function ticketNumbers(Competition $competition): array
-    {
-        return Ticket::where('competition_id', $competition->id)->orderBy('number')->pluck('number')->map(fn ($n) => (int) $n)->all();
-    }
-
-    /** @param list<int> $numbers */
-    public static function entriesHash(array $numbers): string
-    {
-        return hash('sha256', implode(',', $numbers));
     }
 
     public static function displayName(string $name): string
@@ -116,13 +139,5 @@ class DrawService
         $last = array_pop($parts);
 
         return $last ? "{$first} ".mb_substr($last, 0, 1).'.' : $first;
-    }
-
-    private function publicProof(DrawOutcome $outcome): array
-    {
-        return array_merge($outcome->proof, array_filter([
-            'externalId' => $outcome->externalId,
-            'verificationUrl' => $this->engine->verificationUrl($outcome),
-        ]));
     }
 }

@@ -9,6 +9,7 @@ use App\Http\Resources\WinnerResource;
 use App\Models\Competition;
 use App\Models\Draw;
 use App\Models\Winner;
+use App\Services\Draws\VerityDrawEngine;
 
 class PublicController extends Controller
 {
@@ -27,45 +28,53 @@ class PublicController extends Controller
     public function winners()
     {
         return WinnerResource::collection(
-            Winner::with('ticket', 'competition')->where('show_on_site', true)->latest('drawn_at')->get()
+            Winner::with('ticket', 'competition', 'draw')->where('show_on_site', true)->latest('drawn_at')->get()
         );
     }
 
     public function draws()
     {
         $upcoming = Competition::whereIn('status', ['live', 'closed'])->orderBy('draw_at')->get()->map(fn ($c) => [
+            'id' => null,
             'competition' => $c->title,
             'drawAt' => $c->draw_at->toIso8601String(),
             'winningTicket' => null,
             'winner' => null,
             'certificateUrl' => null,
+            'verifyUrl' => null,
         ]);
         $past = Draw::with('competition', 'winningTicket')->where('status', 'published')->latest('drawn_at')->get()->map(fn ($d) => [
+            'id' => $d->id,
             'competition' => $d->competition->title,
             'drawAt' => $d->drawn_at?->toIso8601String() ?? '',
             'winningTicket' => $d->winningTicket?->display($d->competition->total_tickets),
-            'winner' => Winner::where('draw_id', $d->id)->value('display_name'),
+            'winner' => Winner::where('draw_id', $d->id)->where('ticket_id', $d->winning_ticket_id)->value('display_name'),
             'certificateUrl' => route('draws.certificate', $d),
+            'verifyUrl' => config('raffle.draws.verify_page').'/'.$d->id,
+            'drandRound' => $d->beacon_round ? (int) $d->beacon_round : null,
         ]);
 
         return response()->json(['data' => $upcoming->concat($past)->values()]);
     }
 
-    /** Public proof for a draw: entries hash, commitment, revealed seed / Verity proof. */
-    public function certificate(Draw $draw)
+    /**
+     * The draw certificate: Verity's full public verification record (the drop-in verifier and the
+     * PHP/Python verifiers re-run every check from it) plus a summary of the facts people look for.
+     * Nothing is revealed before WDS publishes the result: until then this is a 404.
+     */
+    public function certificate(Draw $draw, VerityDrawEngine $verity)
     {
-        abort_unless($draw->status === 'published', 404);
+        abort_unless($draw->status === 'published' && $draw->verity_ref, 404);
 
-        return response()->json(['data' => [
-            'competition' => $draw->competition->title,
-            'engine' => $draw->engine,
-            'entries' => $draw->entries_count,
-            'entriesHash' => $draw->entries_hash,
-            'commitment' => $draw->commitment,
-            'winningTicket' => $draw->winningTicket?->display($draw->competition->total_tickets),
-            'drawnAt' => $draw->drawn_at?->toIso8601String(),
-            'proof' => json_decode($draw->proof ?? '{}', true),
-        ]]);
+        return response()->json([
+            'data' => $verity->verification($draw),
+            'certificate' => [
+                'competition' => $draw->competition->title,
+                'winningTicket' => $draw->winningTicket?->display($draw->competition->total_tickets),
+                'drawnAt' => $draw->drawn_at?->toIso8601String(),
+                'publishedAt' => $draw->published_at?->toIso8601String(),
+            ] + $verity->certificate($draw),
+        ]);
     }
 
     public function settings()

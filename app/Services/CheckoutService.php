@@ -209,6 +209,10 @@ class CheckoutService
                     'name' => $order->name,
                     'user_id' => $order->user_id,
                     'order_line_id' => $line->id,
+                    // Committed before the close: Verity still enters it if the webhook lands between the
+                    // closing time and the close itself (verity:process-due, within a minute).
+                    'ordered_at' => $order->created_at,
+                    'total_pence' => (int) $line->line_total_pence,
                 ]);
             }
             if ($order->credit_used_pence > 0 && $order->user_id) {

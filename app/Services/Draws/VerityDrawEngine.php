@@ -2,41 +2,206 @@
 
 namespace App\Services\Draws;
 
+use App\Exceptions\EntryException;
 use App\Models\Competition;
-use RuntimeException;
+use App\Models\Draw;
+use App\Models\Entrant;
+use Illuminate\Support\Facades\DB;
+use Sprouthub\Verity\Engine\Drand;
+use Sprouthub\Verity\Engine\VerityException;
+use Sprouthub\Verity\Facades\Verity;
+use Sprouthub\Verity\Models\Competition as VerityCompetition;
+use Sprouthub\Verity\Models\EntryGroup;
 
 /**
- * Adapter for Liam's Verity draw engine — PLACEHOLDER.
+ * WDS's one door into the Verity draw engine (sprouthub/verity-engine). Verity owns the numbering,
+ * the close, the draw, redraws and the proof; WDS decides who may enter (caps, responsible play,
+ * reservations, pricing, payment) and mirrors what Verity decided (DrawService::sync).
  *
- * Set DRAW_ENGINE=verity once this class is wired up. Map Verity's API onto the DrawEngine
- * contract:
- *   prepare() → register the draw with Verity, sending competition id/title, entries count and
- *               entries hash (never personal data). Return Verity's commitment / draw id.
- *   draw()    → trigger the draw, receive the winning ticket number + Verity's proof/certificate.
- *   verificationUrl() → Verity's public verification page for the draw, shown on /live-draws.
- *
- * Config: config('raffle.draws.verity.base_url'), config('raffle.draws.verity.api_key').
+ * Nothing here can choose a ticket number or a winner: Verity's API has no way to.
  */
-class VerityDrawEngine implements DrawEngine
+class VerityDrawEngine
 {
-    public function __construct(private array $config) {}
+    /** Verity's entry sources: online and event sales are both paid; postal entries are free, equal chances. */
+    public const SOURCE_FOR_CHANNEL = ['online' => 'paid', 'event' => 'paid', 'postal' => 'postal'];
 
-    public function name(): string { return 'verity'; }
-
-    public function prepare(Competition $competition, array $ticketNumbers, string $entriesHash): DrawPreparation
+    /**
+     * Publish = lock the draw in. Verity fixes the terms (closing time, ticket count, price, per-person
+     * maximum), commits to the seed and plans the drand round. One way: there is no unpublish.
+     */
+    public function publish(Competition $competition): Competition
     {
-        throw new RuntimeException('Verity adapter not connected yet — see App\Services\Draws\VerityDrawEngine.');
+        if ($competition->isPublished()) {
+            throw new EntryException("{$competition->title} is already published (draw {$competition->verity_ref}).");
+        }
+        if (! $competition->closes_at) {
+            throw new EntryException('Set the closing time before publishing: the draw round is fixed from it.');
+        }
+        if ($competition->closes_at->isPast()) {
+            throw new EntryException('The closing time has passed.');
+        }
+
+        return DB::transaction(function () use ($competition) {
+            $locked = Competition::query()->whereKey($competition->id)->lockForUpdate()->firstOrFail();
+            if ($locked->isPublished()) {
+                throw new EntryException("{$locked->title} is already published (draw {$locked->verity_ref}).");
+            }
+            try {
+                $vc = Verity::publish([
+                    'title' => $locked->title,
+                    'max_tickets' => (int) $locked->total_tickets,
+                    'ticket_price_pence' => (int) $locked->ticket_price_pence,
+                    'max_per_person' => (int) $locked->max_per_person,
+                    'closes_at' => $locked->closes_at,
+                    'opens_at' => $locked->opens_at,
+                    'ticket_allocation' => 'sequential', // 1, 2, 3 … across online, postal and event (no instant wins)
+                    'meta' => ['wds_competition_id' => $locked->id, 'wds_slug' => $locked->slug],
+                ], endPrizes: [[
+                    'name' => $locked->title,
+                    'value_pence' => (int) ($locked->cash_alternative_pence ?? config('raffle.draws.default_prize_value_pence')),
+                ]]);
+            } catch (VerityException $e) {
+                throw new EntryException($e->getMessage());
+            }
+            $locked->update([
+                'verity_ref' => $vc->ref,
+                'verity_status' => $vc->status,
+                'published_at' => now(),
+                'status' => $locked->opens_at?->isFuture() ? 'scheduled' : 'live',
+            ]);
+
+            return $locked;
+        });
     }
 
-    public function draw(Competition $competition, array $ticketNumbers, string $entriesHash, DrawPreparation $preparation): DrawOutcome
+    /** Move the closing time later (the only change Verity allows after publish), with a public reason. */
+    public function extend(Competition $competition, \DateTimeInterface $until, string $reason): Competition
     {
-        throw new RuntimeException('Verity adapter not connected yet.');
+        try {
+            $vc = Verity::extend($this->verityCompetition($competition), $until, $reason);
+        } catch (VerityException $e) {
+            throw new EntryException($e->getMessage());
+        }
+        $competition->update(['closes_at' => $vc->closes_at]);
+
+        return $competition;
     }
 
-    public function verificationUrl(DrawOutcome $outcome): ?string
+    /**
+     * Add entries for one WDS order line / postal entry. Runs inside the caller's transaction, so a
+     * refusal from Verity rolls the whole WDS fulfilment back.
+     *
+     * @param  array{channel:string, order_line_id?:int|null, postal_entry_id?:int|null, ordered_at?:mixed, total_pence?:int|null}  $owner
+     */
+    public function addEntries(Competition $competition, Entrant $entrant, int $qty, array $owner): EntryGroup
     {
-        return $outcome->externalId && ! empty($this->config['base_url'])
-            ? rtrim($this->config['base_url'], '/').'/verify/'.$outcome->externalId
-            : null;
+        $source = self::SOURCE_FOR_CHANNEL[$owner['channel']] ?? throw new EntryException("Unknown channel {$owner['channel']}.");
+        $options = array_filter([
+            'source' => $source,
+            'host_ref' => self::hostRef($owner),
+            'ordered_at' => $owner['ordered_at'] ?? null,
+            'total_pence' => $owner['total_pence'] ?? null,
+        ], fn ($v) => $v !== null);
+        try {
+            return $source === 'postal'
+                ? Verity::addPostalEntry($competition->verity_ref, $entrant->ownerRef(), $options)
+                : Verity::addEntries($competition->verity_ref, $entrant->ownerRef(), $qty, $options);
+        } catch (VerityException $e) {
+            throw new EntryException($e->getMessage());
+        }
+    }
+
+    /** "order_line:12" / "postal:7": Verity's idempotency key, so a retried webhook allocates nothing twice. */
+    public static function hostRef(array $owner): ?string
+    {
+        return match (true) {
+            ! empty($owner['order_line_id']) => 'order_line:'.$owner['order_line_id'],
+            ! empty($owner['postal_entry_id']) => 'postal:'.$owner['postal_entry_id'],
+            default => null,
+        };
+    }
+
+    /** Take an order line's entries out of the draw (a refund). Only while the competition is open. */
+    public function withdraw(string $hostRef, string $reason): void
+    {
+        $group = EntryGroup::query()->where('host_ref', $hostRef)->first();
+        if (! $group) {
+            return; // nothing was ever entered for it
+        }
+        try {
+            Verity::withdrawEntries($group, $reason);
+        } catch (VerityException $e) {
+            throw new EntryException($e->getMessage());
+        }
+    }
+
+    /** Verity still takes entries (and withdrawals) for this competition. */
+    public function isOpen(Competition $competition): bool
+    {
+        return $competition->isPublished() && in_array($this->verityCompetition($competition)->status, ['live', 'paused', 'draft'], true);
+    }
+
+    public function verityCompetition(Competition $competition): VerityCompetition
+    {
+        if (! $competition->isPublished()) {
+            throw new EntryException("{$competition->title} isn't published on the draw engine yet.");
+        }
+
+        return VerityCompetition::query()->where('ref', $competition->verity_ref)->firstOrFail();
+    }
+
+    /** The public verification record (spec §7): everything anyone needs to re-run the draw. */
+    public function verification(Draw $draw): array
+    {
+        return Verity::verification($draw->verity_ref);
+    }
+
+    /**
+     * The certificate summary: the facts people look for, all taken from the verification record and
+     * the audit chain (nothing WDS computed itself).
+     */
+    public function certificate(Draw $draw): array
+    {
+        $record = $this->verification($draw);
+        $v = $record['verity'] ?? [];
+        $completed = collect($record['audit'] ?? [])->firstWhere('type', 'draw.completed');
+        $tsa = collect($record['close_witnesses'] ?? [])->first(fn ($w) => $w['kind'] === 'rfc3161' && $w['ok']);
+
+        return [
+            'reference' => $record['competition']['ref'] ?? $draw->verity_ref,
+            'algorithm' => $v['spec'] ?? null,
+            'ticketAllocation' => $v['ticket_allocation'] ?? null,
+            'commitment' => $v['commitment'] ?? null,
+            'revealedSeed' => $v['revealed_seed'] ?? null,
+            'entriesCount' => $v['entries_count'] ?? null,
+            'entriesHash' => $v['entries_hash'] ?? null,
+            'drandChainHash' => Drand::CHAIN_HASH,
+            'drandRound' => $v['beacon_round'] ?? null,
+            'drandRoundAt' => isset($v['beacon_round']) ? gmdate('Y-m-d\TH:i:s\Z', Drand::roundTime((int) $v['beacon_round'])) : null,
+            'drandRandomness' => $v['beacon_randomness'] ?? null,
+            'drandSignature' => $v['beacon_signature'] ?? null,
+            'drawSeed' => $v['draw_seed'] ?? null,
+            'winningTickets' => $record['winning_tickets'] ?? [],
+            'auditEvent' => $completed ? ['seq' => $completed['seq'] ?? null, 'hash' => $completed['hash'] ?? null] : null,
+            'closeTimestamp' => $tsa ? ['authority' => config('verity.tsa_url'), 'witnessedAt' => $tsa['witnessed_at'], 'token' => $tsa['token']] : null,
+            'engine' => $record['engine'] ?? null,
+            'howToVerify' => config('raffle.draws.verify_page').'/'.$draw->id,
+        ];
+    }
+
+    /**
+     * Public audit events for one competition (withheld fields nulled), for the admin trail.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function auditTrail(Competition $competition): array
+    {
+        return $competition->isPublished() ? Verity::auditEvents($competition->verity_ref) : [];
+    }
+
+    /** When a drand round is published (UTC). */
+    public static function roundTime(?int $round): ?\Illuminate\Support\Carbon
+    {
+        return $round ? \Illuminate\Support\Carbon::createFromTimestampUTC(Drand::roundTime($round)) : null;
     }
 }

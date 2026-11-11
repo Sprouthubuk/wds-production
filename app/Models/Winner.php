@@ -16,5 +16,6 @@ class Winner extends Model
 
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
     public function ticket(): BelongsTo { return $this->belongsTo(Ticket::class); }
+    public function draw(): BelongsTo { return $this->belongsTo(Draw::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
 }

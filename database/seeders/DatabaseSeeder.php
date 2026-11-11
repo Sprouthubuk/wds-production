@@ -19,7 +19,8 @@ class DatabaseSeeder extends Seeder
             'strapline' => 'Estoril Blue. ZF manual. One of an estimated 600 ever built, refreshed in the WDS Originals workshop and drawn live on Christmas Eve.',
             'category' => 'cars',
             'badge' => 'Main event',
-            'status' => 'live',
+            // A draft until an admin publishes it on Verity (Admin → Competitions → Publish), which locks the draw in.
+            'status' => 'draft',
             'images' => [
                 ['src' => '/images/e46-clubsport-34.jpg', 'alt' => 'Estoril Blue BMW E46 330Ci Clubsport in the WDS Originals workshop'],
                 ['src' => '/images/e46-clubsport-front.jpg', 'alt' => 'Clubsport front view'],

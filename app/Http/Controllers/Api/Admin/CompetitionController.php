@@ -6,13 +6,16 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CompetitionResource;
 use App\Http\Resources\Money;
 use App\Models\Competition;
+use App\Services\Draws\VerityDrawEngine;
+use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
 /**
  * Competitions are edited in plain English from Admin → Competitions, so Jason can change copy,
- * photos, prices and dates himself without touching code.
+ * photos, prices and dates himself without touching code. Publishing puts a competition on the
+ * Verity draw engine and is one way: after that the draw terms are locked.
  */
 class CompetitionController extends Controller
 {
@@ -26,9 +29,11 @@ class CompetitionController extends Controller
         return new CompetitionResource($competition);
     }
 
+
     public function store(Request $request)
     {
-        $competition = Competition::create($this->validated($request));
+        // New competitions start as drafts: they go live only through publish().
+        $competition = Competition::create(['status' => 'draft'] + $this->validated($request));
 
         return (new CompetitionResource($competition))->response()->setStatusCode(201);
     }
@@ -36,16 +41,54 @@ class CompetitionController extends Controller
     public function update(Request $request, Competition $competition)
     {
         $data = $this->validated($request, $competition);
-        if ($competition->tickets_allocated > 0) {
-            // Once tickets are sold, protect the fundamentals.
-            if (isset($data['total_tickets']) && $data['total_tickets'] < $competition->tickets_allocated) {
-                abort(422, 'Total tickets can\'t be lower than tickets already sold.');
+        if ($competition->isPublished()) {
+            // Published = locked in on Verity: the terms that are part of the draw can't change. The
+            // closing time only moves later, with a public reason (extend()). Status follows Verity.
+            foreach (self::LOCKED_AFTER_PUBLISH as $col => $label) {
+                if (array_key_exists($col, $data) && ! self::same($competition->{$col}, $data[$col])) {
+                    abort(422, "{$label} can't change after publishing: the draw is locked in.".($col === 'closes_at' ? ' Use "Extend closing time" to move it later.' : ''));
+                }
+                unset($data[$col]);
             }
-            unset($data['ticket_price_pence']);
+            unset($data['status']);
+        } elseif (isset($data['status']) && $data['status'] !== 'draft') {
+            abort(422, 'Use Publish to put a competition live: publishing locks the draw in.');
         }
         $competition->update($data);
 
         return new CompetitionResource($competition);
+    }
+
+    /** One way: publishes on Verity, fixes the terms and the drand round. */
+    public function publish(Competition $competition, VerityDrawEngine $verity)
+    {
+        $competition = $verity->publish($competition);
+
+        return (new CompetitionResource($competition))->additional(['message' => "Published as {$competition->verity_ref}. The draw is locked in: it runs on the drand round after closing."]);
+    }
+
+    public function extend(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $d = $request->validate(['closesAt' => ['required', 'date', 'after:now'], 'reason' => ['required', 'string', 'min:10', 'max:300']]);
+        // A datetime-local value from the admin form is UK time; a full ISO string keeps its own offset.
+        $competition = $verity->extend($competition, Carbon::parse($d['closesAt'], 'Europe/London'), $d['reason']);
+
+        return (new CompetitionResource($competition))->additional(['message' => 'Closing time extended. The reason is on the public audit record.']);
+    }
+
+    /** Columns that are part of the published draw terms. */
+    private const LOCKED_AFTER_PUBLISH = [
+        'total_tickets' => 'The number of tickets', 'ticket_price_pence' => 'The ticket price', 'max_per_person' => 'The maximum per person',
+        'closes_at' => 'The closing time', 'opens_at' => 'The opening time', 'title' => 'The title',
+    ];
+
+    private static function same(mixed $current, mixed $new): bool
+    {
+        if ($current instanceof \DateTimeInterface || $new instanceof \DateTimeInterface) {
+            return $current && $new && Carbon::parse($current)->equalTo(Carbon::parse($new));
+        }
+
+        return (string) $current === (string) $new;
     }
 
     public function uploadImage(Request $request)

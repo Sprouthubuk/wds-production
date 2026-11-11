@@ -51,7 +51,7 @@ class MeController extends Controller
     public function entries(Request $request)
     {
         $user = $request->user();
-        $tickets = Ticket::where(fn ($q) => $q->where('user_id', $user->id)->orWhere('email', $user->email))
+        $tickets = Ticket::active()->where(fn ($q) => $q->where('user_id', $user->id)->orWhere('email', $user->email))
             ->orderBy('number')->get()->groupBy('competition_id');
         $competitions = Competition::whereIn('id', $tickets->keys())->get()->keyBy('id');
         $wonTicketIds = \App\Models\Winner::whereIn('ticket_id', $tickets->flatten()->pluck('id'))->pluck('ticket_id')->all();

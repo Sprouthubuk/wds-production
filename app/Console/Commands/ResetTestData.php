@@ -15,6 +15,7 @@ use App\Models\Winner;
 use Illuminate\Console\Command;
 use Illuminate\Console\ConfirmableTrait;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 /**
  * Before launch: delete every test order, ticket, postal entry, draw and draw winner so the
@@ -25,6 +26,9 @@ use Illuminate\Support\Facades\DB;
  * real money may have changed hands, so a person has to look at them first.
  *
  * Keeps users, competitions, promotions, settings and winners added by hand (no draw or ticket).
+ *
+ * Also refuses once anything is on the Verity draw engine: its records can't be deleted, so the
+ * reset has to happen before the first publish (or on a fresh database).
  */
 class ResetTestData extends Command
 {
@@ -36,6 +40,16 @@ class ResetTestData extends Command
 
     public function handle(): int
     {
+        // Verity's records can't be deleted (append-only audit chain, frozen entries: database triggers),
+        // and the live database must start with none (forge/README.md, Verity go-live). So this only runs
+        // before anything has been published on Verity.
+        if ($engine = $this->verityRows()) {
+            $this->error('Refusing: the Verity draw engine already holds data ('.implode(', ', $engine).').');
+            $this->line('Its records are permanent by design. Start from an empty database instead (forge/README.md, section 4). Nothing was deleted.');
+
+            return self::FAILURE;
+        }
+
         $real = Order::query()
             ->where(fn ($q) => $q->whereNotNull('paid_at')->orWhereIn('status', ['paid', 'refunded']))
             ->where(fn ($q) => $q->whereNull('payment_provider')->orWhere('payment_provider', '!=', 'fake'))
@@ -85,6 +99,20 @@ class ResetTestData extends Command
         $this->info('Test data cleared. Competitions, users, promotions, settings and hand-added winners are untouched.');
 
         return self::SUCCESS;
+    }
+
+    /** @return list<string> non-empty Verity tables, e.g. "verity_competitions: 1" */
+    private function verityRows(): array
+    {
+        $out = [];
+        // Not verity_audit_events: the hourly verity:check records check.run there with no competition.
+        foreach (['verity_competitions', 'verity_entry_groups'] as $t) {
+            if (Schema::hasTable($t) && ($n = DB::table($t)->count()) > 0) {
+                $out[] = "{$t}: {$n}";
+            }
+        }
+
+        return $out;
     }
 
     private function drawWinners()

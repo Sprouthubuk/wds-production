@@ -11,7 +11,7 @@ return new class extends Migration
         Schema::create('draws', function (Blueprint $table) {
             $table->id();
             $table->foreignId('competition_id')->constrained();
-            $table->string('engine');                       // e.g. verity, commit-reveal
+            $table->string('engine');                       // verity
             $table->enum('status', ['prepared', 'drawn', 'published', 'void'])->default('prepared');
             $table->unsignedInteger('entries_count');
             $table->string('entries_hash', 128);            // hash of the locked ticket list

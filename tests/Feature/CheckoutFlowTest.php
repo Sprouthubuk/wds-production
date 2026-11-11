@@ -9,18 +9,25 @@ use App\Services\CheckoutService;
 use App\Services\Payments\PaymentResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
+use Tests\Concerns\VerityFakes;
 use Tests\TestCase;
 
 class CheckoutFlowTest extends TestCase
 {
-    use RefreshDatabase;
+    use RefreshDatabase, VerityFakes;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->fakeVerity();
+    }
 
     private function competition(array $overrides = []): Competition
     {
-        return Competition::create(array_merge([
-            'slug' => 'test', 'title' => 'Test car', 'category' => 'cars', 'status' => 'live',
+        return $this->publishedCompetition(array_merge([
+            'slug' => 'test', 'title' => 'Test car', 'category' => 'cars',
             'ticket_price_pence' => 1495, 'bundles' => [['qty' => 3, 'price_pence' => 4000], ['qty' => 10, 'price_pence' => 12500]],
-            'total_tickets' => 20, 'max_per_person' => 15, 'draw_at' => now()->addWeek(), 'postal_entry_enabled' => true,
+            'total_tickets' => 20, 'max_per_person' => 15, 'closes_at' => now()->addDays(6), 'draw_at' => now()->addWeek(), 'postal_entry_enabled' => true,
         ], $overrides));
     }
 

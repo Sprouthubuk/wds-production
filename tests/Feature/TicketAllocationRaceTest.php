@@ -2,13 +2,15 @@
 
 namespace Tests\Feature;
 
+use App\Models\Competition;
+use App\Services\Draws\VerityDrawEngine;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\Process\Process;
 use Tests\TestCase;
 
 /**
- * Real race: two separate PHP processes allocate tickets on the same competition, released at the
+ * Real race: two separate PHP processes allocate tickets (through Verity) on the same competition, released at the
  * same moment, against one shared database (a SQLite file locally; MySQL 8.4 in CI when
  * DB_RACE_DATABASE is set). In-memory SQLite can't be shared between processes, so this test
  * builds its own database instead of using RefreshDatabase.
@@ -69,12 +71,20 @@ class TicketAllocationRaceTest extends TestCase
     public function test_two_processes_never_get_the_same_number(): void
     {
         $race = DB::connection('race');
-        $competitionId = $race->table('competitions')->insertGetId([
-            'slug' => 'race', 'title' => 'Race car', 'category' => 'cars', 'status' => 'live',
-            'ticket_price_pence' => 1495, 'bundles' => json_encode([]), 'total_tickets' => 10_000, 'max_per_person' => 10_000,
-            'draw_at' => now()->addWeek(), 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
-            'created_at' => now(), 'updated_at' => now(),
-        ]);
+        // Published on Verity in the shared database, as the racers will see it.
+        $default = config('database.default');
+        config(['database.default' => 'race']);
+        try {
+            $competition = app(VerityDrawEngine::class)->publish(Competition::create([
+                'slug' => 'race', 'title' => 'Race car', 'category' => 'cars', 'status' => 'draft',
+                'ticket_price_pence' => 1495, 'bundles' => [], 'total_tickets' => 10_000, 'max_per_person' => 10_000,
+                'closes_at' => now()->addDays(6), 'draw_at' => now()->addWeek(), 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
+            ]));
+        } finally {
+            config(['database.default' => $default]);
+        }
+        $competitionId = $competition->id;
+        $verityId = (int) $race->table('verity_competitions')->where('ref', $competition->verity_ref)->value('id');
 
         $startAt = microtime(true) + 6;
         $processes = [];
@@ -112,6 +122,15 @@ class TicketAllocationRaceTest extends TestCase
         $this->assertSame($numbers, array_values(array_unique($numbers)), 'No duplicate numbers');
         $this->assertSame(range(1, $expected), $numbers, 'Numbers run 1..N with no gaps');
         $this->assertSame($expected, (int) $race->table('competitions')->where('id', $competitionId)->value('tickets_allocated'), 'tickets_allocated matches the rows');
+
+        // Verity holds exactly the same entries: one per WDS ticket, same numbers, nothing extra, nothing missing.
+        $verityNumbers = $race->table('verity_entries')->where('competition_id', $verityId)->orderBy('number')->pluck('number')->map(fn ($n) => (int) $n)->all();
+        $this->assertSame($numbers, $verityNumbers, "Verity's entries match WDS's tickets");
+        $this->assertSame($expected, (int) $race->table('verity_competitions')->where('id', $verityId)->value('tickets_sold'));
+        $this->assertSame($expected, $race->table('tickets')->join('verity_entries', 'verity_entries.id', '=', 'tickets.verity_entry_id')
+            ->whereColumn('verity_entries.number', 'tickets.number')->count(), 'Each ticket points at the Verity entry with its number');
+        $this->assertSame(self::WORKERS * self::ITERATIONS, $race->table('verity_entry_groups')->where('competition_id', $verityId)->count());
+        $this->assertSame(self::WORKERS * self::ITERATIONS, $race->table('verity_audit_events')->where('type', 'order.paid')->count(), 'One order.paid on the audit chain per allocation');
 
         foreach ($results as $w => $r) {
             $mine = $race->table('tickets')->where('competition_id', $competitionId)->where('name', "Racer {$w}")
