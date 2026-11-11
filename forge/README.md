@@ -23,7 +23,7 @@ DB_DATABASE=wds
 DB_USERNAME=…  DB_PASSWORD=…
 QUEUE_CONNECTION=database
 PAYMENT_DRIVER=fake          # cashflows once the gateway is finished
-DRAW_ENGINE=verity           # required in production (section 5); commit-reveal is refused
+VERITY_BEACON=drand          # required in production (section 5); local randomness is refused
 SEED_ADMIN_EMAIL=…  SEED_ADMIN_PASSWORD=…
 MAIL_… (Postmark/SES)
 ```
@@ -143,7 +143,6 @@ CASHFLOWS_API_KEY=
 CASHFLOWS_BASE_URL=
 CASHFLOWS_WEBHOOK_SECRET=
 
-DRAW_ENGINE=verity
 VERITY_BEACON=drand
 VERITY_SEED_KEY=<from verity:seal-seeds --new-key, section 5>
 VERITY_OWNER_PEPPER=<64 hex characters, section 5>
@@ -167,12 +166,18 @@ php8.5 artisan db:show                   # says MySQL 8.4 and database wds
 Then section 5 (Verity keys, `verity:check`). Never copy a database from the old server, staging or a laptop.
 
 **6. Smoke tests**
+
+The live database must start with **no Verity data**, and Verity's records can't be deleted. So on
+production, don't publish a competition or buy a ticket as a test: do purchase and draw tests on a
+staging site (its own server or database), and only read-only checks here.
 - [ ] `https://<api-domain>/up` returns 200 and `https://<api-domain>/api/competitions` returns JSON.
-- [ ] The website loads, shows the competitions, and a test purchase with the fake gateway ends at "You're in".
-- [ ] `/admin` signs in with the seeded admin. Change the password.
-- [ ] A queued email arrives (the order confirmation from the test purchase).
-- [ ] `php8.5 artisan schedule:list` lists `orders:expire` (and the Verity commands once installed).
-- [ ] `php8.5 artisan wds:reset-test-data` clears the smoke-test order (it refuses if any order went through a real gateway).
+- [ ] The website loads (the seeded competition is a draft, so the list is empty until it's published).
+- [ ] `/admin` signs in with the seeded admin. Change the password. The competition opens in the editor.
+- [ ] Mail works: a password reset to yourself arrives. (The Verity alert test runs on staging, section 5.)
+- [ ] `php8.5 artisan schedule:list` lists `orders:expire` and the six Verity commands.
+- [ ] `php8.5 artisan verity:check --strict` is all OK (section 5).
+- [ ] On staging: publish a test competition, buy online, log a postal entry, let it close and draw, publish
+      the result, and open `/verify/{id}`: every check shows as passed.
 
 **7. Switch over and remove the old server**
 - [ ] Point the domains (DNS) at the new server and issue the certificates.
@@ -203,7 +208,6 @@ php8.5 artisan verity:seal-seeds --new-key              # prints VERITY_SEED_KEY
 php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"       # → VERITY_OWNER_PEPPER (never change it)
 ```
 ```
-DRAW_ENGINE=verity
 VERITY_BEACON=drand
 VERITY_SEED_KEY=<from above>
 VERITY_OWNER_PEPPER=<from above>
@@ -217,6 +221,9 @@ or a trustee): they receive the daily audit-chain anchor and every close/redraw 
 history would contradict what they already hold. Leave `VERITY_BEACON_FALLBACK` unset and
 `VERITY_DRAND_CLOCK_CHECK` on.
 
+The website serves the browser verifier from `web/public/vendor/verity/` (a copy of the package's files,
+checked by the test suite), so nothing extra is published on the API site.
+
 **Apply and check**
 ```
 php8.5 artisan config:cache
@@ -229,7 +236,7 @@ php8.5 artisan schedule:list | grep verity   # the six Verity entries
 ```
 
 **Go-live checks** (from the package's INTEGRATION.md)
-- [ ] `APP_ENV=production`, `APP_DEBUG=false`, `DRAW_ENGINE=verity` (the site refuses to serve otherwise).
+- [ ] `APP_ENV=production`, `APP_DEBUG=false`, `VERITY_BEACON=drand` (the site refuses to serve otherwise).
 - [ ] **The live database starts with no Verity data**: every `verity_*` table is empty before the first
       real competition is published. Never copy a database from staging, demos or tests; promote code, not
       data. `verity:check` FAILs (`local_draws`) on any draw made on local randomness.

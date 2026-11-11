@@ -1,9 +1,10 @@
 # Verity integration plan (WDS Competitions)
 
-Status: **waiting for `sprouthub/verity-engine` v3.0.2** (Laravel 13 support). Everything below that
-needs the package is a plan; nothing here is built yet except where marked *done*.
+Status: **built on PR #2 with `sprouthub/verity-engine` v3.0.2** (sections 1-9 below), except the
+admin forfeit / redraw controls (Verity's R2 API is there; WDS mirrors its events). See `VERITY.md` for
+how the pieces fit together.
 
-Package facts come from v3.0.1 (`INTEGRATION.md`, `src/`), read but not installed.
+Package facts were first read from v3.0.1 and confirmed against the installed v3.0.2.
 
 ## Decisions (agreed)
 
@@ -16,7 +17,7 @@ Package facts come from v3.0.1 (`INTEGRATION.md`, `src/`), read but not installe
 | Postal deadline | `competitions.postal_closes_at`, default three days before `closes_at`; later envelopes are rejected. Shown on the competition, Free Postal Entry and FAQ pages. Real dates are placeholders until Jason confirms. *(done)* |
 | Draw flow | Verity's lifecycle: round fixed at publish, close freezes entries, `verity:process-due` draws. |
 | Void | Verity's rules: only an empty competition is voided. After close, only R2 redraw or forfeit. |
-| Engines | `DRAW_ENGINE=verity` only in production. *(done: web refuses to boot, draw engine refuses to resolve)* |
+| Engines | Verity only. The commit-reveal engine and `DRAW_ENGINE` are removed. Production refuses a non-drand beacon (WDS at web boot, Verity at close/draw/redraw). *(done)* |
 | Instant wins | Not in phase 1 (sequential + instant wins is refused by the package). |
 
 ## 1. TicketAllocator becomes a thin wrapper
@@ -113,8 +114,8 @@ WDS change (`OrderController::markRefunded`, `void_tickets = true`):
 - `DrawService::publish` stays: it's the **reveal** for the live show. Until then the certificate is a 404
   and `VERITY_ROUTES=false`, so nothing outside the admin shows the result.
 - Routes `POST /admin/competitions/{id}/draw`, `/draws/{id}/run`, `/draws/{id}/void` are removed.
-- `CommitRevealDrawEngine` stays for local and tests only. It keeps its seed in the database between
-  prepare and draw, which is exactly the risk Verity removes.
+- `CommitRevealDrawEngine` is removed: nothing needs it (local development uses Verity too). It kept its
+  seed in the database between prepare and draw, which is exactly the risk Verity removes.
 
 **Timing**: Verity draws on the first drand round at least 60 s after `closes_at`. The Instagram live show
 becomes a reveal of a result that already exists (and is verifiable), not a button press. Schedule the

@@ -50,7 +50,7 @@ Locally `PAYMENT_DRIVER=fake` sends checkout to a signed test URL that marks the
 See `forge/README.md` (server `wds-production`: one API site + one website site from this repo).
 
 ## Still to do before launch
-- [ ] **Verity** — connect via `VERITY.md` and set `DRAW_ENGINE=verity`.
+- [ ] **Verity** — installed (see `VERITY.md`). On the server: keys, `verity:check`, a test alert (`forge/README.md` section 5).
 - [ ] **Payments** — complete `CashflowsGateway` (or chosen provider) from their integration guide; set `PAYMENT_DRIVER`.
 - [ ] Jason to confirm: free-entry postal address, closing time, cash alternative, max per person (50 set), unsold-ticket and refund policy, Mark Robinson's consent to be shown.
 - [ ] Legal review of Terms / Privacy / Responsible play copy.
