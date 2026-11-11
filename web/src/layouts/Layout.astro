@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import '../styles/motion.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getSettings } from '../lib/api';
@@ -19,7 +20,8 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 <html lang="en-GB">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <script is:inline>document.documentElement.classList.add('js');setTimeout(function(){if(!document.documentElement.classList.contains('motion-on'))document.documentElement.classList.remove('js')},2500);</script>
     <title>{fullTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={canonical} />
@@ -54,6 +56,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </script>
     <script>
       import { startCountdowns } from '../lib/countdown';
+      import { initMotion } from '../lib/motion';
+      initMotion();
+      document.documentElement.classList.add('motion-on');
       startCountdowns();
     </script>
   </body>

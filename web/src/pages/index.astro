@@ -16,6 +16,7 @@ const ticker = featured
   : ['Free postal entry on every competition', `Drawn live on Instagram @${settings.drawsInstagram}`, '18+ UK only'];
 const specs = featured?.specs ?? [];
 const spec = (label: string) => specs.find((s) => s.label.toLowerCase() === label.toLowerCase())?.value;
+const drawTime = featured ? new Date(featured.drawAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '';
 const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', timeZone: 'Europe/London' }).replace('/', '.') : '';
 ---
 <Layout title="Home">
@@ -25,10 +26,10 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
   {featured ? (
     <section class="hero">
-      <img src={featured.images[0]?.src} alt={featured.images[0]?.alt} class="hero-img" fetchpriority="high" />
+      <img src={featured.images[0]?.src} alt={featured.images[0]?.alt} class="hero-img" fetchpriority="high" decoding="async" />
       <div class="hero-shade"></div>
       <div class="container hero-inner">
-        <div class="hero-copy">
+        <div class="hero-copy hero-anim">
           <span class="chip chip--line hero-chip"><span class="dot"></span>Live now · Competition 01</span>
           <div class="stack" style="gap: 6px">
             <span class="kicker">Win this BMW</span>
@@ -37,7 +38,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
           <p class="lead hero-lead">{featured.strapline}</p>
           <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>Free postal entry</span><span>Drawn live on Instagram</span></div>
         </div>
-        <div class="hero-card">
+        <div class="hero-card hero-anim-card">
           <EntryPanel competition={featured} settings={settings} variant="hero" />
         </div>
       </div>
@@ -45,7 +46,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   ) : null}
 
   <section class="usp">
-    <div class="container usp-grid">
+    <div class="container usp-grid" data-reveal-group>
       <div><b>01</b><span><strong>Better odds</strong><br />Low ticket numbers, always</span></div>
       <div><b>02</b><span><strong>Instant numbers</strong><br />Emailed at checkout</span></div>
       <div><b>03</b><span><strong>Drawn live</strong><br />Instagram @{settings.drawsInstagram}</span></div>
@@ -56,12 +57,12 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   {featured ? (
     <section class="section">
       <div class="container">
-        <div class="section-head">
+        <div class="section-head" data-reveal>
           <div class="stack"><span class="eyebrow">The prize</span><h2 class="display display--m">Rare. Refreshed.<br />Ready to drive.</h2></div>
           <a href={`/competitions/${featured.slug}`} class="btn btn--outline">Full spec &amp; photos →</a>
         </div>
-        <div class="bento">
-          <div class="b-main zoom"><img src={featured.images[1]?.src ?? featured.images[0]?.src} alt={featured.images[1]?.alt ?? ''} loading="lazy" /></div>
+        <div class="bento" data-reveal-group>
+          <div class="b-main zoom"><img src={featured.images[1]?.src ?? featured.images[0]?.src} alt={featured.images[1]?.alt ?? ''} loading="lazy" data-fade /></div>
           {spec('Built') ? <div class="b-tile b-light"><span class="label">Production</span><b class="b-big">{spec('Built')}</b><span class="small">Clubsports estimated ever made</span></div> : null}
           {spec('Gearbox') ? <div class="b-tile"><span class="label">Gearbox</span><b class="b-mid">{spec('Gearbox')}</b></div> : null}
           {spec('Paint') ? <div class="b-tile"><span class="label">Paint</span><b class="b-mid">{spec('Paint')}</b></div> : null}
@@ -78,11 +79,11 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
   <section class="section section--alt">
     <div class="container">
-      <div class="section-head">
+      <div class="section-head" data-reveal>
         <div class="stack"><span class="eyebrow">Live competitions</span><h2 class="display display--m">Pick your prize</h2></div>
         <a href="/competitions" class="link-caps">View all competitions →</a>
       </div>
-      <div class="grid grid--cards">
+      <div class="grid grid--cards cards" data-reveal-group>
         {competitions.map((c) => <CompetitionCard competition={c} />)}
         {Array.from({ length: placeholders }, (_, i) => <ComingSoonCard n={competitions.length + i + 1} />)}
       </div>
@@ -91,8 +92,8 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
   <section class="section">
     <div class="container">
-      <div class="center-head"><span class="eyebrow">Two ways to enter</span><h2 class="display display--m">Same draw. Same odds.</h2></div>
-      <div class="grid grid--2">
+      <div class="center-head" data-reveal><span class="eyebrow">Two ways to enter</span><h2 class="display display--m">Same draw. Same odds.</h2></div>
+      <div class="grid grid--2" data-reveal-group>
         <div class="way">
           <div class="way-top"><span class="eyebrow">Option A</span></div>
           <h3 class="display display--s">Enter online</h3>
@@ -111,23 +112,23 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
   {featured ? (
     <section class="section section--light">
-      <div class="container split">
+      <div class="container split" data-reveal-group>
         <div class="stack" style="gap: 8px; flex: 1 1 520px">
           <span class="eyebrow" style="color:#555">Christmas Eve live draw</span>
           <span class="date">{drawDay}</span>
           <p class="body" style="color:#333; margin-top: 16px">The smaller prizes go first, then the Clubsport. Streamed live on Instagram @{settings.drawsInstagram}. Turn on notifications so you don't miss your number.</p>
         </div>
         <div class="stack" style="flex: 1 1 380px">
-          <div class="runorder"><span>Supporting prize draws</span><span>[TIME]</span></div>
-          <div class="runorder last"><span>{featured.title}</span><span>[TIME]</span></div>
-          <a href={`https://instagram.com/${settings.drawsInstagram}`} class="btn btn--dark btn--block" style="margin-top: 24px">Follow @{settings.drawsInstagram} for the live draw</a>
+          <div class="runorder"><span>Supporting prize draws</span><span>Before</span></div>
+          <div class="runorder last"><span>{featured.title}</span><span>{drawTime}</span></div>
+          <a href={`https://instagram.com/${settings.drawsInstagram}`} class="btn btn--dark btn--block" style="margin-top: 24px">Follow @{settings.drawsInstagram}</a>
         </div>
       </div>
     </section>
   ) : null}
 
   <section class="section">
-    <div class="container split">
+    <div class="container split" data-reveal-group>
       <div class="stack" style="gap: 24px; flex: 1 1 520px">
         <span class="eyebrow">From the WDS Originals workshop</span>
         <h2 class="display display--l">Dream it.<br />Build it.<br />Drive it.<br /><span class="inv">Win it.</span></h2>
@@ -138,8 +139,8 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
         <div class="stack" style="gap: 16px; flex: 1 1 400px">
           <span class="eyebrow">Latest winner</span>
           <div class="card">
-            {latestWinner.image ? <img src={latestWinner.image.replace('.jpg', '-720.jpg')} alt={`${latestWinner.name} with the ${latestWinner.prize}`} class="winner-img" loading="lazy" /> : <div class="ph">Winner photo</div>}
-            <div class="card__body row-between"><div class="stack" style="gap: 6px"><span class="h3">{latestWinner.name}</span><span class="small muted">Won the {latestWinner.prize}</span></div><a href="/winners" class="link-caps small">All winners →</a></div>
+            {latestWinner.image ? <img src={latestWinner.image.replace('.jpg', '-720.jpg')} alt={`${latestWinner.name} with the ${latestWinner.prize}`} class="winner-img" loading="lazy" data-fade /> : <div class="ph">Winner photo</div>}
+            <div class="card__body row-between winner-body"><div class="stack" style="gap: 6px"><span class="h3">{latestWinner.name}</span><span class="small muted">Won the {latestWinner.prize}</span></div><a href="/winners" class="link-caps small">All winners →</a></div>
           </div>
         </div>
       ) : null}
@@ -147,7 +148,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   </section>
 
   <section class="section section--tight" id="notify">
-    <div class="container split" style="align-items: center">
+    <div class="container split" style="align-items: center" data-reveal>
       <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">Get first access</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
       <form class="notify" data-notify style="flex: 1 1 460px">
         <label for="nl-email" class="sr-only">Email address</label>
@@ -171,6 +172,8 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
 <style>
   .ticker { overflow: hidden; border-bottom: 1px solid var(--line); background: var(--bg-2); }
+  .ticker { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .ticker:hover .track { animation-play-state: paused; }
   .track { display: flex; width: max-content; padding: 14px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap; animation: marquee 40s linear infinite; }
   .track span { padding: 0 28px; display: flex; align-items: center; gap: 28px; }
   .track i { width: 6px; height: 6px; background: #fff; transform: rotate(45deg); }
@@ -178,7 +181,12 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
 
   .hero { position: relative; border-bottom: 1px solid var(--line); overflow: hidden; }
-  .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; }
+  .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; animation: settle 2.6s var(--ease) both, fade 1.2s ease both; }
+  .hero-anim > * { animation: rise 1.1s var(--ease) both; }
+  .hero-anim > :nth-child(2) { animation-delay: .08s; }
+  .hero-anim > :nth-child(3) { animation-delay: .16s; }
+  .hero-anim > :nth-child(4) { animation-delay: .24s; }
+  .hero-anim-card { animation: rise 1.2s var(--ease) .3s both; }
   .hero-shade { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.92) 0%, rgba(0,0,0,.7) 38%, rgba(0,0,0,.15) 70%, rgba(0,0,0,.35) 100%), linear-gradient(0deg, #000 0%, rgba(0,0,0,0) 30%); }
   .hero-inner { position: relative; min-height: 700px; padding-top: 96px; padding-bottom: 72px; display: flex; flex-wrap: wrap; gap: 48px; align-items: flex-end; }
   .hero-copy { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 24px; }
@@ -198,20 +206,22 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   .usp-grid span { font-size: 13px; line-height: 1.45; color: var(--muted-2); }
   .usp-grid strong { color: #fff; text-transform: uppercase; letter-spacing: 0.06em; }
 
-  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-auto-rows: 210px; gap: 12px; }
+  .bento { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: repeat(2, 210px); grid-auto-rows: auto; gap: 12px; }
   .b-main { grid-column: span 2; grid-row: span 2; }
   .b-main img, .b-video img { width: 100%; height: 100%; object-fit: cover; }
-  .b-tile { border: 1px solid var(--line-2); padding: 24px; display: flex; flex-direction: column; justify-content: space-between; }
+  .b-tile { border: 1px solid var(--line-2); padding: 24px; display: flex; flex-direction: column; justify-content: space-between; gap: 12px; min-width: 0; transition: border-color .5s var(--ease); }
+  .b-tile:hover { border-color: #fff; }
   .b-light { background: #fff; color: #000; border-color: #fff; }
   .b-light .label { color: #000; }
   .b-big { font-size: 56px; line-height: .9; letter-spacing: -0.03em; }
-  .b-mid { font-size: 34px; line-height: .95; text-transform: uppercase; }
+  .b-mid { font-size: 34px; line-height: .95; text-transform: uppercase; overflow-wrap: break-word; }
   .b-video { text-decoration: none; }
   .b-play { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: flex; flex-direction: column; justify-content: flex-end; gap: 10px; padding: 22px; font-size: 14px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
-  .play { width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; }
+  .play { width: 52px; height: 52px; border-radius: 50%; background: #fff; color: #000; display: flex; align-items: center; justify-content: center; transition: transform .6s var(--ease); }
+  .b-video:hover .play { transform: scale(1.12); }
   .b-wide { grid-column: 1 / -1; border: 1px solid var(--line-2); padding: 24px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: end; }
-  .b-wide b { display: block; margin-top: 6px; font-size: 18px; text-transform: uppercase; }
-  @media (max-width: 900px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: 170px; } .b-wide { grid-template-columns: minmax(0, 1fr); } .b-big { font-size: 40px; } .b-mid { font-size: 24px; } }
+  .b-wide b { display: block; margin-top: 6px; font-size: 18px; text-transform: uppercase; overflow-wrap: break-word; }
+  @media (max-width: 900px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: auto; } .bento > :not(.b-wide) { min-height: 168px; } .b-main { aspect-ratio: 4 / 3; min-height: 0 !important; } .b-tile { padding: 18px; } .b-wide { grid-template-columns: minmax(0, 1fr); } .b-big { font-size: 40px; } .b-mid { font-size: 24px; } }
 
   .center-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin-bottom: 40px; }
   .way { border: 1px solid #fff; padding: 40px; display: flex; flex-direction: column; gap: 22px; }
@@ -229,6 +239,28 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   .inv { display: inline-block; background: #fff; color: #000; padding: 4px 10px 0; margin-top: 6px; line-height: .95; }
   .winner-img { width: 100%; height: 340px; object-fit: cover; object-position: 50% 62%; }
   .row-between { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  .way { transition: background-color .6s var(--ease); }
+  .way:hover { background: #070707; }
+  @media (max-width: 1000px) {
+    .hero-card { flex: 1 1 100%; max-width: 560px; }
+    .hero-inner { min-height: 0; gap: 32px; }
+  }
+  @media (max-width: 600px) {
+    .usp-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .usp-grid > div { padding: 20px 4px; flex-direction: column; align-items: flex-start; gap: 8px; }
+    .usp-grid > div + div { border-left: 0; border-top: 0; }
+    .usp-grid > div:nth-child(even) { padding-left: 16px; border-left: 1px solid var(--line); }
+    .usp-grid > div:nth-child(n+3) { border-top: 1px solid var(--line); }
+    .usp-grid b { font-size: 28px; }
+    .way { padding: 26px 22px; }
+    .split { gap: 40px; }
+    .winner-img { height: 300px; }
+    .winner-body { flex-direction: column; align-items: flex-start; }
+    .kicker { font-size: 16px; letter-spacing: .26em; }
+    .hero-facts { gap: 8px 18px; font-size: 12px; }
+    .notify .btn { flex: 1 1 100%; }
+    .date { font-size: 34vw; }
+  }
 
   .notify { display: flex; flex-wrap: wrap; gap: 8px; }
   .notify input { flex: 1 1 260px; min-width: 0; min-height: 56px; padding: 0 18px; background: #0d0d0d; border: 1px solid var(--line-3); color: #fff; font-size: 16px; }
@@ -240,7 +272,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   .sb-text .small { text-transform: none; }
   .sb-btns { flex: 0 1 420px; }
   .sb-btns .btn { min-height: 48px; font-size: 12px; padding: 0 10px; }
-  @media (max-width: 600px) { .sb-img, .sb-text { display: none; } .sb-btns { flex: 1 1 100%; } .hero-inner { min-height: 0; padding-top: 48px; } .hero-card { padding: 18px; } .usp-grid > div + div { border-left: 0; border-top: 1px solid var(--line); } }
+  @media (max-width: 600px) { .sb-img, .sb-text { display: none; } .sb-btns { flex: 1 1 100%; } .hero-inner { padding-top: 40px; padding-bottom: 40px; } .hero-card { padding: 16px; } .hero-shade { background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.75) 45%, #000 100%); } }
 </style>
 
 <script>

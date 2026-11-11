@@ -2,7 +2,7 @@
 interface Props { n: number }
 const { n } = Astro.props;
 ---
-<div class="card card--dashed">
+<div class="card card--dashed soon">
   <div class="ph"><span class="big">{String(n).padStart(2, '0')}</span></div>
   <div class="card__body">
     <h3 class="h3">Prize reveal soon</h3>
@@ -13,4 +13,11 @@ const { n } = Astro.props;
 <style>
   .ph { flex-direction: column; gap: 10px; }
   .big { font-size: 48px; font-weight: 700; color: #3a3a3a; letter-spacing: 0; }
+  .ph { background: repeating-linear-gradient(135deg, #0b0b0b 0 14px, #0e0e0e 14px 28px); }
+  @media (max-width: 700px) {
+    .soon { flex-direction: row; }
+    .soon .ph { aspect-ratio: auto; width: 96px; flex: 0 0 96px; }
+    .big { font-size: 30px; }
+    .soon :global(.card__body) { gap: 8px; }
+  }
 </style>

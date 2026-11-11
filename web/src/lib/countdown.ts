@@ -19,7 +19,11 @@ export function startCountdowns(): void {
       const s = Math.floor(diff / 1000);
       const parts: Record<string, string> = { d: pad(d), h: pad(h), m: pad(m), s: pad(s) };
       el.querySelectorAll<HTMLElement>('[data-unit]').forEach((u) => {
-        u.textContent = parts[u.dataset.unit || ''] ?? '';
+        const v = parts[u.dataset.unit || ''] ?? '';
+        if (u.textContent !== v) {
+          u.textContent = v;
+          u.classList.remove('roll'); void u.offsetWidth; u.classList.add('roll');
+        }
       });
       if ('countdownText' in el.dataset) el.textContent = `${d}d ${pad(h)}h ${pad(m)}m ${pad(s)}s`;
     }

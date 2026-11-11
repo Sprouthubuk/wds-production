@@ -8,11 +8,13 @@ const nav = [
   { key: 'faqs', label: 'FAQs', href: '/faqs' },
 ];
 ---
-<div class="announce">Christmas Eve live draw — 24 December · <a href="/free-postal-entry">Free postal entry on every competition</a></div>
+<div class="announce">
+  <span class="long">Christmas Eve live draw — 24 December · </span><a href="/free-postal-entry">Free postal entry on every competition</a>
+</div>
 <header class="site-header">
   <div class="container bar">
     <a href="/" class="logo" aria-label="WDS Competitions home"><img src="/images/wds-logo.png" alt="WDS Competitions" width="180" height="25" /></a>
-    <nav aria-label="Main" class="nav" id="site-nav">
+    <nav aria-label="Main" class="nav">
       {nav.map((n) => (
         <a href={n.href} aria-current={active === n.key ? 'page' : undefined}>{n.label}</a>
       ))}
@@ -26,45 +28,96 @@ const nav = [
         <span class="count" data-basket-count hidden>0</span>
       </a>
       <a href="/competitions" class="btn enter">Enter now</a>
-      <button class="icon menu" aria-label="Menu" aria-controls="site-nav" aria-expanded="false" data-menu>
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16"></path></svg>
+      <button class="icon menu" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false" data-menu>
+        <span class="burger" aria-hidden="true"><i></i><i></i></span>
       </button>
     </div>
   </div>
 </header>
 
+<div class="mmenu" id="mobile-menu" data-mmenu aria-hidden="true">
+  <nav aria-label="Mobile" class="mm-nav">
+    {nav.map((n, i) => (
+      <a href={n.href} style={`--i:${i}`} aria-current={active === n.key ? 'page' : undefined}><span class="mm-n">0{i + 1}</span>{n.label}</a>
+    ))}
+  </nav>
+  <div class="mm-foot" style={`--i:${nav.length}`}>
+    <a href="/competitions" class="btn btn--block btn--lg">Enter now</a>
+    <div class="mm-links"><a href="/account">My account</a><a href="/live-draws">Live draws</a><a href="/how-it-works">How it works</a><a href="/contact">Contact</a></div>
+  </div>
+</div>
+
 <style>
   .announce { background: #fff; color: #000; text-align: center; padding: 10px 16px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .announce a { color: #000; }
-  .site-header { border-bottom: 1px solid var(--line); background: #000; position: relative; z-index: 30; }
-  .bar { display: flex; align-items: center; gap: 40px; padding-top: 18px; padding-bottom: 18px; white-space: nowrap; }
+  .announce a { color: #000; text-underline-offset: 3px; }
+  .site-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--line); background: #000; transition: background-color .4s, transform .5s var(--ease), border-color .4s; }
+  .site-header.is-scrolled { background: rgba(0,0,0,.78); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
+  .site-header.is-hidden { transform: translateY(-100%); }
+  .bar { display: flex; align-items: center; gap: 40px; padding-top: 18px; padding-bottom: 18px; white-space: nowrap; transition: padding .4s var(--ease); }
+  .is-scrolled .bar { padding-top: 12px; padding-bottom: 12px; }
+  .logo { display: block; transition: opacity .3s; }
+  .logo:hover { opacity: .75; }
   .logo img { height: 26px; width: auto; }
   .nav { flex: 1 1 auto; display: flex; justify-content: center; gap: 36px; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
-  .nav a { text-decoration: none; padding: 6px 0; border-bottom: 2px solid transparent; }
-  .nav a[aria-current='page'] { border-bottom-color: #fff; }
+  .nav a { position: relative; text-decoration: none; padding: 6px 0; }
+  .nav a::after { content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: #fff; transform: scaleX(0); transform-origin: right; transition: transform .5s var(--ease); }
+  .nav a:hover { color: #fff; }
+  .nav a:hover::after, .nav a[aria-current='page']::after { transform: scaleX(1); transform-origin: left; }
   .actions { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
-  .icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #fff; position: relative; cursor: pointer; }
-  .count { position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; background: #fff; color: #000; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+  .icon { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; background: none; border: 0; color: #fff; position: relative; cursor: pointer; transition: opacity .3s; }
+  .icon:hover { color: #fff; opacity: .7; }
+  .count { position: absolute; top: 4px; right: 2px; min-width: 18px; height: 18px; padding: 0 5px; background: #fff; color: #000; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; animation: badge .5s var(--ease); }
   .count[hidden] { display: none; }
+  @keyframes badge { from { transform: scale(0); } }
   .enter { min-height: 44px; padding: 0 20px; margin-left: 8px; font-size: 12px; }
   .menu { display: none; }
+  .burger { width: 22px; height: 12px; position: relative; display: block; }
+  .burger i { position: absolute; left: 0; right: 0; height: 1.6px; background: #fff; transition: transform .5s var(--ease), top .5s var(--ease); }
+  .burger i:first-child { top: 0; }
+  .burger i:last-child { top: 10px; }
+  :global(html.menu-open) .burger i:first-child { top: 5px; transform: rotate(45deg); }
+  :global(html.menu-open) .burger i:last-child { top: 5px; transform: rotate(-45deg); }
+
+  .mmenu { position: fixed; inset: 0; z-index: 39; background: #000; padding: 120px var(--pad) calc(28px + env(safe-area-inset-bottom)); display: flex; flex-direction: column; justify-content: space-between; gap: 32px; overflow-y: auto; visibility: hidden; clip-path: inset(0 0 100% 0); transition: clip-path .7s var(--ease), visibility 0s linear .7s; }
+  :global(html.menu-open) .mmenu { visibility: visible; clip-path: inset(0 0 0 0); transition: clip-path .7s var(--ease), visibility 0s; }
+  .mm-nav { display: flex; flex-direction: column; }
+  .mm-nav a, .mm-foot { opacity: 0; transform: translateY(24px); transition: opacity .6s var(--ease), transform .6s var(--ease); transition-delay: calc(.12s + var(--i) * .06s); }
+  :global(html.menu-open) .mm-nav a, :global(html.menu-open) .mm-foot { opacity: 1; transform: none; }
+  .mm-nav a { display: flex; align-items: baseline; gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--line); font-size: clamp(30px, 9vw, 44px); font-weight: 700; line-height: 1; letter-spacing: -0.02em; text-transform: uppercase; text-decoration: none; }
+  .mm-nav a[aria-current='page'] { color: #fff; }
+  .mm-n { font-size: 12px; font-weight: 700; letter-spacing: .1em; color: var(--muted); }
+  .mm-foot { display: flex; flex-direction: column; gap: 20px; }
+  .mm-links { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 14px; }
+  .mm-links a { color: var(--muted-2); text-decoration: none; padding: 6px 0; }
+
   @media (max-width: 1000px) {
-    .bar { gap: 12px; }
-    .logo img { height: 18px; }
+    .bar { gap: 12px; padding-top: 14px; padding-bottom: 14px; }
+    .logo img { height: 20px; }
     .menu { display: flex; }
-    .enter { display: none; }
-    .nav { display: none; position: absolute; top: 100%; left: 0; right: 0; background: #000; border-bottom: 1px solid var(--line); flex-direction: column; gap: 0; padding: 8px var(--pad) 16px; }
-    .nav a { padding: 14px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
-    .nav.open { display: flex; }
-    .actions { margin-left: auto; }
+    .enter, .nav { display: none; }
+    .actions { margin-left: auto; margin-right: -10px; }
+  }
+  @media (min-width: 1001px) { .mmenu { display: none; } }
+  @media (max-width: 700px) {
+    .announce { font-size: 11px; padding: 9px 12px; letter-spacing: .06em; }
+    .announce .long { display: none; }
   }
 </style>
 
 <script>
   const btn = document.querySelector<HTMLButtonElement>('[data-menu]');
-  const nav = document.getElementById('site-nav');
-  btn?.addEventListener('click', () => {
-    const open = nav?.classList.toggle('open') ?? false;
-    btn.setAttribute('aria-expanded', String(open));
-  });
+  const menu = document.querySelector<HTMLElement>('[data-mmenu]');
+  const root = document.documentElement;
+  const set = (open: boolean) => {
+    root.classList.toggle('menu-open', open);
+    btn?.setAttribute('aria-expanded', String(open));
+    btn?.setAttribute('aria-label', open ? 'Close menu' : 'Open menu');
+    menu?.setAttribute('aria-hidden', String(!open));
+    document.body.style.overflow = open ? 'hidden' : '';
+    if (open) document.querySelector('.site-header')?.classList.remove('is-hidden');
+  };
+  btn?.addEventListener('click', () => set(!root.classList.contains('menu-open')));
+  menu?.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => set(false)));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
+  window.addEventListener('resize', () => { if (window.innerWidth > 1000) set(false); });
 </script>

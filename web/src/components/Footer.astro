@@ -5,7 +5,7 @@ const { settings } = Astro.props;
 ---
 <footer class="site-footer">
   <div class="container inner">
-    <div class="postal">
+    <div class="postal" data-reveal>
       <div class="stack" style="gap: 6px">
         <span class="h">Free postal entry on every competition</span>
         <span class="muted">Enter any competition free by post. Postal entries have exactly the same chance of winning as online entries.</span>
@@ -46,5 +46,18 @@ const { settings } = Astro.props;
   .socials a { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
   nav { flex: 0 1 180px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
   nav a { text-decoration: none; }
+  nav a { transition: color .3s; color: var(--muted-2); }
+  nav a:hover { color: #fff; }
+  .socials a { transition: opacity .3s; }
+  .socials a:hover { opacity: .6; }
+  @media (max-width: 700px) {
+    .inner { padding-top: 40px; gap: 36px; }
+    .postal { padding: 22px; }
+    .postal .btn { width: 100%; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px 20px; }
+    .brand { grid-column: 1 / -1; }
+    nav { gap: 10px; }
+    .legal { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+  }
   .legal { border-top: 1px solid var(--line); padding-top: 22px; display: flex; flex-wrap: wrap; gap: 10px 32px; justify-content: space-between; font-size: 12px; color: #8a8a8a; }
 </style>
