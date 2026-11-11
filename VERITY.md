@@ -1,6 +1,6 @@
 # The Verity draw engine
 
-Draws run on **Verity** (`sprouthub/verity-engine`, a private Composer package, pinned to `^3.0.2`).
+Draws run on **Verity** (`sprouthub/verity-engine`, a private Composer package, pinned to `^3.0.3`).
 Verity owns the ticket numbers, the close, the draw, redraws and the proof. WDS decides who may enter
 (caps, responsible play, reservations, pricing, payment) and mirrors what Verity decided.
 
@@ -26,7 +26,7 @@ Nothing in WDS can pick a number or a winner, void a competition with entries, o
 - `app/Services/Draws/VerityDrawEngine.php`: the only class that calls Verity.
 - `app/Services/DrawService.php`: mirrors Verity onto `competitions`, `draws` and `winners` (from Verity's events and after every `verity:process-due`), and the reveal.
 - `app/Services/TicketAllocator.php`: entries.
-- `routes/console.php`: `Verity::schedule()` (process-due every minute, chain checks, anchors, `verity:check`, invariants).
+- `routes/console.php`: `Verity::schedule()` (process-due every minute, chain checks, anchors, `verity:check`, invariants) and `wds:verity-check-alert` (daily email to `VERITY_ALERT_EMAILS` while `verity:check` has a FAIL row; Verity doesn't alert on it itself).
 - `web/public/vendor/verity/`: the package's browser verifier, byte-for-byte (`tests/Unit/WebVerifierCopyTest.php`); copy it again after a package upgrade.
 - Tests: `tests/Feature/VerityDrawFlowTest.php` (the whole flow, checked with Verity's `RecordVerifier`), `tests/Concerns/VerityFakes.php` (a real drand round served by `Http::fake`, a fake timestamp authority), `tests/Feature/VerityLiveTest.php` (real drand + TSA, `VERITY_LIVE_TEST=1`).
 

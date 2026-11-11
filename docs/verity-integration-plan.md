@@ -1,10 +1,10 @@
 # Verity integration plan (WDS Competitions)
 
-Status: **built on PR #2 with `sprouthub/verity-engine` v3.0.2** (sections 1-9 below), except the
+Status: **built on PR #2 with `sprouthub/verity-engine` v3.0.3** (sections 1-9 below), except the
 admin forfeit / redraw controls (Verity's R2 API is there; WDS mirrors its events). See `VERITY.md` for
 how the pieces fit together.
 
-Package facts were first read from v3.0.1 and confirmed against the installed v3.0.2.
+Package facts were first read from v3.0.1 and confirmed against the installed v3.0.3.
 
 ## Decisions (agreed)
 

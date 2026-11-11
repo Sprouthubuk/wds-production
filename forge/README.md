@@ -43,13 +43,19 @@ Then:
 | Nginx | replace `location /` with `forge/web-nginx.conf` |
 | Deploy script | `forge/web-deploy.sh` |
 
-**Background process** `wds-web` (directory `/home/forge/<web-site>/web`):
-```
-node dist/server/entry.mjs
-```
-with environment `HOST=127.0.0.1 PORT=4321 NODE_ENV=production API_URL=https://wds-competitions-api.on-forge.com`.
-(If Forge's background-process form has no environment field, use:
-`env HOST=127.0.0.1 PORT=4321 NODE_ENV=production API_URL=https://… node dist/server/entry.mjs`.)
+**Background process** `wds-web` (Forge → server → Background processes; one per website site):
+
+| Field | Value |
+|---|---|
+| Name | `wds-web` |
+| Directory | `/home/forge/<web-site>/web` |
+| Command | `env HOST=127.0.0.1 PORT=4321 NODE_ENV=production API_URL=https://<api-domain> node /home/forge/<web-site>/web/dist/server/entry.mjs` |
+| User | `forge` |
+
+The **absolute path** in the command is what lets `forge/web-deploy.sh` restart only this site's process:
+it runs `pkill -x -f "node $FORGE_SITE_PATH/web/dist/server/entry.mjs"` (the whole command line must match),
+and Forge's supervisor starts it again. Start the command with `node`, not `/usr/bin/node`, or it won't match.
+Staging has its own process, `wds-web-staging` on port 4322 (section 6). Never `supervisorctl restart all`.
 
 Node must be **22.23 or newer** (`node -v` in Forge's Commands). If it's older, upgrade Node on the server first.
 
@@ -89,6 +95,11 @@ logging on, and then only a SUPER user may create triggers unless `log_bin_trust
 is 1. Without it the first migrate stops with:
 `SQLSTATE[HY000]: General error: 1419 You do not have the SUPER privilege and binary logging is enabled`.
 Keep binary logging on (backups and point-in-time recovery need it); change only this setting.
+
+Since Verity v3.0.3 the migration checks this **before creating anything** (`IntegrityGuards::assertInstallable()`):
+without the setting (and without SUPER) it stops cleanly, creates no tables, and says how to fix it, so a
+re-run after 1a just works. `verity:check` also has a `trigger_privilege` row for it. Step 1b is only for a
+database where an older version (v3.0.2 or earlier) already stopped halfway.
 
 *Option A, SSH (recommended).* Forge → server → copy the SSH command, sign in as `forge`, then:
 ```
@@ -144,8 +155,8 @@ is above 0, stop: don't drop anything, and ask for help, because Verity's record
 - [ ] New site, Static HTML / Other, web directory `/web/public`, same repository and branch.
 - [ ] Nginx: replace the `location /` block with `forge/web-nginx.conf`.
 - [ ] Deploy script: contents of `forge/web-deploy.sh`.
-- [ ] Background process `wds-web`, directory `/home/forge/<web-site>/web`:
-      `env HOST=127.0.0.1 PORT=4321 NODE_ENV=production API_URL=https://<api-domain> node dist/server/entry.mjs`
+- [ ] Background process `wds-web`, directory `/home/forge/<web-site>/web` (section 2, absolute path):
+      `env HOST=127.0.0.1 PORT=4321 NODE_ENV=production API_URL=https://<api-domain> node /home/forge/<web-site>/web/dist/server/entry.mjs`
       (start it after the first deploy has built `web/dist`).
 - [ ] SSL: Let's Encrypt.
 
@@ -254,10 +265,22 @@ chat, tickets or the PR. Keep an offline copy of each (a password manager the ow
 - MySQL 8.4 (section 4; not PostgreSQL) with `log_bin_trust_function_creators = 1` (section 4, step 1a), and the scheduler running `schedule:run` every minute (section 1).
 
 **Keys and settings** (Site → Environment)
+
+Generate both **on the server** (Forge → site → Commands, or SSH as `forge` in the site directory), once,
+before the first competition is published:
 ```
 php8.5 artisan verity:seal-seeds --new-key              # prints VERITY_SEED_KEY=base64:… (must differ from APP_KEY)
-php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"       # → VERITY_OWNER_PEPPER (never change it)
+php -r "echo bin2hex(random_bytes(32)), PHP_EOL;"       # → VERITY_OWNER_PEPPER
 ```
+Before you publish anything:
+1. Paste both into Site → Environment, then `php8.5 artisan config:cache`.
+2. Store both in the **password manager** the owners control (one entry per site: production and staging differ).
+3. Keep an **offline copy** too (printed or on an encrypted USB stick, kept somewhere safe away from the server).
+   Without `VERITY_SEED_KEY` no sealed seed can be revealed, so no draw can run; a restored server needs it.
+4. **Never change `VERITY_OWNER_PEPPER`** once anything is published: every owner hash on the public audit chain
+   uses it, and a new pepper would make them unverifiable. Rotating the seed key is possible only with
+   `verity:seal-seeds` (INTEGRATION.md); never just replace it.
+5. Clear the terminal/command output afterwards; never paste either value into chat, email, tickets or git.
 ```
 VERITY_BEACON=drand
 VERITY_SEED_KEY=<from above>
@@ -275,6 +298,16 @@ history would contradict what they already hold. Leave `VERITY_BEACON_FALLBACK` 
 The website serves the browser verifier from `web/public/vendor/verity/` (a copy of the package's files,
 checked by the test suite), so nothing extra is published on the API site.
 
+**Fingerprints** for the release this site runs (`verity:check` prints them on its first line):
+
+| Release | Engine (`src/Engine`) | Draw path |
+|---|---|---|
+| v3.0.3 (current) | `bba741fdda0bb9e7623c2a5b5b3af2a56120f4d881aade527428c9b826f4eaff` | `377eeb5d50f92e6342246b880d484ed852416094ad63fad4f6a7f1b8873380e3` |
+| v3.0.2 | `bba741fd…f4eaff` (same) | `e9b267847d1bf981c5aa29e70337ec0133a87ef6275f8e88059ca8db5a51d115` |
+
+The engine fingerprint must stay `bba741fd…f4eaff` (the reviewed engine is unchanged since v3.0.1); the
+draw-path one changes with the Laravel layer and must equal the one in the installed tag's `SOURCE-MANIFEST.txt`.
+
 **Apply and check**
 ```
 php8.5 artisan config:cache
@@ -283,15 +316,22 @@ php8.5 artisan queue:restart
 php8.5 artisan verity:check --strict      # every row OK, including "local_draws" and "manifest"
 php8.5 artisan verity:invariants
 php8.5 artisan verity:verify-chain
-php8.5 artisan schedule:list | grep verity   # the six Verity entries
+php8.5 artisan schedule:list | grep verity   # the six Verity entries plus wds:verity-check-alert (daily 07:00)
 ```
+Every API deploy also runs `verity:check` after `migrate` (`forge/api-deploy.sh`): the output is in Forge's
+deploy log and `storage/logs/verity-check-deploy.log`, and it never stops a deploy. Verity runs `verity:check`
+hourly but doesn't alert on it, so `wds:verity-check-alert` emails `VERITY_ALERT_EMAILS` daily while any row
+is FAIL (with a reminder every 24 hours and an all-clear when fixed).
 
 **Go-live checks** (from the package's INTEGRATION.md)
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, `VERITY_BEACON=drand` (the site refuses to serve otherwise).
 - [ ] **The live database starts with no Verity data**: every `verity_*` table is empty before the first
       real competition is published. Never copy a database from staging, demos or tests; promote code, not
       data. `verity:check` FAILs (`local_draws`) on any draw made on local randomness.
-- [ ] `verity:check --strict` shows every row OK, the guards installed, and the engine matching the tag's `SOURCE-MANIFEST.txt`.
+- [ ] `verity:check --strict` shows every row OK, the guards installed (`trigger_privilege` OK), and the engine
+      `bba741fd…f4eaff` and draw path matching the table above.
+- [ ] `VERITY_SEED_KEY` and `VERITY_OWNER_PEPPER` were generated on the server and are in the password manager and
+      the offline copy, **before** the first publish.
 - [ ] **A test alert reaches a real person**: on staging, close a test competition three minutes late and
       confirm the `late-close` email arrives in a VERITY_ALERT_EMAILS inbox.
 - [ ] A test competition drawn on drand on staging shows "Verified" on the verify page.
@@ -342,11 +382,13 @@ SEED_ADMIN_EMAIL=<staging admin's email>
 **Staging website site**
 - [ ] New site, e.g. `staging.wdscompetitions.co.uk`: Static HTML / Other, web directory `/web/public`, same repository
       and branch, Nginx block `forge/web-nginx.conf`, deploy script `forge/web-deploy.sh`.
-- [ ] Background process `wds-web-staging`, directory `/home/forge/<staging-website-site>/web`, on a port of its own:
-      `env HOST=127.0.0.1 PORT=4322 NODE_ENV=production API_URL=https://<staging-api-domain> node dist/server/entry.mjs`
+- [ ] Background process `wds-web-staging`, directory `/home/forge/<staging-website-site>/web`, on a port of its own,
+      with this site's **absolute** path:
+      `env HOST=127.0.0.1 PORT=4322 NODE_ENV=production API_URL=https://<staging-api-domain> node /home/forge/<staging-website-site>/web/dist/server/entry.mjs`
       and change `proxy_pass` in that site's Nginx block from port 4321 to **4322**.
-- [ ] Note: `forge/web-deploy.sh` restarts every supervisor process (`supervisorctl restart all`), so a staging
-      website deploy also restarts production's `wds-web` for a second or two. Deploy staging outside busy times.
+- [ ] Each website's deploy (`forge/web-deploy.sh`) restarts only the process whose command is exactly
+      `node <that site's path>/web/dist/server/entry.mjs`, so deploying staging never touches `wds-web`, and the
+      reverse. Check after the first deploy of each: the deploy log says "Restarted the Node server for …".
 - [ ] Protect it: Forge → site → Security → HTTP basic auth (staging is for testers only, and search engines stay out).
 
 **What to test there**
