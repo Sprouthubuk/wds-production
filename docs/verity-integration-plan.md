@@ -10,7 +10,10 @@ Package facts come from v3.0.1 (`INTEGRATION.md`, `src/`), read but not installe
 | Topic | Decision |
 |---|---|
 | Numbering | Verity numbers every ticket, `ticket_allocation = sequential`. WDS `tickets` is a mirror. |
-| Database | MySQL 8.4 in production, SQLite for tests. No Postgres. *(done: config, CI, race test)* |
+| Database | MySQL 8.4 in production (a new Forge server before launch; the current one runs PostgreSQL with test data only), SQLite for tests. Verity's integrity triggers exist only for MySQL/MariaDB and SQLite (`IntegrityGuards::supported()`; INTEGRATION.md section 1), so PostgreSQL is out. The `pgsql` connection stays until the old server is deleted. *(done: docs, CI, race test, move checklist in forge/README.md section 4)* |
+| Owner reference | `owner_ref = "entrant:{id}"`, one entrant per normalised email across online, postal and event; the per-person cap counts per entrant. *(done: `entrants` table, `Entrant::forEmail`, cap in `TicketAllocator::heldBy`)* |
+| Launch data | No real sales yet. `php artisan wds:reset-test-data` clears test orders, tickets, postal entries and draws; it refuses if any paid order didn't go through the fake gateway. The competitions are then published on Verity. *(done)* |
+| Postal deadline | `competitions.postal_closes_at`, default three days before `closes_at`; later envelopes are rejected. Shown on the competition, Free Postal Entry and FAQ pages. Real dates are placeholders until Jason confirms. *(done)* |
 | Draw flow | Verity's lifecycle: round fixed at publish, close freezes entries, `verity:process-due` draws. |
 | Void | Verity's rules: only an empty competition is voided. After close, only R2 redraw or forfeit. |
 | Engines | `DRAW_ENGINE=verity` only in production. *(done: web refuses to boot, draw engine refuses to resolve)* |
@@ -49,10 +52,10 @@ Options passed to `addEntries` are only the documented ones: `source`, `host_ref
 Note: Verity's `source` values are `paid | free | postal | bonus`, not `online | event`. The channel
 stays in WDS's `tickets.channel`; Verity only needs to know paid vs postal (equal odds either way).
 
-**Owner reference** (needs a decision, see Questions): Verity wants a stable, non-personal id, enforces
-`max_per_person` per owner reference, and records winners against it. WDS caps per normalised email
-(guests have no user id). Proposal: a new `entrants` table (`id`, `email` unique), `owner_ref = "entrant:{id}"`,
-so Verity groups exactly as WDS does and no email reaches the engine.
+**Owner reference** *(done)*: Verity wants a stable, non-personal id, enforces `max_per_person` per
+owner reference, and records winners against it. WDS has an `entrants` table (`id`, `email` unique) and
+passes `Entrant::ownerRef()` = `"entrant:{id}"`, so Verity groups exactly as WDS's cap does and no email
+reaches the engine. Every ticket, order and postal entry carries `entrant_id`.
 
 **Lock order**: WDS competition row, then Verity's own locks (its competition row and the single
 `verity_locks.audit` row). Always in that order, so no deadlock. The audit lock serialises every
@@ -67,7 +70,7 @@ allocator on SQLite and MySQL 8.4. After the switch it runs unchanged through th
   `competitions.published_at` (timestamp, nullable). WDS's `status` enum stays as it is.
 - `tickets.verity_entry_id` (unsigned big int, unique, nullable), `tickets.withdrawn_at` (timestamp, nullable).
 - `draws.verity_ref`, `draws.beacon_round`, `draws.beacon_round_at` (all nullable).
-- `entrants` table (if the owner proposal is accepted) and `tickets.entrant_id`.
+- *(done)* `entrants` table; `entrant_id` on `tickets`, `orders` and `postal_entries`; `competitions.postal_closes_at`.
 
 ## 3. Publish is one-way
 
@@ -161,11 +164,10 @@ sequential numbering with instant wins is refused by the package and must not be
 WDS calls `Verity::play()` before any animation and never shows an outcome Verity didn't return.
 Instant wins can't be combined with a minimum-entries carry-over.
 
-## Questions
+## Answered
 
-1. **Owner reference**: is the `entrants` table (`owner_ref = "entrant:{id}"`) OK?
-2. **The live BMW competition**: if real tickets have been sold under WDS numbering, does it finish on the
-   current engine (not possible in production once commit-reveal is refused) or is it re-published on
-   Verity before real sales start?
-3. **Postal entries** must be logged before the close runs; envelopes logged afterwards are refused
-   even if they arrived in time. OK, or should the closing time allow for postal processing?
+1. Owner reference: `entrants` table, `owner_ref = "entrant:{id}"`.
+2. BMW competition: no real sales; cleared with `wds:reset-test-data` and re-created on Verity before launch.
+3. Postal: `postal_closes_at` (default three days before close) leaves time to log every envelope
+   before Verity freezes the entries at `closes_at`.
+4. Database: MySQL 8.4 on a new server; PostgreSQL isn't supported by Verity.
