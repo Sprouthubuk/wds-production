@@ -21,6 +21,13 @@ Repository admins can bypass this in an emergency; don't, unless the owner says 
 - Never write to `verity_*` tables directly, and never copy a database between staging and production.
 - Migrations are additive. A draw's result is only changed through Verity (forfeit / redraw), never by hand.
 
+## Business rules
+
+- **Free postal entry only, no skill question.** The client confirmed that the free route is free postal
+  entry; competitions don't have a skill/knowledge question. Don't add one.
+- Postal entries must be **received at least 48 hours before `closes_at`** (`Competition::postalClosesAt()`;
+  an admin can override per competition). Later ones are rejected: "Received less than 48 hours before close".
+
 ## Where things are
 
 - `VERITY.md`: how WDS uses the Verity draw engine. `forge/README.md`: servers, deploy, go-live, staging.

@@ -22,7 +22,7 @@ class SettingsController extends Controller
             'companyNumber' => ['sometimes', 'string', 'max:20'],
             'registeredOffice' => ['sometimes', 'string', 'max:255'],
             'supportEmail' => ['sometimes', 'email'],
-            'postalEntryAddress' => ['sometimes', 'array', 'max:6'], 'postalEntryAddress.*' => ['string', 'max:120'],
+            'postalEntryAddress' => ['sometimes', 'array', 'max:8'], 'postalEntryAddress.*' => ['string', 'max:120'],
             'drawsInstagram' => ['sometimes', 'string', 'max:60'],
             'socials' => ['sometimes', 'array'], 'socials.*.label' => ['required', 'string'], 'socials.*.url' => ['required', 'url'],
             'youtubeUrl' => ['sometimes', 'nullable', 'url'],

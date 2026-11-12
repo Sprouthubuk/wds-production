@@ -1,6 +1,7 @@
 /** Shared admin behaviours (see AdminLayout). */
     // Shared admin behaviours:
-    //  <form data-admin-form="/api/admin/…" data-method="PUT">  → JSON submit (checkboxes = booleans, data-type="number" = numbers)
+    //  <form data-admin-form="/api/admin/…" data-method="PUT">  → JSON submit (checkboxes = booleans, data-type="number" = numbers,
+    //     data-type="uk-datetime" on a datetime-local input = UK local time sent as UTC ISO)
     //  <button data-admin-action="/api/admin/…" data-confirm="…" data-body='{"x":1}'>  → POST
     //  data-reload on either reloads the page after success.
     let timer: number | undefined;
@@ -20,6 +21,15 @@ export async function send(url: string, method: string, body?: BodyInit, isJson 
       return data;
     }
 
+/** A datetime-local value ("2026-12-22T17:59") read as UK local time → UTC ISO string. */
+export function ukLocalToIso(v: string): string | null {
+  if (!v) return null;
+  const guess = new Date(v + 'Z');
+  const uk = new Date(guess.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const utc = new Date(guess.toLocaleString('en-US', { timeZone: 'UTC' }));
+  return new Date(guess.getTime() - (uk.getTime() - utc.getTime())).toISOString();
+}
+
 export function initAdmin() {
     document.querySelectorAll<HTMLFormElement>('form[data-admin-form]').forEach((form) => {
       form.addEventListener('submit', async (e) => {
@@ -35,6 +45,7 @@ export function initAdmin() {
             if (el.type === 'checkbox') out[el.name] = el.checked;
             else if (el.type === 'radio') { if (el.checked) out[el.name] = el.value; }
             else if (el.dataset.type === 'number') out[el.name] = el.value === '' ? null : Number(el.value);
+            else if (el.dataset.type === 'uk-datetime') out[el.name] = ukLocalToIso(el.value);
             else if (el.dataset.type === 'lines') out[el.name] = el.value.split('\n').map((s) => s.trim()).filter(Boolean);
             else out[el.name] = el.value === '' ? null : el.value;
           }

@@ -17,7 +17,7 @@ class PostalController extends Controller
 
         return $q->paginate(50)->through(fn ($e) => [
             'id' => $e->id, 'competition' => $e->competition->title, 'name' => $e->name, 'email' => $e->email,
-            'receivedOn' => $e->received_on->toDateString(), 'status' => $e->status, 'reason' => $e->rejection_reason,
+            'receivedOn' => $e->received_on->toDateString(), 'receivedAt' => $e->receivedMoment()->toIso8601String(), 'status' => $e->status, 'reason' => $e->rejection_reason,
             'ticket' => $e->ticket?->display($e->competition->total_tickets),
         ]);
     }
@@ -31,7 +31,8 @@ class PostalController extends Controller
             'dateOfBirth' => ['required', 'date'],
             'email' => ['required', 'email'],
             'phone' => ['nullable', 'string', 'max:30'],
-            'receivedOn' => ['required', 'date'],
+            // When the envelope arrived: date and time (the 48-hour rule is exact). Not in the future.
+            'receivedOn' => ['required', 'date', 'before_or_equal:'.now()->addMinutes(5)->toDateTimeString()],
         ]);
         $entry = $service->log(Competition::findOrFail($d['competitionId']), [
             'name' => $d['name'], 'address' => $d['address'], 'date_of_birth' => $d['dateOfBirth'],

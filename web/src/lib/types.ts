@@ -31,7 +31,7 @@ export interface Competition {
   bundles: Bundle[];
   opensAt: string | null;
   closesAt: string | null;
-  /** Postal entries must be received by then (default: three days before closesAt). */
+  /** Postal entries must be received by then (default: 48 hours before closesAt). */
   postalClosesAt: string | null;
   /** Only set when an admin chose a postal close; null means the default. */
   postalClosesAtCustom?: string | null;
