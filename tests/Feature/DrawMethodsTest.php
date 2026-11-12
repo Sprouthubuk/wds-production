@@ -83,7 +83,7 @@ class DrawMethodsTest extends TestCase
     {
         Carbon::setTestNow('2026-10-20 12:00:00');
         $c = Competition::create([
-            'slug' => 'stream-car', 'title' => 'Stream car', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 1000, 'bundles' => [],
+            'slug' => 'stream-car', 'title' => 'Stream car', 'images' => [['src' => '/images/prize.jpg', 'alt' => 'The prize']], 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 1000, 'bundles' => [],
             'total_tickets' => 50, 'max_per_person' => 20, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00',
             'postal_closes_at' => '2026-10-28 20:00:00', 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
         ]);

@@ -11,7 +11,8 @@ const drawDate = c.drawAt ? new Date(c.drawAt).toLocaleDateString('en-GB', { day
 ---
 <article class="card comp">
   <a href={href} class="zoom media">
-    <img src={c.images[0]?.src.replace('.jpg', '-720.jpg')} alt={c.images[0]?.alt ?? c.title} loading="lazy" width="720" height="540" data-fade style={`view-transition-name: comp-${c.id}`} />
+    {c.images[0] ? <img src={c.images[0].src.replace('.jpg', '-720.jpg')} alt={c.images[0].alt ?? c.title} loading="lazy" width="720" height="540" data-fade style={`view-transition-name: comp-${c.id}`} />
+      : <span class="no-photo" role="img" aria-label={`Photos of the ${c.title} coming soon`}><span class="small">Photos coming soon</span></span>}
     {c.badge ? <span class="badge">{c.badge}</span> : null}
     <span class="when"><span>Live draw</span><span>{drawDate}</span></span>
   </a>
@@ -30,6 +31,7 @@ const drawDate = c.drawAt ? new Date(c.drawAt).toLocaleDateString('en-GB', { day
 </article>
 
 <style>
+  .no-photo { display: flex; align-items: center; justify-content: center; width: 100%; aspect-ratio: 4 / 3; background: repeating-linear-gradient(135deg, #0b0b0b 0 14px, #0e0e0e 14px 28px); color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
   .media img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; }
   .badge { position: absolute; top: 14px; left: 14px; background: #fff; color: #000; font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; padding: 7px 10px; }
   .when { position: absolute; bottom: 14px; left: 14px; right: 14px; display: flex; justify-content: space-between; background: rgba(0,0,0,.78); padding: 10px 12px; font-size: 13px; font-weight: 700; }

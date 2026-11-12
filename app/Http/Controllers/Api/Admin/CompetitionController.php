@@ -71,6 +71,10 @@ class CompetitionController extends Controller
     /** One way: publishes on Verity, fixes the terms and the drand round. */
     public function publish(Competition $competition, VerityDrawEngine $verity)
     {
+        // The competition page, the cards and the reveal screen all need a photo of the prize.
+        if (! collect($competition->images ?? [])->filter(fn ($i) => ! empty($i['src']))->count()) {
+            throw new \App\Exceptions\EntryException('Upload at least one photo of the prize (Photos, then Save) before publishing.');
+        }
         $competition = $verity->publish($competition);
 
         return (new CompetitionResource($competition))->additional(['message' => "Published as {$competition->verity_ref}. The draw is locked in: it runs on the drand round after closing."]);
