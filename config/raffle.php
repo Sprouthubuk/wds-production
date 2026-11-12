@@ -10,6 +10,9 @@ return [
     // Hours before a responsible-play limit INCREASE takes effect (decreases are immediate).
     'limit_increase_delay_hours' => 24,
 
+    // DCMS Voluntary Code: credit card spending per customer per calendar month (UK), across all competitions.
+    'credit_card_monthly_cap_pence' => 25000,
+
     // Where to send the customer after the hosted checkout.
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:4321'),
 

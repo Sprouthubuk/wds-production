@@ -41,7 +41,7 @@ Route::get('/orders/{reference}', [CheckoutController::class, 'show']);
 
 // Payments
 Route::post('/payments/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
-Route::get('/payments/fake', [PaymentController::class, 'fake'])->name('payments.fake')->middleware('signed');
+Route::get('/payments/fake', [PaymentController::class, 'fake'])->name('payments.fake'); // signature checked in the controller
 
 // Signed-in customer
 Route::middleware('auth:sanctum')->group(function () {

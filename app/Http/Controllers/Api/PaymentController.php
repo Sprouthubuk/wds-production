@@ -22,12 +22,15 @@ class PaymentController extends Controller
     public function fake(Request $request, CheckoutService $checkout)
     {
         abort_unless(config('raffle.payments.driver') === 'fake' && ! app()->isProduction(), 404);
+        // ?fail=1 and ?card_type=credit|debit|prepaid|unknown can be added to the signed link when testing.
+        abort_unless($request->hasValidSignatureWhileIgnoring(['fail', 'card_type']), 403);
         $checkout->handlePaymentResult(new PaymentResult(
             (string) $request->query('order'),
             $request->query('fail') ? PaymentResult::FAILED : PaymentResult::PAID,
             (string) $request->query('provider_reference'),
             null,
             'card',
+            (string) $request->query('card_type', 'debit'),
         ));
 
         return redirect()->away((string) $request->query('return'));

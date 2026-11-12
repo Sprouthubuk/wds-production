@@ -12,6 +12,7 @@ use App\Models\Order;
 use App\Models\User;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentResult;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -30,6 +31,7 @@ class CheckoutService
         private TicketAllocator $allocator,
         private ResponsiblePlay $responsiblePlay,
         private PaymentGateway $gateway,
+        private CreditCardCap $creditCap,
     ) {}
 
     /**
@@ -185,12 +187,24 @@ class CheckoutService
 
                 return $order;
             }
+            $cardType = CreditCardCap::normalise($result->cardType);
+            // Credit card cap: checked once the provider confirms the card type, before any tickets are allocated.
+            // One customer at a time, so two credit card payments landing together can't both slip under it.
+            $lock = Cache::lock('credit-card-cap:'.strtolower($order->email), 30);
             try {
-                $this->markPaid($order, $result->method ?? 'card', $result->providerReference);
+                $lock->block(10);
+                if ($refusal = $this->creditCap->refusal($order, $cardType)) {
+                    $this->refuseAndRefund($order, $result, $cardType, $refusal);
+
+                    return $order->fresh();
+                }
+                $this->markPaid($order, $result->method ?? 'card', $result->providerReference, $cardType);
             } catch (EntryException $e) {
                 Log::critical('Paid order could not be fulfilled — REFUND REQUIRED', ['order' => $order->reference, 'reason' => $e->getMessage()]);
                 // paid_at + cancelled = money taken, no tickets → shows in Admin as "refund needed".
-                $order->update(['status' => 'cancelled', 'paid_at' => now(), 'payment_method' => $result->method ?? 'card', 'reserved_until' => null, 'provider_reference' => $result->providerReference ?? $order->provider_reference]);
+                $order->update(['status' => 'cancelled', 'paid_at' => now(), 'payment_method' => $result->method ?? 'card', 'card_type' => $cardType, 'reserved_until' => null, 'provider_reference' => $result->providerReference ?? $order->provider_reference]);
+            } finally {
+                $lock->release();
             }
         } elseif ($result->status === PaymentResult::FAILED) {
             $order->update(['status' => 'failed', 'reserved_until' => null]);
@@ -199,10 +213,33 @@ class CheckoutService
         return $order->fresh();
     }
 
-    /** Allocate sequential tickets for every line, take credit, bump code usage, email the customer. */
-    public function markPaid(Order $order, string $method, ?string $providerReference): void
+    /** The payment can't be accepted (credit card cap): refund it in full, allocate nothing, explain on the order page. */
+    private function refuseAndRefund(Order $order, PaymentResult $result, ?string $cardType, string $message): void
     {
-        DB::transaction(function () use ($order, $method, $providerReference) {
+        $order->update([
+            'paid_at' => now(), 'payment_method' => $result->method ?? 'card', 'card_type' => $cardType, 'reserved_until' => null,
+            'provider_reference' => $result->providerReference ?? $order->provider_reference, 'status_note' => $message,
+        ]);
+        $refunded = false;
+        try {
+            $refunded = $this->gateway->refund($order, $message);
+        } catch (\Throwable $e) {
+            Log::error('Automatic refund failed', ['order' => $order->reference, 'error' => $e->getMessage()]);
+        }
+        if ($refunded) {
+            $order->update(['status' => 'refunded']);
+            Log::notice('Credit card payment refused and refunded', ['order' => $order->reference]);
+        } else {
+            // paid_at + cancelled = money taken, no tickets → Admin shows "refund needed".
+            $order->update(['status' => 'cancelled']);
+            Log::critical('Credit card payment refused — REFUND REQUIRED', ['order' => $order->reference]);
+        }
+    }
+
+    /** Allocate sequential tickets for every line, take credit, bump code usage, email the customer. */
+    public function markPaid(Order $order, string $method, ?string $providerReference, ?string $cardType = null): void
+    {
+        DB::transaction(function () use ($order, $method, $providerReference, $cardType) {
             $order = Order::whereKey($order->id)->lockForUpdate()->first();
             if (! in_array($order->status, ['pending', 'cancelled'], true)) {
                 return;
@@ -236,6 +273,7 @@ class CheckoutService
             $order->update([
                 'status' => 'paid',
                 'payment_method' => $method,
+                'card_type' => $cardType,
                 'provider_reference' => $providerReference ?? $order->provider_reference,
                 'paid_at' => now(),
             ]);
