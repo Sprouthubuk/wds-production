@@ -19,7 +19,7 @@ const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).d
     </section>
     <section class="panel">
       <h2>Free postal entry</h2>
-      <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="7">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on every competition and the Free Postal Entry page.</span></div>
+      <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="7">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on the Free Postal Entry page.</span></div>
     </section>
     <section class="panel">
       <h2>Live draws &amp; socials</h2>

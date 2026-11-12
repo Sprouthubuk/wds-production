@@ -14,7 +14,7 @@ if (!isNew) {
 }
 const v = c ?? {
   id: 0, slug: '', title: '', strapline: '', category: 'cars', badge: null, status: 'draft', images: [], description: [''], specs: [],
-  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, postalClosesAt: null, postalClosesAtCustom: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
+  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: null, bundles: [], opensAt: null, closesAt: null, postalClosesAt: null, postalClosesAtCustom: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
 } as Competition;
 // Published on Verity = the draw is locked in: the terms that are part of it can't change.
 const locked = !!v.verityRef;
@@ -22,6 +22,18 @@ const locked = !!v.verityRef;
 const previewLink = !isNew && !locked && !usingSampleData
   ? (await adminGet<{ data: { url: string; expiresAt: string; createdAt: string } | null }>(Astro.cookies, `/competitions/${id}/preview-link`).catch(() => ({ data: null }))).data
   : null;
+// What closing means depends on the draw method: only a Verity draw is drawn automatically after the close.
+const methodNow: string = (c as any)?.drawMethod ?? 'verity';
+const closesHint: Record<string, string> = {
+  verity: 'The draw runs automatically on the drand round about a minute after this.',
+  physical: 'Entries close and are sealed at this time; the winner is drawn live by hand at the live draw time.',
+  external: 'Entries close and are sealed at this time; the winner is drawn live with the named random number generator at the live draw time.',
+};
+const publishWhat: Record<string, string> = {
+  verity: 'the winner is drawn automatically on the public drand round about a minute after closing',
+  physical: 'entries close and are sealed at the closing time, and the winner is drawn live by hand (numbered tokens, with a witness) at the live draw time; nothing is drawn automatically',
+  external: 'entries close and are sealed at the closing time, and the winner is drawn live with the named random number generator at the live draw time; nothing is drawn automatically',
+};
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 ---
 <AdminLayout title={isNew ? 'New competition' : v.title} active="competitions">
@@ -91,10 +103,10 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <h2>Dates &amp; entry</h2>
       <div class="form-grid">
         <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} disabled={locked} /></div>
-        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint">The draw runs automatically on the drand round about a minute after this.</span></div>
+        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint" data-method-text={JSON.stringify(closesHint)}>{closesHint[methodNow] ?? closesHint.verity}</span></div>
         <div class="field"><label for="postal-closes">Postal entries close</label><input id="postal-closes" name="postalClosesAt" type="datetime-local" value={localInput(v.postalClosesAtCustom ?? null)} /><span class="hint">Default: 48 hours before close. Leave empty to use it; envelopes received after this are rejected.</span></div>
         <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site. Can stay empty on a draft until it's confirmed; needed to publish.</span></div>
-        <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status}</span></b><span class="hint">{locked ? 'Follows the draw engine: it closes and draws on its own.' : 'A draft until you publish it below.'}</span></div>
+        <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status}</span></b><span class="hint">{locked ? (methodNow === 'verity' ? 'Follows the draw engine: it closes and draws on its own.' : 'Follows the draw engine: it closes and seals on its own; the winner is drawn live and recorded on Draws.') : 'A draft until you publish it below.'}</span></div>
       </div>
       <div class="row" style="gap:24px;margin-top:14px">
         <label class="check"><input type="checkbox" name="postalEntryEnabled" checked={(c as any)?.postalEntryEnabled ?? true} />Free postal entry <span class="small muted">(paid competitions only)</span></label>
@@ -123,9 +135,9 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   {!isNew && !locked ? (
     <section class="panel" style="margin-top:20px">
       <h2>Publish</h2>
-      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and the winner is drawn automatically on the public drand round about a minute after closing. Check everything above (and save) first.</p>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and <span data-method-text={JSON.stringify(publishWhat)}>{publishWhat[methodNow] ?? publishWhat.verity}</span>. Check everything above (and save) first.</p>
       {v.images.length ? null : <p class="alert alert--error" style="margin:0 0 12px">Upload at least one photo of the prize (Photos, then Save) before publishing.</p>}
-      <button class="btn" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, max ${v.maxPerPerson} per person. It can't be undone.`} data-reload>Publish and lock the draw</button>
+      <button class="btn" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, ${v.maxPerPerson ? `max ${v.maxPerPerson} per person` : 'no per-person limit'}. ${methodNow === 'verity' ? 'The winner is drawn automatically about a minute after closing.' : 'Entries are sealed at closing; the winner is drawn live at the live draw time.'} It can't be undone.`} data-reload>Publish and lock the draw</button>
     </section>
   ) : null}
   {!isNew && !locked ? (
@@ -173,7 +185,13 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   // External draw: the random number tool fields appear with the method.
   document.querySelectorAll<HTMLInputElement>('input[name=drawMethod]').forEach((r) => r.addEventListener('change', () => {
     const box = document.querySelector<HTMLElement>('[data-dm-tool]');
-    if (box) box.hidden = document.querySelector<HTMLInputElement>('input[name=drawMethod]:checked')?.value !== 'external';
+    const m = document.querySelector<HTMLInputElement>('input[name=drawMethod]:checked')?.value ?? 'verity';
+    if (box) box.hidden = m !== 'external';
+    // The closing-time hint and the publish note follow the chosen method (saved or not).
+    document.querySelectorAll<HTMLElement>('[data-method-text]').forEach((el) => {
+      const t = JSON.parse(el.dataset.methodText!);
+      el.textContent = t[m] ?? t.verity;
+    });
   }));
     document.querySelector<HTMLButtonElement>('[data-copy-preview]')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
