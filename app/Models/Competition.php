@@ -66,13 +66,34 @@ class Competition extends Model
         return $this->verity_ref !== null;
     }
 
-    /** Default gap between the postal deadline and the online close, when postal_closes_at isn't set. */
-    public const POSTAL_CLOSE_DAYS_BEFORE = 3;
+    /** Postal entries must be received at least this many hours before closes_at, unless an admin set postal_closes_at. */
+    public const POSTAL_CLOSE_HOURS_BEFORE = 48;
 
-    /** Postal entries must be received by this moment: postal_closes_at, or three days before closes_at. */
+    /** The rejection reason for an envelope received after the default postal deadline. */
+    public const POSTAL_LATE_REASON = 'Received less than 48 hours before close';
+
+    /** Postal entries must be received by this moment: postal_closes_at, or 48 hours before closes_at. */
     public function postalClosesAt(): ?\Illuminate\Support\Carbon
     {
-        return $this->postal_closes_at ?? $this->closes_at?->copy()->subDays(self::POSTAL_CLOSE_DAYS_BEFORE);
+        return $this->postal_closes_at ?? $this->closes_at?->copy()->subHours(self::POSTAL_CLOSE_HOURS_BEFORE);
+    }
+
+    /**
+     * The postal deadline in words, with the exact UK date and time, for emails (the website builds
+     * the same sentence in web/src/lib/postal.ts):
+     * "Postal entries must be received at least 48 hours before close: by 6:00pm on Tuesday 22 December 2026 (UK time)."
+     */
+    public function postalDeadlineSentence(): ?string
+    {
+        $by = $this->postalClosesAt();
+        if (! $by) {
+            return null;
+        }
+        $when = $by->copy()->timezone('Europe/London')->format('g:ia').' on '.$by->copy()->timezone('Europe/London')->format('l j F Y');
+
+        return $this->postal_closes_at
+            ? "Postal entries must be received by {$when} (UK time)."
+            : 'Postal entries must be received at least '.self::POSTAL_CLOSE_HOURS_BEFORE." hours before close: by {$when} (UK time).";
     }
 
     public function available(): int

@@ -12,7 +12,8 @@ final class SettingsPayload
         'companyNumber' => '13330886',
         'registeredOffice' => 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
         'supportEmail' => 'competitions@wdsoriginals.com',
-        'postalEntryAddress' => ['WDS Competitions — Free Entry', '[POSTAL ADDRESS LINE 1]', '[TOWN] [POSTCODE]'],
+        // One line per row: "WDS Competitions – Free Entry, Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY, United Kingdom".
+        'postalEntryAddress' => ['WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'],
         'drawsInstagram' => 'wds_originals',
         'socials' => [
             ['label' => 'Instagram @wds_originals', 'url' => 'https://instagram.com/wds_originals'],

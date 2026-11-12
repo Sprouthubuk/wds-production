@@ -2,7 +2,9 @@
 
 namespace Database\Seeders;
 
+use App\Http\Resources\SettingsPayload;
 use App\Models\Competition;
+use App\Models\Setting;
 use App\Models\User;
 use App\Models\Winner;
 use Illuminate\Database\Seeder;
@@ -13,6 +15,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->seedAdmin();
+        $this->seedSiteSettings();
 
         Competition::updateOrCreate(['slug' => 'bmw-e46-330ci-clubsport'], [
             'title' => 'BMW E46 330Ci Clubsport',
@@ -43,8 +46,8 @@ class DatabaseSeeder extends Seeder
             'total_tickets' => 750,
             'max_per_person' => 50,
             'opens_at' => now(),
-            // Placeholder dates until Jason confirms them. Postal entries close three days before
-            // closes_at unless postal_closes_at is set (Competition::postalClosesAt()).
+            // Placeholder dates until Jason confirms them. Postal entries must be received 48 hours
+            // before closes_at unless postal_closes_at is set (Competition::postalClosesAt()).
             'closes_at' => '2026-12-24 18:00:00',
             'postal_closes_at' => null,
             'draw_at' => '2026-12-24 20:00:00',
@@ -55,6 +58,16 @@ class DatabaseSeeder extends Seeder
         Winner::firstOrCreate(['display_name' => 'Mark Robinson', 'prize' => 'Alpina D3 Coupé'], [
             'image' => '/images/winner-mark-robinson.jpg', 'verification' => 'approved', 'handover' => 'delivered', 'show_on_site' => true,
         ]);
+    }
+
+    /** The free entry address, unless an admin has already set a real one in Settings (placeholders are replaced). */
+    private function seedSiteSettings(): void
+    {
+        $site = Setting::get('site', []) ?? [];
+        $address = implode(' ', (array) ($site['postalEntryAddress'] ?? []));
+        if ($address === '' || str_contains($address, '[')) {
+            Setting::put('site', array_merge($site, ['postalEntryAddress' => SettingsPayload::DEFAULTS['postalEntryAddress']]));
+        }
     }
 
     /**

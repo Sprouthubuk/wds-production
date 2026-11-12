@@ -118,7 +118,7 @@ class CompetitionController extends Controller
             'cashAlternative' => ['nullable', 'numeric', 'min:0'],
             'buildVideoUrl' => ['nullable', 'url'],
             'opensAt' => ['nullable', 'date'], 'closesAt' => ['nullable', 'date'],
-            // Empty = three days before closesAt (Competition::postalClosesAt()).
+            // Empty = 48 hours before closesAt (Competition::postalClosesAt()).
             'postalClosesAt' => ['nullable', 'date', ...($request->filled('closesAt') ? ['before_or_equal:closesAt'] : [])],
             'drawAt' => [$existing ? 'sometimes' : 'required', 'date'],
             'postalEntryEnabled' => ['boolean'], 'eventSalesEnabled' => ['boolean'], 'sortOrder' => ['integer'],

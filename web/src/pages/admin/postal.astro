@@ -1,22 +1,22 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { adminGet, day } from '../../lib/admin';
+import { adminGet, localInput, when } from '../../lib/admin';
 import type { Competition } from '../../lib/types';
-interface Row { id: number; competition: string; name: string; email: string; receivedOn: string; status: string; reason: string | null; ticket: string | null }
+interface Row { id: number; competition: string; name: string; email: string; receivedOn: string; receivedAt: string; status: string; reason: string | null; ticket: string | null }
 const [page, comps] = await Promise.all([
   adminGet<{ data: Row[] }>(Astro.cookies, '/postal'),
   adminGet<{ data: Competition[] }>(Astro.cookies, '/event-sales/competitions').catch(() => ({ data: [] as Competition[] })),
 ]);
-const today = new Date().toISOString().slice(0, 10);
+const nowLocal = localInput(new Date().toISOString());
 ---
 <AdminLayout title="Postal entries" active="postal" staffOk>
   <section class="panel">
     <h2>Log a postal entry</h2>
-    <p class="small muted" style="margin:0 0 14px">Type in each envelope as it arrives. Valid entries get the next ticket number straight away, in the same draw as paid entries. Under-18s, late entries and people over the max are rejected automatically.</p>
+    <p class="small muted" style="margin:0 0 14px">Type in each envelope as it arrives. Valid entries get the next ticket number straight away, in the same draw as paid entries, and the entrant is emailed. Envelopes received less than 48 hours before close, under-18s and people over the max are rejected automatically.</p>
     <form class="stack" style="gap:14px" data-admin-form="/api/admin/postal" data-reset data-reload>
       <div class="form-grid">
         <div class="field"><label for="pc">Competition</label><select id="pc" name="competitionId" data-type="number" required>{comps.data.map((c) => <option value={c.id}>{c.title}</option>)}</select></div>
-        <div class="field"><label for="pr">Date received</label><input id="pr" name="receivedOn" type="date" value={today} required /></div>
+        <div class="field"><label for="pr">Received (date and time)</label><input id="pr" name="receivedOn" type="datetime-local" data-type="uk-datetime" value={nowLocal} max={nowLocal} required /><span class="hint">UK time. Must be at least 48 hours before close.</span></div>
       </div>
       <div class="form-grid">
         <div class="field"><label for="pn">Full name</label><input id="pn" name="name" required /></div>
@@ -32,7 +32,7 @@ const today = new Date().toISOString().slice(0, 10);
     <h2>Logged entries</h2>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>Received</th><th>Name</th><th>Competition</th><th>Ticket</th><th>Status</th></tr></thead>
-      <tbody>{page.data.map((e) => <tr><td class="small">{day(e.receivedOn)}</td><td>{e.name}<div class="small muted">{e.email}</div></td><td class="small">{e.competition}</td><td>{e.ticket ? <strong>#{e.ticket}</strong> : '—'}</td><td><span class={`pill pill--${e.status}`}>{e.status}</span>{e.reason ? <div class="small muted">{e.reason}</div> : null}</td></tr>)}</tbody>
+      <tbody>{page.data.map((e) => <tr><td class="small">{when(e.receivedAt ?? e.receivedOn)}</td><td>{e.name}<div class="small muted">{e.email}</div></td><td class="small">{e.competition}</td><td>{e.ticket ? <strong>#{e.ticket}</strong> : '—'}</td><td><span class={`pill pill--${e.status}`}>{e.status}</span>{e.reason ? <div class="small muted">{e.reason}</div> : null}</td></tr>)}</tbody>
     </table></div>
   </section>
 </AdminLayout>

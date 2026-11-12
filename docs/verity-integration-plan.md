@@ -14,7 +14,7 @@ Package facts were first read from v3.0.1 and confirmed against the installed v3
 | Database | MySQL 8.4 in production (a new Forge server before launch; the current one runs PostgreSQL with test data only), SQLite for tests. Verity's integrity triggers exist only for MySQL/MariaDB and SQLite (`IntegrityGuards::supported()`; INTEGRATION.md section 1), so PostgreSQL is out. The `pgsql` connection stays until the old server is deleted. *(done: docs, CI, race test, move checklist in forge/README.md section 4)* |
 | Owner reference | `owner_ref = "entrant:{id}"`, one entrant per normalised email across online, postal and event; the per-person cap counts per entrant. *(done: `entrants` table, `Entrant::forEmail`, cap in `TicketAllocator::heldBy`)* |
 | Launch data | No real sales yet. `php artisan wds:reset-test-data` clears test orders, tickets, postal entries and draws; it refuses if any paid order didn't go through the fake gateway. The competitions are then published on Verity. *(done)* |
-| Postal deadline | `competitions.postal_closes_at`, default three days before `closes_at`; later envelopes are rejected. Shown on the competition, Free Postal Entry and FAQ pages. Real dates are placeholders until Jason confirms. *(done)* |
+| Postal deadline | `competitions.postal_closes_at`, default 48 hours before `closes_at` (must be received by then); later envelopes are rejected ("Received less than 48 hours before close"). Shown on the competition, Free Postal Entry and FAQ pages. Real dates are placeholders until Jason confirms. *(done)* |
 | Draw flow | Verity's lifecycle: round fixed at publish, close freezes entries, `verity:process-due` draws. |
 | Void | Verity's rules: only an empty competition is voided. After close, only R2 redraw or forfeit. |
 | Engines | Verity only. The commit-reveal engine and `DRAW_ENGINE` are removed. Production refuses a non-drand beacon (WDS at web boot, Verity at close/draw/redraw). *(done)* |
@@ -169,6 +169,6 @@ Instant wins can't be combined with a minimum-entries carry-over.
 
 1. Owner reference: `entrants` table, `owner_ref = "entrant:{id}"`.
 2. BMW competition: no real sales; cleared with `wds:reset-test-data` and re-created on Verity before launch.
-3. Postal: `postal_closes_at` (default three days before close) leaves time to log every envelope
+3. Postal: `postal_closes_at` (default 48 hours before close) leaves time to log every envelope
    before Verity freezes the entries at `closes_at`.
 4. Database: MySQL 8.4 on a new server; PostgreSQL isn't supported by Verity.

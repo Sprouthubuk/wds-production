@@ -44,7 +44,7 @@ class VerityDrawFlowTest extends TestCase
 
     private function competition(): Competition
     {
-        // The tests run on the closing day, so postal entries close that afternoon (the default is three days before).
+        // The tests run on the closing day, so postal entries close that afternoon (the default is 48 hours before).
         return $this->publishedCompetition(['closes_at' => self::CLOSES_AT, 'postal_closes_at' => '2026-10-30 18:00:00', 'draw_at' => '2026-10-30 20:30:00']);
     }
 
