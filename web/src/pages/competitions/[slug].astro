@@ -61,7 +61,7 @@ const jsonLd = {
         {c.description.map((p) => <p class="body">{p}</p>)}
         <div class="specs" data-reveal-group>
           {c.specs.map((s, i) => <div class={i === 0 ? 'light' : ''}><span class="label">{s.label}</span><b>{s.value}</b></div>)}
-          <div><span class="label">Cash alternative</span><b>{c.cashAlternative ? money(c.cashAlternative) : 'TBC'}</b></div>
+          {c.cashAlternative ? <div><span class="label">Cash alternative</span><b>{money(c.cashAlternative)}</b></div> : null}
         </div>
         {c.buildVideoUrl ? (
           <a href={c.buildVideoUrl} class="zoom video" data-reveal="img"><img src={c.images[2]?.src ?? c.images[0]?.src} alt="" loading="lazy" /><span class="overlay"><span class="play"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span><span class="stack" style="gap: 6px"><b>Watch the build</b><span class="small">See every step on the WDS Originals YouTube channel</span></span></span></a>
