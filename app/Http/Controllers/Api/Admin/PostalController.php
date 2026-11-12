@@ -42,7 +42,7 @@ class PostalController extends Controller
         return response()->json([
             'status' => $entry->status,
             'message' => $entry->status === 'allocated'
-                ? 'Entry logged — ticket '.$entry->ticket->display($entry->competition->total_tickets).' allocated.'
+                ? 'Entry logged — ticket #'.$entry->ticket->display($entry->competition->total_tickets).' allocated.'
                 : 'Entry rejected: '.$entry->rejection_reason.'.',
         ], 201);
     }

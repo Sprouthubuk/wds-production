@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getDraws, getSettings } from '../lib/api';
 import { drawChannels } from '../lib/channels';
+import { ticket } from '../lib/ticket';
 const [draws, settings] = await Promise.all([getDraws(), getSettings()]);
 const ch = drawChannels(settings);
 const fmt = (iso: string) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' }) : '—');
@@ -32,7 +33,7 @@ const upcoming = draws.filter((d) => !d.winningTicket && !d.winner);
           <thead><tr><th scope="col">Competition</th><th scope="col">Draw date</th><th scope="col">Winning ticket</th><th scope="col">Winner</th><th scope="col">Proof</th></tr></thead>
           <tbody>
             {draws.map((d) => (
-              <tr><td data-label="Competition"><strong>{d.competition}</strong></td><td data-label="Draw date">{fmt(d.drawAt)}</td><td data-label="Winning ticket">{d.winningTicket ?? (d.winner ? '—' : 'Upcoming')}</td><td data-label="Winner">{d.winner ?? d.note ?? '—'}{d.redraws ? <span class="small muted"> (redraw {d.redraws})</span> : null}</td><td data-label="Proof">{d.id && d.verifyUrl ? <a href={`/verify/${d.id}`}>Verify the draw</a> : '—'}</td></tr>
+              <tr><td data-label="Competition"><strong>{d.competition}</strong></td><td data-label="Draw date">{fmt(d.drawAt)}</td><td data-label="Winning ticket">{d.winningTicket ? ticket(d.winningTicket) : (d.winner ? '—' : 'Upcoming')}</td><td data-label="Winner">{d.winner ?? d.note ?? '—'}{d.redraws ? <span class="small muted"> (redraw {d.redraws})</span> : null}</td><td data-label="Proof">{d.id && d.verifyUrl ? <a href={`/verify/${d.id}`}>Verify the draw</a> : '—'}</td></tr>
             ))}
           </tbody>
         </table>

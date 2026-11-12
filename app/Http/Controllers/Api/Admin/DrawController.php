@@ -96,7 +96,7 @@ class DrawController extends Controller
             // Ticket, first name + initial, source: what an external draw picks from (sealed at close).
             fputcsv($out, ['ticket', 'name', 'source']);
             foreach ($rows as $t) {
-                fputcsv($out, [$t->display($c->total_tickets), DrawService::displayName($t->name), $t->channel]);
+                fputcsv($out, ['#'.$t->display($c->total_tickets), DrawService::displayName($t->name), $t->channel]);
             }
             fclose($out);
         }, "entries-{$c->slug}-".substr((string) $draw->entries_hash, 0, 12).'.csv', ['Content-Type' => 'text/csv', 'X-Entries-Hash' => (string) $draw->entries_hash]);
@@ -124,7 +124,7 @@ class DrawController extends Controller
             fputcsv($out, []);
             fputcsv($out, ['ticket']);
             foreach ($sheet['tickets'] as $t) {
-                fputcsv($out, [$t]);
+                fputcsv($out, ['#'.$t]);
             }
             fclose($out);
         }, "chip-sheet-{$competition->slug}-".substr((string) $sheet['entriesHash'], 0, 12).'.csv', ['Content-Type' => 'text/csv', 'X-Entries-Hash' => (string) $sheet['entriesHash']]);
