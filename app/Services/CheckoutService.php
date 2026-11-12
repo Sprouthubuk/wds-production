@@ -62,6 +62,10 @@ class CheckoutService
             $lines = [];
             foreach ($items as $item) {
                 $c = $competitions->get($item['competitionId']) ?? throw new EntryException('A competition in your basket no longer exists.');
+                // A draft (even one seen through a preview link) is never enterable, and never reaches Verity.
+                if (! $c->isPublished() || $c->status === 'draft') {
+                    throw new EntryException("{$c->title} isn't open for entries yet.");
+                }
                 if (! $c->isOpen()) {
                     throw new EntryException("{$c->title} is closed for entries.");
                 }

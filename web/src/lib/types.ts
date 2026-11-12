@@ -13,6 +13,8 @@ export interface Spec {
 export type CompetitionStatus = 'draft' | 'scheduled' | 'live' | 'closed' | 'drawn';
 
 export interface Competition {
+  /** A draft seen through a preview link: shown as live, entries disabled. */
+  preview?: boolean;
   id: number;
   slug: string;
   title: string;

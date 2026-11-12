@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\EntryException;
 use App\Mail\PostalEntryLogged;
 use App\Models\Competition;
 use App\Models\Entrant;
@@ -30,6 +31,10 @@ class PostalEntryService
      */
     public function log(Competition $competition, array $data, User $staff): PostalEntry
     {
+        // A draft can't take entries of any kind (nothing is logged, Verity is never called).
+        if (! $competition->isPublished() || $competition->status === 'draft') {
+            throw new EntryException("{$competition->title} isn't open for entries yet.");
+        }
         $entry = DB::transaction(function () use ($competition, $data, $staff) {
             $receivedAt = Carbon::parse($data['received_on']);
             $reason = $this->rejectionReason($competition, $data, $receivedAt);

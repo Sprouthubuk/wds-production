@@ -1,0 +1,37 @@
+---
+/**
+ * A draft preview link (Admin → competition → Preview link). A valid link sets the preview cookie
+ * until the link expires and opens the competition page; the whole site then shows the draft as if
+ * live, with entries disabled. An expired or revoked link explains itself instead.
+ */
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { api } from '../../lib/api';
+import { PREVIEW_COOKIE, type PreviewInfo } from '../../lib/preview';
+
+const { token } = Astro.params;
+Astro.response.headers.set('Cache-Control', 'private, no-store');
+Astro.response.headers.set('X-Robots-Tag', 'noindex, nofollow');
+
+let info: PreviewInfo | null = null;
+try {
+  info = (await api<{ data: PreviewInfo }>(`/preview/${encodeURIComponent(token ?? '')}`)).data;
+} catch {
+  info = null;
+}
+
+if (info) {
+  const maxAge = Math.max(60, Math.floor((Date.parse(info.expiresAt) - Date.now()) / 1000));
+  Astro.cookies.set(PREVIEW_COOKIE, token!, { httpOnly: true, secure: import.meta.env.PROD, sameSite: 'lax', path: '/', maxAge });
+  return Astro.redirect(`/competitions/${encodeURIComponent(info.slug)}`, 302);
+}
+Astro.cookies.delete(PREVIEW_COOKIE, { path: '/' });
+Astro.response.status = 410;
+---
+<Layout title="Preview link expired">
+  <meta slot="head" name="robots" content="noindex, nofollow" />
+  <PageHero eyebrow="Preview" title="This preview link has expired" intro="Preview links work for 14 days and stop when a new one is made or the competition goes live. Ask WDS for a new link." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container row" style="gap: 12px"><a href="/" class="btn">Go to the home page</a></div>
+  </section>
+</Layout>

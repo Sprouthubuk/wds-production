@@ -13,6 +13,7 @@ interface Props {
 }
 const { title, description = 'Win genuine WDS Originals BMW builds, parts and merchandise. Low ticket numbers, better odds, free postal entry and every draw streamed live.', active = 'none', image = '/images/e46-clubsport-34.jpg' } = Astro.props;
 const settings = await getSettings();
+const preview = Astro.locals.preview ?? null;
 const fullTitle = title === 'Home' ? 'WDS Competitions — Win genuine WDS Originals builds' : `${title} — WDS Competitions`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 ---
@@ -31,9 +32,16 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:type" content="website" />
     <meta name="theme-color" content="#000000" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {preview ? <meta name="robots" content="noindex, nofollow" /> : null}
     <slot name="head" />
   </head>
-  <body>
+  <body class:list={[{ 'is-preview': !!preview }]}>
+    {preview ? (
+      <div class="preview-bar" role="status">
+        <strong>Preview: not live yet. Entries are disabled.</strong>
+        <a href="/preview/exit">Exit preview</a>
+      </div>
+    ) : null}
     <a class="sr-only" href="#main">Skip to content</a>
     <Header active={active} />
     <main id="main">
@@ -63,3 +71,11 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
     </script>
   </body>
 </html>
+
+<style is:global>
+  /* Draft preview banner: fixed, always visible, never mistaken for the live site. */
+  .preview-bar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 1000; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 18px; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); background: #fff; color: #000; border-top: 2px solid #000; font-size: 13px; letter-spacing: .06em; text-transform: uppercase; text-align: center; }
+  .preview-bar a { color: #000; font-weight: 700; }
+  body.is-preview { padding-bottom: 64px; }
+  body.is-preview .sticky-bar { bottom: 52px; }
+</style>

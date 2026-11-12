@@ -38,6 +38,8 @@ class CompetitionResource extends JsonResource
             // Published on the Verity draw engine: the draw is locked in (null = still a draft).
             'verityRef' => $this->verity_ref,
             'publishedAt' => $this->published_at?->toIso8601String(),
+            // A draft seen through a preview link: shown as live, but entries are refused server-side.
+            'preview' => (bool) ($this->resource->previewing ?? false),
         ];
     }
 }

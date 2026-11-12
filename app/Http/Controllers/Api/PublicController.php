@@ -9,21 +9,72 @@ use App\Http\Resources\SettingsPayload;
 use App\Http\Resources\WinnerResource;
 use App\Models\Competition;
 use App\Models\Draw;
+use App\Models\PreviewLink;
 use App\Models\Winner;
 use App\Services\Draws\VerityDrawEngine;
+use Illuminate\Http\Request;
 
 class PublicController extends Controller
 {
-    public function competitions()
+    /**
+     * With a valid preview token (X-Preview-Token, sent by the website from the preview cookie) the
+     * previewed draft is listed too, shown as live and flagged preview: true. Reads only: every
+     * entry endpoint checks the competition itself, so a draft still can't be entered.
+     */
+    public function competitions(Request $request)
     {
-        $items = Competition::visible()->orderBy('sort_order')->orderBy('draw_at')->get();
+        $preview = self::previewFor($request);
+        $items = Competition::visible()
+            ->when($preview, fn ($q) => $q->orWhereKey($preview->competition_id))
+            ->orderBy('sort_order')->orderBy('draw_at')->get();
 
-        return CompetitionResource::collection($items);
+        return self::noStoreIfPreview(CompetitionResource::collection(self::markPreview($items, $preview))->response(), $preview);
     }
 
-    public function competition(string $slug)
+    public function competition(Request $request, string $slug)
     {
-        return new CompetitionResource(Competition::visible()->where('slug', $slug)->firstOrFail());
+        $preview = self::previewFor($request);
+        $c = Competition::visible()->where('slug', $slug)->first();
+        if (! $c && $preview && $preview->competition->slug === $slug) {
+            $c = $preview->competition;
+        }
+        abort_unless($c, 404);
+
+        return self::noStoreIfPreview((new CompetitionResource(self::markPreview(collect([$c]), $preview)->first()))->response(), $preview);
+    }
+
+    /** The website checks a preview link (GET /preview/{token}) before setting its cookie. */
+    public function preview(string $token)
+    {
+        $link = PreviewLink::findValid($token);
+        abort_unless($link, 404, 'This preview link has expired or been revoked.');
+
+        return response()->json(['data' => [
+            'slug' => $link->competition->slug,
+            'title' => $link->competition->title,
+            'expiresAt' => $link->expires_at->toIso8601String(),
+        ]])->header('Cache-Control', 'no-store, private');
+    }
+
+    private static function previewFor(Request $request): ?PreviewLink
+    {
+        return PreviewLink::findValid($request->header('X-Preview-Token'));
+    }
+
+    /** The previewed draft is shown as if live (status "live", preview: true). Nothing is saved. */
+    private static function markPreview($items, ?PreviewLink $preview)
+    {
+        return $items->each(function (Competition $c) use ($preview) {
+            if ($preview && $c->id === $preview->competition_id) {
+                $c->setAttribute('status', 'live');
+                $c->previewing = true;
+            }
+        });
+    }
+
+    private static function noStoreIfPreview($response, ?PreviewLink $preview)
+    {
+        return $preview ? $response->header('Cache-Control', 'no-store, private')->header('X-Robots-Tag', 'noindex') : $response;
     }
 
     /**

@@ -15,6 +15,9 @@ class Competition extends Model
         'verity_ref', 'verity_status', 'published_at',
     ];
 
+    /** Set (never saved) when a draft is shown through a preview link; see PublicController. */
+    public bool $previewing = false;
+
     protected function casts(): array
     {
         return [

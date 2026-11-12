@@ -102,11 +102,13 @@ const config = JSON.stringify({
 
         {variant === 'hero' ? (
           <div class="btn-pair">
-            <button type="button" class="btn" data-enter>Enter online</button>
+            <button type="button" class="btn" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter online'}</button>
             <a href="/free-postal-entry" class="btn">Free by post</a>
           </div>
         ) : (
-          <button type="button" class="btn btn--block btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>
+          c.preview
+            ? <button type="button" class="btn btn--block btn--lg" disabled>Preview: entries disabled</button>
+            : <button type="button" class="btn btn--block btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>
         )}
       </>
     )}
