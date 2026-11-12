@@ -28,6 +28,18 @@ class Ticket extends Model
     /** Zero-padded display number, e.g. 0042 for a 750-ticket competition. */
     public function display(int $total): string
     {
-        return str_pad((string) $this->number, max(4, strlen((string) $total)), '0', STR_PAD_LEFT);
+        return self::pad($this->number, $total);
+    }
+
+    /** A ticket number as everyone sees it: at least 4 digits ("0007"; wider only past 9,999 tickets). */
+    public static function pad(int $number, int $total): string
+    {
+        return str_pad((string) $number, max(4, strlen((string) $total)), '0', STR_PAD_LEFT);
+    }
+
+    /** With the hash, as shown in messages: "#0007". */
+    public static function format(int $number, int $total): string
+    {
+        return '#'.self::pad($number, $total);
     }
 }

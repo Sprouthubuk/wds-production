@@ -71,7 +71,7 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
       ) : null}
 
       {r.status === 'live' ? (
-        <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+        <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap" data-error-host>
           {r.method === 'external'
             ? <button class="btn" disabled={!r.drawTool} data-admin-action={`/api/admin/competitions/${r.competitionId}/close-entries`} data-confirm={r.externalKind === 'physical' ? `Close entries for ${r.competition} now? Nobody can enter after this. The entry list is sealed for the physical draw: print the chip sheet next.` : `Close entries for ${r.competition} now? Nobody can enter after this. The entry list is sealed together with your random number tool (${r.drawTool?.name}, ${r.drawTool?.url}): draw with that tool, on the livestream.`} data-reload>Close entries</button>
             : <button class="btn" data-admin-action={`/api/admin/competitions/${r.competitionId}/close-now`} data-confirm={`Close entries for ${r.competition} and draw now? The winner is drawn on the next drand round, about a minute from now.`} data-reload>Close &amp; draw now</button>}
@@ -111,7 +111,7 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
       {r.status !== 'live' ? <p class="small" style="margin:10px 0 0"><a href={`/admin/draws/${r.competitionId}/reveal`} target="_blank" rel="noopener">Open the reveal screen for the stream ↗</a>{r.draw ? <> · <a href={`/admin/draws/${r.competitionId}/chip-sheet`} target="_blank" rel="noopener">Chip sheet ↗</a></> : null}</p> : null}
 
       {r.draw?.status === 'drawn' ? (
-        <div style="margin-top:12px"><button class="btn" data-admin-action={`/api/admin/draws/${r.draw.id}/publish`} data-confirm="Publish the result? It goes on the Live draws page with its certificate." data-reload>Publish result</button></div>
+        <div style="margin-top:12px" data-error-host><button class="btn" data-admin-action={`/api/admin/draws/${r.draw.id}/publish`} data-confirm="Publish the result? It goes on the Live draws page with its certificate." data-reload>Publish result</button></div>
       ) : null}
 
       <details style="margin-top:12px">

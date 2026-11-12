@@ -169,9 +169,17 @@ class DrawController extends Controller
     /** Method B: the winning ticket number drawn on the livestream, and the livestream link (both required). */
     public function externalResult(Request $request, Competition $competition, VerityDrawEngine $verity)
     {
+        $notListed = 'Ticket '.\App\Models\Ticket::format((int) $request->input('ticket'), (int) $competition->total_tickets).' is not on the sealed entry list.';
         $d = $request->validate([
             'ticket' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) $competition->total_tickets)],
             'livestreamUrl' => ['required', 'url:https', 'max:300'],
+        ], [
+            'ticket.min' => $notListed,
+            'ticket.max' => $notListed,
+            'ticket.required' => 'Enter the winning ticket number.',
+            'ticket.integer' => 'Enter the winning ticket number (digits only).',
+            'livestreamUrl.required' => 'Add the livestream link (https://…).',
+            'livestreamUrl.url' => 'The livestream link must start with https://.',
         ]);
         $verity->recordExternalResult($competition, (int) $d['ticket'], $d['livestreamUrl'], $request->user());
 
