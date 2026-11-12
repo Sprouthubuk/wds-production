@@ -11,7 +11,7 @@ import { currentAdmin, adminGet } from '../../../lib/admin';
 import type { Competition } from '../../../lib/types';
 
 const admin = await currentAdmin(Astro.cookies);
-if (!admin) return Astro.redirect('/admin/sign-in');
+if (!admin) return Astro.redirect(`/sign-in?next=${encodeURIComponent(Astro.url.pathname)}`); // normally handled by src/middleware.ts
 const [comps, sum] = await Promise.all([
   adminGet<{ data: Competition[]; paymentMethods?: { value: string; label: string }[] }>(Astro.cookies, '/event-sales/competitions'),
   adminGet<{ data: { orders: number; cash: number; card: number } }>(Astro.cookies, '/event-sales/summary'),
