@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\Admin;
 
+use App\Enums\EventPaymentMethod;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CompetitionResource;
 use App\Http\Resources\Money;
@@ -17,7 +18,10 @@ class EventSaleController extends Controller
 {
     public function competitions()
     {
-        return CompetitionResource::collection(Competition::where('status', 'live')->where('event_sales_enabled', true)->orderBy('draw_at')->get());
+        // Live sold/remaining: the stand polls this. Payment buttons come from EventPaymentMethod.
+        return CompetitionResource::collection(Competition::where('status', 'live')->where('event_sales_enabled', true)->orderBy('draw_at')->get())
+            ->additional(['paymentMethods' => EventPaymentMethod::forStand()])
+            ->response()->header('Cache-Control', 'no-store');
     }
 
     public function store(Request $request, CheckoutService $checkout)
@@ -29,14 +33,18 @@ class EventSaleController extends Controller
             'email' => ['required', 'email'],
             'phone' => ['nullable', 'string', 'max:30'],
             'dateOfBirth' => ['required', 'date'],
-            'paymentMethod' => ['required', Rule::in(['cash', 'card_reader'])],
+            'paymentMethod' => ['required', Rule::enum(EventPaymentMethod::class)],
             'marketingOptIn' => ['boolean'],
         ]);
+        $method = EventPaymentMethod::from($d['paymentMethod']);
+        // Extension point: a method that doesn't settle at the stand (card through the site) would
+        // start a pending order here instead. See EventPaymentMethod.
+        abort_unless($method->settlesAtStand(), 422, 'This payment method is not available yet.');
         $result = $checkout->start([
             'customer' => ['email' => $d['email'], 'name' => $d['name'], 'phone' => $d['phone'] ?? null, 'dateOfBirth' => $d['dateOfBirth']],
             'items' => [['competitionId' => $d['competitionId'], 'qty' => $d['qty']]],
             'marketingOptIn' => $d['marketingOptIn'] ?? false,
-        ], null, 'event', $request->user(), $d['paymentMethod']);
+        ], null, 'event', $request->user(), $method->value);
 
         return new OrderResource($result['order']);
     }
