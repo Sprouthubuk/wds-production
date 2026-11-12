@@ -36,7 +36,7 @@ final class ClientDrafts
     {
         return [
             self::MAIN_EVENT => self::mainEvent(),
-            self::COILOVERS => ['closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+            self::COILOVERS => ['max_per_person' => null, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
             self::ENGINE_TABLE => ['closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
         ];
     }
@@ -48,6 +48,7 @@ final class ClientDrafts
             'ticket_price_pence' => 1495,
             'bundles' => [['qty' => 3, 'price_pence' => 4000], ['qty' => 10, 'price_pence' => 12500]],
             'total_tickets' => 750,
+            'max_per_person' => null, // no cap
             'cash_alternative_pence' => 500000,
             'closes_at' => self::CLOSES_AT,
             'postal_closes_at' => null,
@@ -81,7 +82,7 @@ final class ClientDrafts
                 'ticket_price_pence' => 500,
                 'bundles' => [['qty' => 5, 'price_pence' => 2000]],
                 'total_tickets' => 495,
-                'max_per_person' => 50,
+                'max_per_person' => null,
                 'cash_alternative_pence' => 50000,
                 'opens_at' => null,
                 'closes_at' => null,

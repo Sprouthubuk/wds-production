@@ -81,7 +81,7 @@ class CheckoutService
                     throw new EntryException($available > 0 ? "Only {$available} tickets left for {$c->title}." : "{$c->title} is sold out.");
                 }
                 $held = $this->allocator->heldBy($c, $email);
-                if ($held + $qty > $c->max_per_person) {
+                if ($c->max_per_person !== null && $held + $qty > $c->max_per_person) {
                     $left = max(0, $c->max_per_person - $held);
                     throw new EntryException("The maximum is {$c->max_per_person} tickets per person for {$c->title}. You can add {$left} more.");
                 }
