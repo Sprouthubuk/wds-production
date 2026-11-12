@@ -64,7 +64,7 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
         </div>
       ))}
     </div>
-    <p class="small muted" style="margin:10px 0 0">No button here can change a result. A winner who forfeits is replaced by a redraw on a new future drand round (protocol R2).</p>
+    <p class="small muted" style="margin:10px 0 0">No button here can change a result. <strong>Redraws:</strong> if a winner forfeits, the forfeit is recorded on the audit chain first, then Verity draws the replacement automatically from a public drand round that was still in the future at that moment (protocol R2). This is the same for every method: a physical or random number generator draw is not redrawn by hand or with the tool. The reveal screen counts down to that round and shows "Redraw 1".</p>
   </section>
 
   {rows.length ? rows.map((r) => (
@@ -99,7 +99,7 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
               </tr>
             ))}
           </tbody></table></div>
-          {r.draw.redrawPending ? <p class="small" style="margin:8px 0 0">Redraw {r.draw.redrawPending.number} is committed to drand round <span class="mono">{r.draw.redrawPending.round}</span>, expected {when(r.draw.redrawPending.roundAt)}. It runs automatically.</p> : null}
+          {r.draw.redrawPending ? <p class="small" style="margin:8px 0 0">Redraw {r.draw.redrawPending.number} is committed to drand round <span class="mono">{r.draw.redrawPending.round}</span>, expected {when(r.draw.redrawPending.roundAt)}. Verity draws it automatically from that round, whatever the original method; the reveal screen counts down to it.</p> : null}
         </div>
       ) : null}
 

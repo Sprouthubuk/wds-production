@@ -21,6 +21,7 @@ type Reveal = {
   competition: { id: number; title: string; image: string | null; drawAt: string | null };
   method: 'verity' | 'external'; status: string; entries: number; entriesHash: string | null;
   round: number | null; roundAt: string | null; redrawRound: number | null; redrawRoundAt: string | null;
+  redrawPending?: { number: number; forfeitedTicket: string } | null; externalKind?: 'rng' | 'physical' | null;
   ticket: string | null; winner: string | null; redraw: number | null; drawId: number | null;
   published: boolean; verifyUrl: string | null; serverTime: string;
 };
@@ -79,7 +80,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 
     <!-- the reveal -->
     <section class="panel" data-stage="reveal" hidden>
-      <p class="label">Winning ticket</p>
+      <p class="label" data-ticket-label>Winning ticket</p>
       <div class="ticket" data-ticket aria-label=""></div>
       <p class="winner" data-winner></p>
       <div class="verify" data-verify>
@@ -95,7 +96,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 
   <footer class="foot">
     <span data-foot-method></span>
-    <span class="ctl"><button type="button" data-fs>Full screen</button>{rehearse ? <span class="tag">Rehearsal: made-up data</span> : <a href={`?rehearse=1`}>Rehearse</a>}<a href="/admin/draws">Back to Draws</a></span>
+    <span class="ctl"><button type="button" data-fs>Full screen</button>{rehearse ? <span class="tag">Rehearsal: made-up data</span> : <a href={`?rehearse=1`}>Rehearse</a><a href={`?rehearse=redraw`}>Rehearse a redraw</a>}<a href="/admin/draws">Back to Draws</a></span>
   </footer>
 </body>
 </html>
@@ -107,6 +108,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     competition: { id: number; title: string; image: string | null; drawAt: string | null };
     method: 'verity' | 'external'; status: string; entries: number; entriesHash: string | null;
     round: number | null; roundAt: string | null; redrawRound: number | null; redrawRoundAt: string | null;
+  redrawPending?: { number: number; forfeitedTicket: string } | null; externalKind?: 'rng' | 'physical' | null;
     ticket: string | null; winner: string | null; redraw: number | null; drawId: number | null;
     published: boolean; verifyUrl: string | null; serverTime: string;
   };
@@ -136,9 +138,13 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     const s = state;
     $('[data-title]').textContent = s.competition.title;
     $('[data-entries]').textContent = s.entries.toLocaleString('en-GB');
-    $('[data-foot-method]').textContent = s.method === 'external'
-      ? ((s as any).externalKind === 'physical' ? 'Drawn by hand from numbered tokens on this livestream · entries sealed by Verity' : 'External draw on this livestream · entries sealed by Verity')
-      : 'Verity draw on drand, the public randomness beacon';
+    const redrawing = !!s.redrawPending || !!s.redraw;
+    $('[data-foot-method]').textContent = redrawing
+      ? 'Redraw (protocol R2): drawn by Verity from a public drand round that was still in the future when the forfeit was recorded'
+      : s.method === 'external'
+        ? (s.externalKind === 'physical' ? 'Drawn by hand from numbered tokens on this livestream · entries sealed by Verity' : 'External draw on this livestream · entries sealed by Verity')
+        : 'Verity draw on drand, the public randomness beacon';
+    $('[data-ticket-label]').textContent = s.redraw ? `Redraw ${s.redraw} · winning ticket` : 'Winning ticket';
 
     const drawn = !!s.ticket;
     if (drawn && revealed === s.ticket) return;              // stay on the reveal
@@ -147,19 +153,20 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 
     // Closed (or a redraw pending): waiting.
     show('waiting');
-    $('[data-eyebrow]').textContent = 'Entries closed';
+    $('[data-eyebrow]').textContent = s.redrawPending ? `Redraw ${s.redrawPending.number}` : 'Entries closed';
     const seal = $('[data-seal]');
     seal.hidden = !s.entriesHash;
     $('[data-seal-n]').textContent = s.entries.toLocaleString('en-GB');
     $('[data-seal-hash]').textContent = (s.entriesHash ?? '').slice(0, 16) + '…';
     const roundAt = s.redrawRoundAt ?? s.roundAt;
     const round = s.redrawRound ?? s.round;
-    if (s.method === 'external') {
+    // A redraw is always on drand (protocol R2), whichever way the original draw was made.
+    if (s.method === 'external' && !s.redrawPending) {
       $('[data-wait-lead]').innerHTML = '<span class="pulse" aria-hidden="true"></span>Drawing live';
       $('[data-wait-sub]').textContent = 'The winning ticket is being drawn now, from the sealed entry list.';
       $('[data-countdown]').hidden = true;
     } else {
-      $('[data-wait-lead]').textContent = s.redrawRound ? 'Redraw committed to drand round' : 'Drawing on drand round';
+      $('[data-wait-lead]').textContent = s.redrawPending ? 'Redraw on drand round' : 'Drawing on drand round';
       $('[data-wait-lead]').insertAdjacentHTML('beforeend', ` <span class="mono">${round ?? '…'}</span>`);
       $('[data-countdown]').hidden = !roundAt;
       tick();
@@ -169,13 +176,17 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   function tick() {
     const s = state;
     const roundAt = s.redrawRoundAt ?? s.roundAt;
-    if (stage !== 'waiting' || s.method === 'external' || !roundAt) return;
+    if (stage !== 'waiting' || (s.method === 'external' && !s.redrawPending) || !roundAt) return;
     const left = Math.max(0, Math.ceil((Date.parse(roundAt) - (Date.now() + skew)) / 1000));
     $('[data-mm]').textContent = String(Math.floor(left / 60));
     $('[data-ss]').textContent = String(left % 60).padStart(2, '0');
-    $('[data-wait-sub]').textContent = left > 0
-      ? 'Nobody knows this randomness yet: not us, not anyone. The winner is drawn the moment the round is published.'
-      : 'Round published. Drawing the winner…';
+    $('[data-wait-sub]').textContent = s.redrawPending
+      ? (left > 0
+        ? `Ticket ${s.redrawPending.forfeitedTicket} forfeited the prize. The replacement winner is drawn by Verity from this public drand round, which was still in the future when the forfeit was recorded.`
+        : 'Round published. Drawing the replacement winner…')
+      : left > 0
+        ? 'Nobody knows this randomness yet: not us, not anyone. The winner is drawn the moment the round is published.'
+        : 'Round published. Drawing the winner…';
   }
 
   async function reveal() {
@@ -256,6 +267,14 @@ Astro.response.headers.set('Cache-Control', 'no-store');
       skew = 0; render();
     });
     at(20000, () => { state = { ...state, status: 'drawn', ticket: '0417', winner: 'Alex S.' }; render(); });
+    if (new URLSearchParams(location.search).get('rehearse') === 'redraw') {
+      // After the reveal: the winner forfeits, and Redraw 1 runs on a future drand round.
+      at(34000, () => {
+        state = { ...state, ticket: null, winner: null, redrawPending: { number: 1, forfeitedTicket: '0417' }, redrawRound: 5123999, redrawRoundAt: new Date(Date.now() + 15000).toISOString() };
+        revealed = null; skew = 0; render();
+      });
+      at(50000, () => { state = { ...state, redrawPending: null, redrawRound: null, redrawRoundAt: null, ticket: '0962', winner: 'Sam J.', redraw: 1 }; render(); });
+    }
   }
 
   $('[data-reveal-btn]').addEventListener('click', reveal);
