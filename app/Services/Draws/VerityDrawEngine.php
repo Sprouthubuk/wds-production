@@ -70,6 +70,9 @@ class VerityDrawEngine
                     'ticket_price_pence' => (int) $locked->ticket_price_pence,
                     'max_per_person' => (int) $locked->max_per_person,
                     'closes_at' => $locked->closes_at,
+                    // Entries are sealed at closes_at; the drand round is the one at the live draw time, so the
+                    // winner can't be known before the stream (engine spec §4.2.1). External draws have no round.
+                    'draw_at' => $locked->draw_at,
                     'opens_at' => $locked->opens_at,
                     'ticket_allocation' => 'sequential', // 1, 2, 3 … across online, postal and event (no instant wins)
                     'draw_method' => $locked->draw_method ?? Competition::DRAW_VERITY, // fixed from here on
@@ -101,7 +104,8 @@ class VerityDrawEngine
         } catch (VerityException $e) {
             throw new EntryException($e->getMessage());
         }
-        $competition->update(['closes_at' => $vc->closes_at]);
+        // The live draw moves with the close, by the same amount (the engine records it on the extension).
+        $competition->update(['closes_at' => $vc->closes_at] + ($vc->draw_at ? ['draw_at' => $vc->draw_at] : []));
 
         return $competition;
     }

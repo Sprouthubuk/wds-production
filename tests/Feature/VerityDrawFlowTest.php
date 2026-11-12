@@ -45,7 +45,9 @@ class VerityDrawFlowTest extends TestCase
     private function competition(): Competition
     {
         // The tests run on the closing day, so postal entries close that afternoon (the default is 48 hours before).
-        return $this->publishedCompetition(['closes_at' => self::CLOSES_AT, 'postal_closes_at' => '2026-10-30 18:00:00', 'draw_at' => '2026-10-30 20:30:00']);
+        return $this->publishedCompetition(['closes_at' => self::CLOSES_AT, 'postal_closes_at' => '2026-10-30 18:00:00',
+            // Draw time = close: the round is the recorded one a minute after the close (engine spec §4.2.1).
+            'draw_at' => self::CLOSES_AT]);
     }
 
     private function buyOnline(Competition $c, int $qty, string $email): Order
@@ -251,7 +253,7 @@ class VerityDrawFlowTest extends TestCase
 
     public function test_void_only_for_an_empty_competition_and_recorded_on_the_audit_chain(): void
     {
-        $empty = $this->publishedCompetition(['slug' => 'empty', 'closes_at' => self::CLOSES_AT, 'draw_at' => '2026-10-30 20:30:00']);
+        $empty = $this->publishedCompetition(['slug' => 'empty', 'closes_at' => self::CLOSES_AT, 'draw_at' => self::CLOSES_AT]);
         $full = $this->competition();
         $this->buyOnline($full, 1, 'alex@example.com');
 
@@ -277,7 +279,7 @@ class VerityDrawFlowTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $draft = Competition::create([
             'slug' => 'draft', 'title' => 'Draft car', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 1495,
-            'total_tickets' => 100, 'max_per_person' => 10, 'closes_at' => self::CLOSES_AT, 'draw_at' => '2026-10-30 20:30:00',
+            'total_tickets' => 100, 'max_per_person' => 10, 'closes_at' => self::CLOSES_AT, 'draw_at' => self::CLOSES_AT,
         ]);
 
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['status' => 'live'])->assertStatus(422);

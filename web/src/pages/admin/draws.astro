@@ -27,8 +27,8 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
     <h2>How draws work</h2>
     <ol class="small" style="margin:0;padding-left:18px;line-height:1.9;color:var(--muted-2)">
       <li><strong>Publish</strong> a competition (Competitions → Publish). That locks the draw in: terms fixed, seed committed, drand round planned.</li>
-      <li>At the <strong>closing time</strong> the draw engine freezes the entry list, fingerprints it and commits to a drand round still in the future. It's timestamped independently.</li>
-      <li><strong>Verity draw:</strong> about a minute later that round is published by drand, and the engine <strong>draws automatically</strong>. Nobody, including us, could know the result earlier. <strong>External draw:</strong> press Close entries on the stream (the list is sealed with your named tool), pick a ticket from the sealed list with that tool, then record the ticket and the livestream link. Verity checks the ticket was on the sealed list; it doesn't make the pick.</li>
+      <li>At the <strong>closing time</strong> the draw engine freezes the entry list and fingerprints it. It's timestamped independently.</li>
+      <li><strong>Verity draw:</strong> at the <strong>live draw time</strong> the planned drand round is published, and the engine <strong>draws automatically</strong>. Nobody, including us, could know the result earlier. <strong>External draw:</strong> press Close entries on the stream (the list is sealed with your named tool), pick a ticket from the sealed list with that tool, then record the ticket and the livestream link. Verity checks the ticket was on the sealed list; it doesn't make the pick.</li>
       <li><strong>Publish result</strong> when you reveal it on the Instagram live. That puts the winner and the certificate on the Live draws page.</li>
     </ol>
     <p class="small muted" style="margin:10px 0 0">No button here can change a result. A winner who forfeits is replaced by a redraw on a new future drand round (protocol R2).</p>
