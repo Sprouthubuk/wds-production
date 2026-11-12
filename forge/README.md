@@ -285,6 +285,18 @@ Before you publish anything:
    uses it, and a new pepper would make them unverifiable. Rotating the seed key is possible only with
    `verity:seal-seeds` (INTEGRATION.md); never just replace it.
 5. Clear the terminal/command output afterwards; never paste either value into chat, email, tickets or git.
+
+**The exact formats** (`verity:check` FAILs on a malformed seed key: the `seed_key_format` row):
+
+| Variable | Format | Example shape |
+|---|---|---|
+| `VERITY_SEED_KEY` | The literal prefix `base64:` followed by the standard base64 of **exactly 32 random bytes** (the app cipher is AES-256-CBC): 51 characters in all, ending in `=`. Copy the whole line `verity:seal-seeds --new-key` prints, prefix included. It must differ from `APP_KEY`. | `base64:` + 44 base64 characters |
+| `VERITY_OWNER_PEPPER` | Any non-empty string (it's an HMAC key, so there's no format to get wrong). Use 64 hex characters from the command above. Never change it once anything is published. | 64 characters `0-9a-f` |
+
+Without the `base64:` prefix the 44 base64 characters themselves are used as the key, which is the wrong
+length: publishing then fails. `verity:check` says "It's missing the "base64:" prefix": add the prefix to the
+**same** value (don't make a new key), `php8.5 artisan config:cache`, then `verity:check --strict` again.
+Publishing also refuses, with that message, while the key is malformed.
 ```
 VERITY_BEACON=drand
 VERITY_SEED_KEY=<from above>

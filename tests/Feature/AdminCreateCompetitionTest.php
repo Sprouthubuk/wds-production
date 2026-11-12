@@ -38,6 +38,12 @@ class AdminCreateCompetitionTest extends TestCase
             ->assertStatus(422)->assertJsonValidationErrors('status');
         $this->actingAs($admin)->postJson('/api/admin/competitions', $this->formBody(['slug' => 'x3', 'status' => 'draft']))->assertCreated();
 
+        // No maximum per person unless one is entered (the form starts empty; omitted = no limit too).
+        $body = $this->formBody(['slug' => 'x5']);
+        unset($body['maxPerPerson']);
+        $id5 = $this->actingAs($admin)->postJson('/api/admin/competitions', $body)->assertCreated()->assertJsonPath('data.maxPerPerson', null)->json('data.id');
+        $this->assertNull(Competition::findOrFail($id5)->max_per_person);
+
         // Errors come back as a message the admin form shows in its error banner.
         $this->actingAs($admin)->postJson('/api/admin/competitions', $this->formBody(['slug' => 'x4', 'title' => '']))
             ->assertStatus(422)->assertJsonPath('errors.title.0', 'The title field is required.');
