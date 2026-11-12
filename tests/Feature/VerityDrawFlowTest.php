@@ -290,8 +290,9 @@ class VerityDrawFlowTest extends TestCase
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['closesAt' => '2026-10-31 20:00:00'])->assertStatus(422);
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['strapline' => 'New words are fine'])->assertOk();
 
-        // The closing time only moves later, through extend, with a public reason.
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/extend", ['closesAt' => '2026-10-31 20:00:00', 'reason' => 'Show moved by a day'])->assertOk();
+        // The closing time only moves later, through Postpone (emergency only), with a public reason and a confirmation.
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/extend", ['closesAt' => '2026-10-31 20:00:00', 'reason' => 'Show moved by a day'])->assertStatus(422);
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/extend", ['closesAt' => '2026-10-31 20:00:00', 'reason' => 'The show venue moved the event by a day', 'confirm' => true])->assertOk();
         $this->assertSame('2026-10-31 20:00:00', $draft->fresh()->closes_at->toDateTimeString());
         $this->assertTrue(AuditEvent::where('type', 'competition.extended')->exists());
     }

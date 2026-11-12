@@ -33,6 +33,7 @@ const postalLabel = postal ? postalBy(c) : null;
 const postalSentence = postalDeadlineSentence(c);
 const postNote = seasonalPostNote(c);
 const drawRule = 'The draw goes ahead on the stated date and time however many tickets have sold. Closing dates are not extended.';
+const ukShort = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const closesLabel = c.closesAt ? new Date(c.closesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'When sold out or before the draw';
 const faqs = [
   { q: 'When is the draw?', a: `${drawDate ? `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}.` : 'The date is to be confirmed.'} ${ch.youtube && ch.instagram ? `Watch it live on our socials: Instagram @${ch.instagram.handle} or YouTube.` : `Watch it live on ${ch.where}.`}` },
@@ -51,6 +52,14 @@ const jsonLd = {
 <Layout title={c.title} description={free ? `Win the ${c.title}. Free to enter online. ${ch.drawnLive}.` : `Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="container crumbs"><a href="/">Home</a> / <a href="/competitions">Competitions</a> / <span>{c.title}</span></div>
+  {c.postponement ? (
+    <div class="container"><div class="postponed" role="status">
+      <span class="label">Postponed</span>
+      <b>Entries now close {closesLabel}{c.postponement.from ? `, not ${ukShort(c.postponement.from)}` : ''}. Live draw: {drawLabel}.</b>
+      {c.postponement.reason ? <span class="small">Reason: {c.postponement.reason}</span> : null}
+      <span class="small muted">Every entrant has been emailed. Entries already made stay in the draw. The change is on the draw's public audit record.</span>
+    </div></div>
+  ) : null}
 
   <div class="container layout">
       <div class="gallery" data-gallery>
@@ -141,6 +150,9 @@ const jsonLd = {
   .prices > div { padding: 14px 0; display: flex; flex-direction: column; gap: 4px; }
   .prices > div + div { padding-left: 20px; border-left: 1px solid var(--line-2); }
   .prices b { font-size: 30px; }
+  .postponed { border: 2px solid #fff; background: #fff; color: #000; padding: 14px 16px; margin: 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
+  .postponed .muted { color: #444; }
+  .postponed b { font-size: 17px; line-height: 1.35; }
   .postal-deadline { border: 1px solid #fff; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
   .postal-deadline b { font-size: 18px; line-height: 1.3; }
   .postal-deadline a { color: inherit; }
