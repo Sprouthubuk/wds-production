@@ -78,6 +78,7 @@ class CompetitionController extends Controller
 
     /** Columns that are part of the published draw terms. */
     private const LOCKED_AFTER_PUBLISH = [
+        'draw_method' => 'The draw method',
         'total_tickets' => 'The number of tickets', 'ticket_price_pence' => 'The ticket price', 'max_per_person' => 'The maximum per person',
         'closes_at' => 'The closing time', 'opens_at' => 'The opening time', 'title' => 'The title',
     ];
@@ -122,6 +123,7 @@ class CompetitionController extends Controller
             'postalClosesAt' => ['nullable', 'date', ...($request->filled('closesAt') ? ['before_or_equal:closesAt'] : [])],
             'drawAt' => [$existing ? 'sometimes' : 'required', 'date'],
             'postalEntryEnabled' => ['boolean'], 'eventSalesEnabled' => ['boolean'], 'sortOrder' => ['integer'],
+            'drawMethod' => ['sometimes', Rule::in([Competition::DRAW_VERITY, Competition::DRAW_EXTERNAL])],
         ]);
 
         $map = [
@@ -129,7 +131,7 @@ class CompetitionController extends Controller
             'images' => 'images', 'description' => 'description', 'specs' => 'specs', 'totalTickets' => 'total_tickets',
             'maxPerPerson' => 'max_per_person', 'buildVideoUrl' => 'build_video_url', 'opensAt' => 'opens_at',
             'closesAt' => 'closes_at', 'postalClosesAt' => 'postal_closes_at', 'drawAt' => 'draw_at', 'postalEntryEnabled' => 'postal_entry_enabled',
-            'eventSalesEnabled' => 'event_sales_enabled', 'sortOrder' => 'sort_order',
+            'eventSalesEnabled' => 'event_sales_enabled', 'sortOrder' => 'sort_order', 'drawMethod' => 'draw_method',
         ];
         $out = [];
         foreach ($map as $in => $col) {

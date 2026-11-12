@@ -14,7 +14,7 @@
         "laravel/sanctum": "^4.4",
         "laravel/tinker": "^3.0",
         "resend/resend-php": "^1.18",
-        "sprouthub/verity-engine": "^3.0.3"
+        "sprouthub/verity-engine": "dev-draw-methods as 3.0.99"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

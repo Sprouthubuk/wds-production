@@ -11,9 +11,20 @@ class Competition extends Model
     protected $fillable = [
         'slug', 'title', 'strapline', 'category', 'badge', 'status', 'images', 'description', 'specs',
         'ticket_price_pence', 'bundles', 'total_tickets', 'max_per_person', 'cash_alternative_pence',
-        'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order',
+        'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order', 'draw_method',
         'verity_ref', 'verity_status', 'published_at',
     ];
+
+    /** Verity draws on drand ("Close & draw now" on stream, or automatically at the closing time). */
+    public const DRAW_VERITY = 'verity';
+
+    /** Verity seals the entries; the winner is drawn on the livestream with our own RNG and recorded. */
+    public const DRAW_EXTERNAL = 'external';
+
+    public function drawsExternally(): bool
+    {
+        return ($this->draw_method ?? self::DRAW_VERITY) === self::DRAW_EXTERNAL;
+    }
 
     /** Set (never saved) when a draft is shown through a preview link; see PublicController. */
     public bool $previewing = false;

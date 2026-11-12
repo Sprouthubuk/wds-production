@@ -7,12 +7,18 @@ const { id } = Astro.params;
 const found = await getCertificate(id!);
 if (!found) return Astro.rewrite('/404');   // not drawn, or not published yet: nothing is revealed early
 const { certificate: c, url } = found;
+// Drawn externally on the livestream (draft, item 8): Verity sealed the entries; the pick was made on stream.
+const external = c.method === 'external';
+const livestream: string | null = c.livestreamUrl ?? null;
 const utc = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—');
 const facts: [string, string | number | null][] = [
   ['Draw reference', c.reference],
   ['Winning ticket', c.winningTicket],
+  ['How it was drawn', external ? 'Drawn externally on livestream, from the entry list Verity sealed at close' : c.drawNow ? 'Verity live draw: closed on stream, drawn on the next drand round' : 'Verity draw on drand'],
+  ['Livestream', external ? livestream : null],
+  ['Result recorded', external ? utc(c.recordedAt ?? null) : null],
   ['Entries', c.entriesCount],
-  ['Entry list fingerprint (SHA-256)', c.entriesHash],
+  [external ? 'Sealed entry list fingerprint (SHA-256)' : 'Entry list fingerprint (SHA-256)', c.entriesHash],
   ['Seed commitment (published at launch)', c.commitment],
   ['Seed (revealed after the draw)', c.revealedSeed],
   ['drand round', c.drandRound ? `${c.drandRound}, published ${utc(c.drandRoundAt)}` : null],
@@ -28,10 +34,19 @@ const facts: [string, string | number | null][] = [
   <PageHero eyebrow="Verify a draw" title={c.competition} intro="Every check below runs in your own browser, from the published record, with code you can read. Nothing is taken on trust from us." />
   <section class="section">
     <div class="container stack" style="gap:28px">
-      <div class="verify-box" data-reveal>
-        <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
-        <verity-verify src={url}></verity-verify>
-      </div>
+      {external ? (
+        <div class="verify-box stack" style="gap:10px" data-reveal>
+          <p class="eyebrow" style="margin:0">Drawn externally on livestream</p>
+          <p class="body" style="margin:0">This winner was drawn live on our stream with our own random number generator, from the entry list the Verity engine <strong>sealed and fingerprinted when entries closed</strong>. Verity recorded the winning ticket and the livestream link on its audit chain, and checks the ticket was in the sealed list.</p>
+          {livestream ? <a class="btn" href={livestream} target="_blank" rel="noopener">Watch the draw ↗</a> : null}
+          <p class="small muted" style="margin:0">Re-check it: the <a href={url}>raw record (JSON)</a> lists every entry; its SHA-256 must match the sealed fingerprint below, and the winning ticket must be in it.</p>
+        </div>
+      ) : (
+        <div class="verify-box" data-reveal>
+          <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
+          <verity-verify src={url}></verity-verify>
+        </div>
+      )}
 
       {c.winners?.length ? (
         <div class="stack" style="gap:12px">
@@ -49,12 +64,21 @@ const facts: [string, string | number | null][] = [
 
       <div class="stack" style="gap:10px">
         <h2 class="display display--s">How it works</h2>
+        {external ? (
+        <ol class="body how">
+          <li>When the competition was published, the draw engine committed to a secret seed and recorded that this competition would be drawn externally, on our livestream. That can't change afterwards.</li>
+          <li>On the livestream we closed entries. Every entry (online, postal and event) was frozen and fingerprinted at that moment, and the close was put on the audit chain.</li>
+          <li>We drew a ticket from that sealed list live, with our own random number generator, and recorded the ticket and the livestream link on the audit chain.</li>
+          <li>If a winner forfeits, the replacement is redrawn by the engine from a public drand round that was still in the future at the time (protocol R2).</li>
+        </ol>
+        ) : (
         <ol class="body how">
           <li>When the competition was published, the draw engine committed to a secret seed (its SHA-256 is the commitment above) and fixed the drand round: the first one after the closing time.</li>
           <li>At the closing time every entry (online, postal and event) was frozen and fingerprinted, and that close was timestamped by an independent timestamp authority, before the drand round existed.</li>
           <li>The round's randomness comes from <a href="https://drand.love" rel="noopener">drand</a>, a public randomness network run by independent organisations. Its BLS signature proves nobody chose it.</li>
           <li>The seed, the fingerprint and the round's randomness give the winning ticket. Anyone can re-run it: this page does, and so does the <a href={url}>raw record (JSON)</a> with Verity's open verifiers.</li>
         </ol>
+        )}
       </div>
     </div>
   </section>

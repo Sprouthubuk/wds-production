@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Draw extends Model
 {
-    protected $fillable = ['competition_id', 'engine', 'status', 'entries_count', 'entries_hash', 'commitment', 'proof', 'winning_number', 'winning_ticket_id', 'certificate_path', 'run_by', 'drawn_at', 'published_at', 'verity_ref', 'beacon_round', 'beacon_round_at'];
+    protected $fillable = ['competition_id', 'engine', 'status', 'entries_count', 'entries_hash', 'commitment', 'proof', 'winning_number', 'winning_ticket_id', 'certificate_path', 'run_by', 'drawn_at', 'published_at', 'verity_ref', 'beacon_round', 'beacon_round_at', 'method', 'livestream_url'];
 
     protected function casts(): array
     {
