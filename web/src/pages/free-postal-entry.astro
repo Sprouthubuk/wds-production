@@ -1,11 +1,12 @@
 ---
-import { POSTAL_HOURS_BEFORE_CLOSE, POSTAL_RULE, postalBy, postalDeadlineSentence } from '../lib/postal';
+import { POSTAL_HOURS_BEFORE_CLOSE, POSTAL_RULE, postalBy, postalDeadlineSentence, seasonalPostNote } from '../lib/postal';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getCompetitions, getSettings } from '../lib/api';
 
 const [settings, competitions] = await Promise.all([getSettings(), getCompetitions()]);
 const address = settings.postalEntryAddress;
+const deadlines = competitions.filter((c) => c.status === 'live' && postalBy(c));
 const include = ['The competition name, e.g. “BMW E46 330Ci Clubsport”', 'Your full name', 'Your full postal address', 'Your date of birth', 'Your phone number', 'Your email address (the one on your WDS account, if you have one)'];
 const steps = [
   ['01', 'Write your entry', 'On a postcard, or a letter in an envelope, write the competition name and your details (see the list).'],
@@ -24,6 +25,22 @@ const rules = [
 ---
 <Layout title="Free postal entry" active="postal" description="Every WDS competition can be entered free by post, with exactly the same chance of winning as online entries.">
   <PageHero eyebrow="Free entry" title="Enter free by post" intro="Every WDS competition can be entered free by post. Postal entries go into the same draw as online entries, with exactly the same chance of winning." />
+  {deadlines.length ? (
+    <section class="section section--tight">
+      <div class="container stack" style="gap: 16px">
+        <h2 class="display display--s" style="margin: 0">Postal deadlines</h2>
+        <div class="deadlines">
+          {deadlines.map((c) => (
+            <div class="deadline">
+              <span class="label">{c.title}: must be received by</span>
+              <b>{postalBy(c)} <span class="small">(UK time)</span></b>
+              {seasonalPostNote(c) ? <span class="small">{seasonalPostNote(c)}</span> : null}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  ) : null}
   <section class="section">
     <div class="container row" style="gap: 32px">
       <div class="addr-box">
@@ -69,6 +86,9 @@ const rules = [
 </Layout>
 
 <style>
+  .deadlines { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; }
+  .deadline { border: 2px solid #fff; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
+  .deadline b { font-size: clamp(22px, 2.4vw, 30px); line-height: 1.2; }
   .addr-box { flex: 1 1 520px; border: 2px solid #fff; padding: 40px; display: flex; flex-direction: column; gap: 20px; }
   .addr-box address { font-style: normal; font-size: clamp(22px, 2.6vw, 34px); font-weight: 700; line-height: 1.25; text-transform: uppercase; }
   .incl { flex: 1 1 380px; border: 1px solid var(--line-2); padding: 40px; display: flex; flex-direction: column; gap: 16px; }

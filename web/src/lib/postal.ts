@@ -19,6 +19,20 @@ export function ukDateTime(iso: string): string {
   return `${parts.hour}:${parts.minute}${String(parts.dayPeriod).toLowerCase().replace(/\./g, '')} on ${parts.weekday} ${parts.day} ${parts.month} ${parts.year}`;
 }
 
+/**
+ * Christmas post is slow: a plain warning when the postal deadline falls between 1 December and
+ * 10 January (UK time), shown next to the deadline. Null the rest of the year.
+ */
+export function seasonalPostNote(c: HasPostalClose): string | null {
+  if (!c.postalClosesAt) return null;
+  const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/London', month: 'numeric', day: 'numeric' }).formatToParts(new Date(c.postalClosesAt));
+  const m = Number(parts.find((p) => p.type === 'month')?.value);
+  const d = Number(parts.find((p) => p.type === 'day')?.value);
+  return m === 12 || (m === 1 && d <= 10)
+    ? 'Christmas post is slow, so post your entry early. Proof of posting is not proof of receipt.'
+    : null;
+}
+
 interface HasPostalClose { postalClosesAt: string | null; postalClosesAtCustom?: string | null }
 
 /** The exact deadline ("6:00pm on Tuesday 22 December 2026"), or null when there's no closing time. */
