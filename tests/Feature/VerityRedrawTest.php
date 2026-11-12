@@ -57,7 +57,7 @@ class VerityRedrawTest extends TestCase
     /** A competition with entries from three people, closed and drawn on ROUND; published (revealed) if asked. */
     private function drawn(bool $publish = true): Draw
     {
-        $c = $this->publishedCompetition(['closes_at' => self::CLOSES_AT, 'draw_at' => '2026-10-30 20:30:00']);
+        $c = $this->publishedCompetition(['closes_at' => self::CLOSES_AT, 'draw_at' => self::CLOSES_AT]);
         $this->buy($c, 3, 'alex@example.com', 'Alex Smith');
         $this->buy($c, 2, 'sam@example.com', 'Sam Jones');
         $this->buy($c, 2, 'jo@example.com', 'Jo Brown');

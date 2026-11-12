@@ -91,7 +91,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <h2>Dates &amp; entry</h2>
       <div class="form-grid">
         <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} disabled={locked} /></div>
-        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint">The draw runs automatically on the drand round about a minute after this.</span></div>
+        <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint">Entries close and are sealed at this time. A Verity draw then uses the drand round at the Live draw time below, so nobody can know the winner before it.</span></div>
         <div class="field"><label for="postal-closes">Postal entries close</label><input id="postal-closes" name="postalClosesAt" type="datetime-local" value={localInput(v.postalClosesAtCustom ?? null)} /><span class="hint">Default: 48 hours before close. Leave empty to use it; envelopes received after this are rejected.</span></div>
         <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site. Can stay empty on a draft until it's confirmed; needed to publish.</span></div>
         <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status}</span></b><span class="hint">{locked ? 'Follows the draw engine: it closes and draws on its own.' : 'A draft until you publish it below.'}</span></div>
@@ -122,7 +122,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   {!isNew && !locked ? (
     <section class="panel" style="margin-top:20px">
       <h2>Publish</h2>
-      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and the winner is drawn automatically on the public drand round about a minute after closing. Check everything above (and save) first.</p>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and the winner is drawn automatically on the public drand round at the live draw time. Check everything above (and save) first.</p>
       <button class="btn" data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, max ${v.maxPerPerson} per person. It can't be undone.`} data-reload>Publish and lock the draw</button>
     </section>
   ) : null}
