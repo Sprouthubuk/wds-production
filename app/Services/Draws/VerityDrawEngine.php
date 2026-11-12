@@ -54,6 +54,10 @@ class VerityDrawEngine
         if ($competition->draw_at->lt($competition->closes_at)) {
             throw new EntryException('The live draw can\'t be before entries close.');
         }
+        // A malformed VERITY_SEED_KEY would crash the publish half way ("Unsupported cipher or incorrect key length").
+        if ($why = \App\Support\VerityKeyChecks::seedKeyProblem()) {
+            throw new EntryException('Publishing is blocked: the server\'s VERITY_SEED_KEY is not a valid key ('.$why.') Fix it on the server, then run php artisan verity:check --strict.');
+        }
         if ($competition->drawsExternally() && ! $competition->drawTool()) {
             throw new EntryException('Name the random number tool for the external draw (and its https link) before publishing.');
         }
