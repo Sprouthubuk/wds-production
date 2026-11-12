@@ -45,6 +45,9 @@ class VerityDrawEngine
         if ($competition->closes_at->isPast()) {
             throw new EntryException('The closing time has passed.');
         }
+        if ($competition->drawsExternally() && ! $competition->drawTool()) {
+            throw new EntryException('Name the random number tool for the external draw (and its https link) before publishing.');
+        }
 
         return DB::transaction(function () use ($competition) {
             $locked = Competition::query()->whereKey($competition->id)->lockForUpdate()->firstOrFail();
@@ -61,6 +64,7 @@ class VerityDrawEngine
                     'opens_at' => $locked->opens_at,
                     'ticket_allocation' => 'sequential', // 1, 2, 3 … across online, postal and event (no instant wins)
                     'draw_method' => $locked->draw_method ?? Competition::DRAW_VERITY, // fixed from here on
+                ] + ($locked->drawsExternally() ? ['external_tool' => $locked->drawTool()] : []) + [
                     'meta' => ['wds_competition_id' => $locked->id, 'wds_slug' => $locked->slug],
                 ], endPrizes: [[
                     'name' => $locked->title,
@@ -201,7 +205,23 @@ class VerityDrawEngine
         return $this->closeLive($competition, fn ($vc, $reason) => Verity::closeAndDrawNow($vc, $reason));
     }
 
-    /** Method B, on the livestream: close entries and seal the list (no drand round). */
+    /** Method B: change the random number tool, until entries close (on Verity's audit trail each time). */
+    public function setDrawTool(Competition $competition, string $name, string $url, User $admin): Competition
+    {
+        if (! $competition->drawsExternally()) {
+            throw new EntryException('Only an externally drawn competition has a random number tool.');
+        }
+        try {
+            $vc = Verity::setExternalTool($this->verityCompetition($competition), $name, $url, 'admin:'.$admin->id);
+        } catch (VerityException $e) {
+            throw new EntryException($e->getMessage());
+        }
+        $competition->update(['draw_tool_name' => $vc->external_tool_name, 'draw_tool_url' => $vc->external_tool_url]);
+
+        return $competition;
+    }
+
+    /** Method B, on the livestream: close entries and seal the list with the random number tool (no drand round). */
     public function closeEntries(Competition $competition, User $admin): Competition
     {
         if (! $competition->drawsExternally()) {
@@ -304,6 +324,9 @@ class VerityDrawEngine
             'method' => $v['draw_method'] ?? 'verity',
             'drawNow' => (bool) ($v['draw_now'] ?? false),
             'livestreamUrl' => $v['external']['livestream_url'] ?? null,
+            'drawTool' => $v['external']['tool'] ?? null,     // the random number tool, sealed with the entry list
+            'seal' => $v['external']['seal'] ?? null,
+            'statement' => ($v['draw_method'] ?? 'verity') === 'external' ? Competition::EXTERNAL_STATEMENT : null,
             'recordedAt' => $v['external']['recorded_at'] ?? null,
         ];
     }

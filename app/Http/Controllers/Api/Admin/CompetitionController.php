@@ -44,6 +44,13 @@ class CompetitionController extends Controller
         if ($competition->isPublished()) {
             // Published = locked in on Verity: the terms that are part of the draw can't change. The
             // closing time only moves later, with a public reason (extend()). Status follows Verity.
+            // After publishing, the random number tool is changed through Verity (Draws page) until entries close.
+            foreach (['draw_tool_name', 'draw_tool_url'] as $col) {
+                if (array_key_exists($col, $data) && ! self::same($competition->{$col}, $data[$col])) {
+                    abort(422, 'Change the random number tool on the Draws page (until entries close): it\'s recorded on the draw\'s audit trail.');
+                }
+                unset($data[$col]);
+            }
             foreach (self::LOCKED_AFTER_PUBLISH as $col => $label) {
                 if (array_key_exists($col, $data) && ! self::same($competition->{$col}, $data[$col])) {
                     abort(422, "{$label} can't change after publishing: the draw is locked in.".($col === 'closes_at' ? ' Use "Extend closing time" to move it later.' : ''));
@@ -124,6 +131,9 @@ class CompetitionController extends Controller
             'drawAt' => [$existing ? 'sometimes' : 'required', 'date'],
             'postalEntryEnabled' => ['boolean'], 'eventSalesEnabled' => ['boolean'], 'sortOrder' => ['integer'],
             'drawMethod' => ['sometimes', Rule::in([Competition::DRAW_VERITY, Competition::DRAW_EXTERNAL])],
+            // An external draw's random number tool (e.g. random.org): sealed with the entry list when entries close.
+            'drawToolName' => ['sometimes', 'nullable', 'string', 'max:80', 'not_regex:/[|\x00-\x1f]/'],
+            'drawToolUrl' => ['sometimes', 'nullable', 'url:https', 'max:300', 'not_regex:/[\s|]/'],
         ]);
 
         $map = [
@@ -131,7 +141,7 @@ class CompetitionController extends Controller
             'images' => 'images', 'description' => 'description', 'specs' => 'specs', 'totalTickets' => 'total_tickets',
             'maxPerPerson' => 'max_per_person', 'buildVideoUrl' => 'build_video_url', 'opensAt' => 'opens_at',
             'closesAt' => 'closes_at', 'postalClosesAt' => 'postal_closes_at', 'drawAt' => 'draw_at', 'postalEntryEnabled' => 'postal_entry_enabled',
-            'eventSalesEnabled' => 'event_sales_enabled', 'sortOrder' => 'sort_order', 'drawMethod' => 'draw_method',
+            'eventSalesEnabled' => 'event_sales_enabled', 'sortOrder' => 'sort_order', 'drawMethod' => 'draw_method', 'drawToolName' => 'draw_tool_name', 'drawToolUrl' => 'draw_tool_url',
         ];
         $out = [];
         foreach ($map as $in => $col) {

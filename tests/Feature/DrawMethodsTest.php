@@ -87,9 +87,20 @@ class DrawMethodsTest extends TestCase
             'total_tickets' => 50, 'max_per_person' => 20, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00',
             'postal_closes_at' => '2026-10-28 20:00:00', 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
         ]);
-        // Chosen before publish, fixed after.
+        // Chosen before publish, fixed after. An external draw needs its random number tool (name + https link).
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawMethod' => 'external'])->assertOk()->assertJsonPath('data.drawMethod', 'external');
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertStatus(422)
+            ->assertJsonPath('message', 'Name the random number tool for the external draw (and its https link) before publishing.');
+        $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Dice app', 'drawToolUrl' => 'http://example.com/dice'])->assertStatus(422);
+        $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Dice | app', 'drawToolUrl' => 'https://example.com/dice'])->assertStatus(422);
+        $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Dice app', 'drawToolUrl' => 'https://example.com/dice'])->assertOk()
+            ->assertJsonPath('data.drawTool', ['name' => 'Dice app', 'url' => 'https://example.com/dice']);
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertOk();
+        // After publish: changed through Verity (on the audit trail), never by the form.
+        $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Coin', 'drawToolUrl' => 'https://example.com/coin'])->assertStatus(422);
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/draw-tool", ['name' => 'random.org', 'url' => 'https://www.random.org/integers/'])->assertOk();
+        $this->assertSame(['name' => 'random.org', 'url' => 'https://www.random.org/integers/'], $c->fresh()->drawTool());
+        $this->assertSame(1, \Sprouthub\Verity\Models\AuditEvent::query()->where('type', 'competition.external_tool')->count());
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawMethod' => 'verity'])->assertStatus(422);
         $this->assertSame('external', app(\App\Services\Draws\VerityDrawEngine::class)->verityCompetition($c->fresh())->draw_method);
 
@@ -100,6 +111,11 @@ class DrawMethodsTest extends TestCase
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/close-now")->assertStatus(422);
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/close-entries")->assertOk();
         $draw = Draw::where('competition_id', $c->id)->firstOrFail();
+        // Sealed with the entry fingerprint at the close: fixed before the pick.
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/draw-tool", ['name' => 'Coin', 'url' => 'https://example.com/coin'])->assertStatus(422);
+        $row = collect($this->actingAs($this->admin)->getJson('/api/admin/draws')->assertOk()->json())->firstWhere('competitionId', $c->id);
+        $this->assertSame(['name' => 'random.org', 'url' => 'https://www.random.org/integers/'], $row['drawTool']);
+        $this->assertSame(\Sprouthub\Verity\Services\DrawService::externalSeal($row['verityRef'], $draw->entries_hash, 'random.org', 'https://www.random.org/integers/'), $row['seal']);
         $this->assertSame('external', $draw->method);
         $this->assertNull($draw->beacon_round);
         $this->assertSame(5, (int) $draw->entries_count);
@@ -119,6 +135,7 @@ class DrawMethodsTest extends TestCase
 
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 49, 'livestreamUrl' => 'https://youtube.com/live/x'])->assertStatus(422);
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 4, 'livestreamUrl' => 'http://youtube.com/live/x'])->assertStatus(422);
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 4])->assertStatus(422); // the livestream link is required
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 4, 'livestreamUrl' => 'https://www.youtube.com/live/abc123'])->assertOk();
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 2, 'livestreamUrl' => 'https://www.youtube.com/live/abc123'])->assertStatus(422);
 
@@ -133,14 +150,17 @@ class DrawMethodsTest extends TestCase
             ->assertJsonPath('certificate.method', 'external')
             ->assertJsonPath('certificate.livestreamUrl', 'https://www.youtube.com/live/abc123')
             ->assertJsonPath('certificate.entriesHash', $draw->entries_hash)
-            ->assertJsonPath('certificate.drandRound', null);
+            ->assertJsonPath('certificate.drandRound', null)
+            ->assertJsonPath('certificate.drawTool', ['name' => 'random.org', 'url' => 'https://www.random.org/integers/'])
+            ->assertJsonPath('certificate.seal', $row['seal'])
+            ->assertJsonPath('certificate.statement', 'Verity verified the sealed entry list and that the winning ticket was on it. The random selection was made externally on the linked livestream.');
     }
 
     public function test_only_admins_close_or_record(): void
     {
         $c = $this->publishedCompetition();
         $staff = User::factory()->create(['role' => 'staff']);
-        foreach (['close-now', 'close-entries', 'external-result'] as $action) {
+        foreach (['close-now', 'close-entries', 'external-result', 'draw-tool'] as $action) {
             $this->actingAs($staff)->postJson("/api/admin/competitions/{$c->id}/{$action}")->assertForbidden();
         }
         $this->assertSame(0, Order::count());

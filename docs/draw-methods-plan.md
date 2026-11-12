@@ -32,8 +32,9 @@ The goal is two ways to draw, chosen per competition before publish:
   - `Verity::recordExternalResult($c, $ticket, $httpsUrl, $by)` records the result, once. The ticket must be in the sealed list. It writes `draw.completed {method: external, entries_hash, winning_tickets, livestream_url, recorded_by, …}` and reveals the seed.
   - `draw_seed = SHA-256("VERITY-EXTERNAL|ref|entries_hash|ticket")` feeds **R2**, so forfeit and redraw work unchanged.
 - **Verification record:**
+  - **The random number tool** (name + https link, e.g. random.org) is required at publish, can change with `Verity::setExternalTool()` until the close (each change on the chain as `competition.external_tool`), and is then **sealed with the entry fingerprint**: `external_seal = SHA-256("VERITY-EXTERNAL-SEAL|ref|entries_hash|name|url")` on `competition.closed`. A result is refused without it; the livestream link is required.
   - `verity.draw_now`, `verity.draw_method` and `verity.external` appear only when they apply, so old records are byte-identical.
-  - The PHP `RecordVerifier` and `DrawReverify` handle both methods. An external pick shows as **WARN**: Verity proves the list was sealed and the ticket was in it, not how it was picked.
+  - All three verifiers (PHP, browser JS, Python) handle both methods, with shared known-answer vectors. The pick itself shows as a **WARN** (browser: verdict `external`) with the statement: "Verity verified the sealed entry list and that the winning ticket was on it. The random selection was made externally on the linked livestream." Risks are in the engine's THREAT-MODEL.md §5.12.
 - **Tests:** 305 engine tests pass (5 new), plus PHPStan level 8, Pint, the production suite and `manifest --check`.
 - **Still to do before a release:**
   - the browser (JS) and Python verifiers;
@@ -42,18 +43,20 @@ The goal is two ways to draw, chosen per competition before publish:
 
 ## WDS changes (draft PR)
 
-- **Data:** `competitions.draw_method` and `draws.method`, `draws.livestream_url` (additive migration). The method is sent to Verity at publish and locked afterwards (422 if changed).
+- **Data:** `competitions.draw_method`, `competitions.draw_tool_name` / `draw_tool_url`, and `draws.method`, `draws.livestream_url` (additive migration). The method is sent to Verity at publish and locked afterwards (422 if changed).
 - **Admin → Competition:** "How it's drawn" radio (Verity live draw / External draw), editable only while a draft.
 - **Admin → Draws, for a live competition:**
   - **Close & draw now** (method A) or **Close entries** (method B), each with a confirmation. The public reason is automatic: "Entries closed live on the draw stream at 8:02pm on 30 October 2026 (UK time)."
 - **Admin → Draws, for a sealed external competition:**
   - Download the sealed entry CSV: `ticket,name,source`, with first name + initial; the filename and an `X-Entries-Hash` header carry the fingerprint.
   - Enter the winning ticket and the https livestream link, then **Record result**. **Publish result** is unchanged.
-- **Endpoints (admin only):** `POST /api/admin/competitions/{id}/close-now`, `/close-entries` and `/external-result`.
+- **Admin → competition form:** choosing External shows the random number tool fields (required to publish).
+- **Admin → Draws, while live:** the tool is shown and can be changed ("Change the random number tool"); **Close entries** is disabled until a tool is named, and its confirmation names the tool it seals.
+- **Endpoints (admin only):** `POST /api/admin/competitions/{id}/close-now`, `/close-entries`, `/draw-tool` and `/external-result`.
 - **Certificate and `/verify/{id}`:**
-  - The certificate gets `method`, `drawNow`, `livestreamUrl` and `recordedAt`.
+  - The certificate gets `method`, `drawNow`, `livestreamUrl`, `recordedAt`, `drawTool`, `seal` and `statement`.
   - External draws show "Drawn externally on livestream" with the link and the **sealed entry fingerprint**, and their own "How it works".
-  - The in-browser re-run is shown only for Verity draws until the engine's JS verifier supports external records.
+  - /verify states the statement above plainly, shows the tool and the seal, and runs the in-browser verifier for external draws too.
 - **Emails:** the winner email (item 5) is unchanged; it goes out on Publish result for both methods.
 - **Tests:** `DrawMethodsTest` covers method A end to end on a drand round, method B end to end (seal, CSV, refusals, record, publish, certificate) and admin-only access.
 

@@ -16,6 +16,8 @@ const facts: [string, string | number | null][] = [
   ['Winning ticket', c.winningTicket],
   ['How it was drawn', external ? 'Drawn externally on livestream, from the entry list Verity sealed at close' : c.drawNow ? 'Verity live draw: closed on stream, drawn on the next drand round' : 'Verity draw on drand'],
   ['Livestream', external ? livestream : null],
+  ['Random number tool', external && c.drawTool ? `${c.drawTool.name} · ${c.drawTool.url}` : null],
+  ['Sealed at close (entry list + tool, SHA-256)', external ? c.seal ?? null : null],
   ['Result recorded', external ? utc(c.recordedAt ?? null) : null],
   ['Entries', c.entriesCount],
   [external ? 'Sealed entry list fingerprint (SHA-256)' : 'Entry list fingerprint (SHA-256)', c.entriesHash],
@@ -37,16 +39,15 @@ const facts: [string, string | number | null][] = [
       {external ? (
         <div class="verify-box stack" style="gap:10px" data-reveal>
           <p class="eyebrow" style="margin:0">Drawn externally on livestream</p>
-          <p class="body" style="margin:0">This winner was drawn live on our stream with our own random number generator, from the entry list the Verity engine <strong>sealed and fingerprinted when entries closed</strong>. Verity recorded the winning ticket and the livestream link on its audit chain, and checks the ticket was in the sealed list.</p>
+          <p class="body" style="margin:0" data-external-statement><strong>{c.statement ?? 'Verity verified the sealed entry list and that the winning ticket was on it. The random selection was made externally on the linked livestream.'}</strong></p>
+          {c.drawTool ? <p class="body" style="margin:0">Random number tool, named in advance and sealed with the entry list when entries closed: <a href={c.drawTool.url} target="_blank" rel="noopener">{c.drawTool.name}</a>.</p> : null}
           {livestream ? <a class="btn" href={livestream} target="_blank" rel="noopener">Watch the draw ↗</a> : null}
-          <p class="small muted" style="margin:0">Re-check it: the <a href={url}>raw record (JSON)</a> lists every entry; its SHA-256 must match the sealed fingerprint below, and the winning ticket must be in it.</p>
         </div>
-      ) : (
-        <div class="verify-box" data-reveal>
-          <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
-          <verity-verify src={url}></verity-verify>
-        </div>
-      )}
+      ) : null}
+      <div class="verify-box" data-reveal>
+        <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
+        <verity-verify src={url}></verity-verify>
+      </div>
 
       {c.winners?.length ? (
         <div class="stack" style="gap:12px">
@@ -67,8 +68,9 @@ const facts: [string, string | number | null][] = [
         {external ? (
         <ol class="body how">
           <li>When the competition was published, the draw engine committed to a secret seed and recorded that this competition would be drawn externally, on our livestream. That can't change afterwards.</li>
-          <li>On the livestream we closed entries. Every entry (online, postal and event) was frozen and fingerprinted at that moment, and the close was put on the audit chain.</li>
-          <li>We drew a ticket from that sealed list live, with our own random number generator, and recorded the ticket and the livestream link on the audit chain.</li>
+          <li>Before entries closed we named the random number tool we would draw with.</li>
+          <li>On the livestream we closed entries. Every entry (online, postal and event) was frozen and fingerprinted at that moment, sealed together with the random number tool, and the close was put on the audit chain.</li>
+          <li>We drew a ticket from that sealed list live, with that tool, and recorded the ticket and the livestream link on the audit chain.</li>
           <li>If a winner forfeits, the replacement is redrawn by the engine from a public drand round that was still in the future at the time (protocol R2).</li>
         </ol>
         ) : (
