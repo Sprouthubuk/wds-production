@@ -310,7 +310,6 @@ class VerityDrawEngine
         }
         $numbers = array_map(fn ($e) => (int) $e['ticket'], app(\Sprouthub\Verity\Services\DrawService::class)->entries($vc));
         sort($numbers);
-        $width = strlen((string) max(1, (int) $competition->total_tickets));
 
         return [
             'competition' => $competition->title,
@@ -318,7 +317,8 @@ class VerityDrawEngine
             'count' => count($numbers),
             'entriesHash' => (string) $vc->entries_hash,
             'sealedAt' => $vc->closed_at?->toIso8601String(),
-            'tickets' => array_map(fn ($n) => str_pad((string) $n, $width, '0', STR_PAD_LEFT), $numbers),
+            // The same 4-digit format as everywhere else ("0001"; the sheet and its CSV show "#0001").
+            'tickets' => array_map(fn ($n) => \App\Models\Ticket::pad($n, (int) $competition->total_tickets), $numbers),
         ];
     }
 

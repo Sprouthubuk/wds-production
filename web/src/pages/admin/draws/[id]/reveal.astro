@@ -184,7 +184,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     $('[data-ss]').textContent = String(left % 60).padStart(2, '0');
     $('[data-wait-sub]').textContent = s.redrawPending
       ? (left > 0
-        ? `Ticket ${s.redrawPending.forfeitedTicket} forfeited the prize. The replacement winner is drawn by Verity from this public drand round, which was still in the future when the forfeit was recorded.`
+        ? `Ticket #${s.redrawPending.forfeitedTicket} forfeited the prize. The replacement winner is drawn by Verity from this public drand round, which was still in the future when the forfeit was recorded.`
         : 'Round published. Drawing the replacement winner…')
       : left > 0
         ? 'Nobody knows this randomness yet: not us, not anyone. The winner is drawn the moment the round is published.'
@@ -197,9 +197,10 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     revealed = s.ticket;
     show('reveal');
     const box = $('[data-ticket]');
-    box.setAttribute('aria-label', `Ticket ${s.ticket}`);
+    box.setAttribute('aria-label', `Ticket #${s.ticket}`);
     const digits = s.ticket.split('');
-    box.innerHTML = digits.map(() => '<span class="d">0</span>').join('');
+    // "#0417": the hash stays put, the digits roll.
+    box.innerHTML = '<span class="hash" aria-hidden="true">#</span>' + digits.map(() => '<span class="d">0</span>').join('');
     const cells = [...box.querySelectorAll<HTMLElement>('.d')];
     const winner = $('[data-winner]');
     const verify = $('[data-verify]');
@@ -325,6 +326,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   .rv .ticket { display: flex; gap: clamp(6px, 1vw, 16px); justify-content: center; }
   .rv .ticket .d { display: inline-flex; align-items: center; justify-content: center; width: clamp(52px, min(10vw, 15vh), 170px); height: clamp(72px, min(14vw, 21vh), 230px); border: 1px solid rgba(255,255,255,.35); font-size: clamp(44px, min(9vw, 13.5vh), 160px); font-weight: 800; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.45); background: rgba(0,0,0,.5); }
   .rv .ticket .d.set { color: #fff; border-color: #fff; }
+  .rv .ticket .hash { display: inline-flex; align-items: center; font-size: clamp(32px, min(6vw, 9vh), 110px); font-weight: 800; color: rgba(255,255,255,.7); }
   .rv:not(.reduce) .ticket .d.set { animation: rv-lock .35s ease; }
   @keyframes rv-lock { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
   .rv .winner { margin: 0; min-height: 1.1em; line-height: 1.1; font-size: clamp(30px, min(6vw, 9vh), 104px); font-weight: 800; letter-spacing: -.02em; opacity: 0; transform: translateY(10px); transition: opacity .8s ease, transform .8s ease; }

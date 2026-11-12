@@ -99,7 +99,7 @@ class ReportService
                 'name' => $e->name,
                 'email' => $e->email,
                 'status' => $e->status === 'allocated' ? 'accepted' : 'rejected',
-                'ticket' => $e->ticket?->display($e->competition->total_tickets),
+                'ticket' => $e->ticket ? '#'.$e->ticket->display($e->competition->total_tickets) : null,
                 'reason' => $e->rejection_reason,
             ]);
     }

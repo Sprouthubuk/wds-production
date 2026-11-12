@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import PageHero from '../../components/PageHero.astro';
 import { getCertificate } from '../../lib/api';
+import { ticket } from '../../lib/ticket';
 
 const { id } = Astro.params;
 if (!/^\d+$/.test(id ?? '')) return Astro.redirect(`/verify?q=${encodeURIComponent(id ?? '')}`, 303);
@@ -15,7 +16,7 @@ const livestream: string | null = c.livestreamUrl ?? null;
 const utc = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', timeZone: 'UTC' }) + ' UTC' : '—');
 const facts: [string, string | number | null][] = [
   ['Draw reference', c.reference],
-  ['Winning ticket', c.winningTicket],
+  ['Winning ticket', c.winningTicket ? ticket(c.winningTicket) : null],
   ['How it was drawn', physical ? 'Drawn by hand from numbered tokens on a live stream, supervised by an independent witness, from the entry list Verity sealed at close' : external ? 'Drawn externally on livestream, from the entry list Verity sealed at close' : c.drawNow ? 'Verity live draw: closed on stream, drawn on the next drand round' : 'Verity draw on drand'],
   ['Livestream', external ? livestream : null],
   ['Random number tool', external && !physical && c.drawTool ? `${c.drawTool.name} · ${c.drawTool.url}` : null],
@@ -86,8 +87,8 @@ const facts: [string, string | number | null][] = [
       {c.winners?.length ? (
         <div class="stack" style="gap:12px">
           <h2 class="display display--s">Winners</h2>
-          <dl class="facts">{c.winners.map((w) => <><dt>{w.label}</dt><dd>{w.status === 'forfeited' ? <>Ticket <span class="mono">{w.ticket}</span>: <strong>forfeited</strong> ({w.reason})</> : <>Ticket <span class="mono">{w.ticket}</span>{w.name ? ` · ${w.name}` : ''}</>}</dd></>)}</dl>
-          {c.redrawsPending?.map((r) => <p class="body" style="margin:0">Redraw {r.redraw} (after ticket {r.forfeitedTicket} was forfeited) is committed to drand round <span class="mono">{r.drandRound}</span>, published {utc(r.drandRoundAt)}. It's drawn automatically once that round is out.</p>)}
+          <dl class="facts">{c.winners.map((w) => <><dt>{w.label}</dt><dd>{w.status === 'forfeited' ? <>Ticket <span class="mono">{ticket(w.ticket)}</span>: <strong>forfeited</strong> ({w.reason})</> : <>Ticket <span class="mono">{ticket(w.ticket)}</span>{w.name ? ` · ${w.name}` : ''}</>}</dd></>)}</dl>
+          {c.redrawsPending?.map((r) => <p class="body" style="margin:0">Redraw {r.redraw} (after ticket {ticket(r.forfeitedTicket)} was forfeited) is committed to drand round <span class="mono">{r.drandRound}</span>, published {utc(r.drandRoundAt)}. It's drawn automatically once that round is out.</p>)}
           {c.winners.some((w) => w.status === 'forfeited') ? <p class="small muted" style="margin:0">A forfeited prize is redrawn under protocol R2: the forfeit is recorded on the audit chain first, and the replacement comes from a drand round that was still in the future at that moment. The checks above re-run every redraw too.</p> : null}
         </div>
       ) : null}

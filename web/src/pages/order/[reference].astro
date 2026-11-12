@@ -1,4 +1,5 @@
 ---
+import { ticket } from '../../lib/ticket';
 import { drawChannels } from '../../lib/channels';
 import Layout from '../../layouts/Layout.astro';
 import PageHero from '../../components/PageHero.astro';
@@ -47,7 +48,7 @@ const ch = drawChannels(settings);
           <div class="stack" style="gap: 14px">
             <span class="label">{l.competition} · {l.qty} ticket{l.qty === 1 ? '' : 's'}</span>
             {l.ticketNumbers.length ? (
-              <div class="chips">{l.ticketNumbers.map((n) => <span class="num">{n}</span>)}</div>
+              <div class="chips">{l.ticketNumbers.map((n) => <span class="num">{ticket(n)}</span>)}</div>
             ) : <p class="body muted">{waiting ? 'Ticket numbers appear here as soon as payment is confirmed.' : 'No tickets issued.'}</p>}
           </div>
         ))}

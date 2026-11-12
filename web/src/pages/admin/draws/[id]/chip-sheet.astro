@@ -5,6 +5,7 @@
 import '../../../../styles/global.css';
 import { adminGet } from '../../../../lib/admin';
 import { ApiError } from '../../../../lib/api';
+import { ticket } from '../../../../lib/ticket';
 
 interface Sheet { competition: string; reference: string; count: number; entriesHash: string; sealedAt: string | null; tickets: string[] }
 const id = Number(Astro.params.id);
@@ -40,7 +41,7 @@ const sealed = sheet?.sealedAt ? new Date(sheet.sealedAt).toLocaleString('en-GB'
         <div class="wide"><dt>Sealed fingerprint (SHA-256)</dt><dd class="mono hash">{sheet.entriesHash}</dd></div>
       </dl>
       <p class="note">One token for each number below: every ticket on the entry list sealed when entries closed (online, postal and event; withdrawn entries are not on it). Count the tokens before the draw: there must be exactly {sheet.count.toLocaleString('en-GB')}.</p>
-      <ol class="grid" aria-label="Valid ticket numbers">{sheet.tickets.map((t) => <li>{t}</li>)}</ol>
+      <ol class="grid" aria-label="Valid ticket numbers">{sheet.tickets.map((t) => <li>{ticket(t)}</li>)}</ol>
       <p class="note">Checked by: ______________________ &nbsp; Witness: ______________________ &nbsp; Date: ____________</p>
     </main>
   ) : null}
@@ -63,7 +64,7 @@ const sealed = sheet?.sealedAt ? new Date(sheet.sealedAt).toLocaleString('en-GB'
   .hash { font-size: 13px; word-break: break-all; font-weight: 400; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
   .note { font-size: 13px; margin: 0 0 16px; }
-  .grid { list-style: none; margin: 0 0 20px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(64px, 1fr)); border-top: 1px solid #000; border-left: 1px solid #000; }
+  .grid { list-style: none; margin: 0 0 20px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); border-top: 1px solid #000; border-left: 1px solid #000; }
   .grid li { border-right: 1px solid #000; border-bottom: 1px solid #000; padding: 6px 4px; text-align: center; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 14px; }
   @media (max-width: 600px) { .facts { grid-template-columns: 1fr; } }
   @media print {
