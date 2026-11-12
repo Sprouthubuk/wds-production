@@ -131,6 +131,8 @@ class PublicController extends Controller
             'certificateUrl' => route('draws.certificate', $d),
             'verifyUrl' => config('raffle.draws.verify_page').'/'.$d->id,
             'drandRound' => $d->beacon_round ? (int) $d->beacon_round : null,
+            'reference' => $d->verity_ref,
+            'method' => $d->method ?? 'verity',   // verity (A, drawn on drand) | external (B, drawn on the livestream)
             // No current winner: the winner was forfeited and a redraw is waiting for its drand round, or
             // no redraw was possible and the prize went unawarded.
             'note' => $d->winning_ticket_id ? null : (self::redrawPending($d) ? 'Redraw pending' : 'Prize unawarded'),
@@ -158,6 +160,22 @@ class PublicController extends Controller
                 'publishedAt' => $draw->published_at?->toIso8601String(),
             ] + $verity->certificate($draw),
         ]);
+    }
+
+    /**
+     * The /verify lookup: a draw reference or certificate ID, as typed or pasted, to its published draw.
+     * Unknown (or not published yet) is a 404 with a plain message; the website shows it on the same page.
+     */
+    public function lookup(Request $request)
+    {
+        $q = (string) $request->query('q', '');
+        abort_if(mb_strlen($q) > 300, 422, 'That doesn\'t look like a draw reference.');
+        $draw = Draw::findPublishedByLookup($q);
+        if (! $draw) {
+            return response()->json(['message' => 'We couldn\'t find a published draw with that reference.', 'query' => Draw::normaliseLookup($q)], 404);
+        }
+
+        return response()->json(['data' => ['id' => $draw->id, 'reference' => $draw->verity_ref, 'verifyUrl' => config('raffle.draws.verify_page').'/'.$draw->id]]);
     }
 
     private static function redrawPending(Draw $draw): bool

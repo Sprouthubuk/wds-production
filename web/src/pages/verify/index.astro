@@ -1,0 +1,94 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+import { getDraws, lookupDraw } from '../../lib/api';
+import { prelaunchState } from '../../lib/prelaunch';
+
+// The lookup box submits here (?q=…). A match goes straight to its verify page; anything else stays on this
+// page with a plain "not found" (status 200, not the 404 page), keeping what was typed in the box.
+const q = (Astro.url.searchParams.get('q') ?? '').slice(0, 300);
+let notFound = false;
+let lookupDown = false;
+if (q.trim()) {
+  try {
+    const found = await lookupDraw(q);
+    if (found) return Astro.redirect(`/verify/${found.id}`, 303);
+    notFound = true;
+  } catch {
+    lookupDown = true;
+  }
+}
+
+const draws = await getDraws().catch(() => []);
+const published = draws.filter((d) => d.id && d.verifyUrl); // newest first, as the API lists them
+const upcoming = draws.filter((d) => !d.id).sort((a, b) => a.drawAt.localeCompare(b.drawAt));
+const nextDrawAt = upcoming[0]?.drawAt ?? (await prelaunchState(Astro.locals)).upcoming?.drawAt ?? null;
+const day = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }) : null);
+const description = 'Check any WDS Competitions draw yourself: the entries were sealed before the draw, the randomness is public, and every step re-runs in your browser.';
+---
+<Layout title="Verify a draw" description={description}>
+  <PageHero eyebrow="Verify a draw" title="Check any draw yourself" intro="Every entry is sealed and fingerprinted before the draw. The winner comes from public randomness that nobody, including us, can predict or choose. Anyone can re-check it: each draw's page re-runs every step in your own browser." />
+  <section class="section">
+    <div class="container stack" style="gap: 40px; max-width: 960px">
+      <form class="lookup stack" method="get" action="/verify" role="search" aria-labelledby="lookup-title" data-reveal>
+        <h2 id="lookup-title" class="display display--s" style="margin: 0">Look up a draw</h2>
+        <div class="lookup-row">
+          <div class="field" style="flex: 1">
+            <label for="verify-q">Draw reference or certificate ID</label>
+            <input id="verify-q" name="q" value={q} placeholder="e.g. WDS-7KQ2MX" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="300" required aria-describedby="verify-q-help" aria-invalid={notFound ? 'true' : undefined} />
+          </div>
+          <button class="btn" type="submit">Verify</button>
+        </div>
+        <p id="verify-q-help" class="small muted" style="margin: 0">It's on the draw certificate and in the winner announcement. Spaces and lower case are fine.</p>
+        {notFound ? (
+          <p class="lookup-msg" role="status"><strong>No published draw found for “{q.trim()}”.</strong> Check the reference and try again. A draw appears here once its result has been published, usually straight after the live draw.</p>
+        ) : null}
+        {lookupDown ? <p class="lookup-msg" role="status"><strong>We couldn't look that up just now.</strong> Please try again in a minute.</p> : null}
+      </form>
+
+      <div class="stack" style="gap: 16px">
+        <h2 class="display display--s" style="margin: 0">Published draws</h2>
+        {published.length ? (
+          <ul class="draw-list">
+            {published.map((d) => (
+              <li>
+                <a href={`/verify/${d.id}`}>
+                  <span class="dl-main"><strong>{d.competition}</strong><span class="small muted">{day(d.drawAt)}{d.reference ? <> · <span class="mono">{d.reference}</span></> : null}</span></span>
+                  <span class={`badge ${d.method === 'external' ? 'badge--b' : ''}`} title={d.method === 'external' ? 'Drawn externally on the livestream, from the entry list Verity sealed' : 'Drawn by Verity from public drand randomness'}>{d.method === 'external' ? 'B · External draw' : 'A · Verity draw'}</span>
+                  <span class="dl-go" aria-hidden="true">→</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p class="body muted" style="margin: 0">No draws published yet. {nextDrawAt ? <>The first live draw is on <strong>{day(nextDrawAt)}</strong>.</> : 'The first live draw date will be announced soon.'}</p>
+        )}
+        <p class="small muted" style="margin: 0"><strong>A · Verity draw:</strong> the winner is computed from a public drand round committed when entries closed, and anyone can re-run it. <strong>B · External draw:</strong> Verity sealed the entry list and checks the winning ticket was on it; the pick itself was made on the linked livestream.</p>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  .lookup { border: 1px solid var(--line-2); padding: 28px; gap: 14px; }
+  .lookup-row { display: flex; gap: 12px; align-items: flex-end; }
+  .lookup-row .btn { min-width: 140px; }
+  .lookup-msg { margin: 0; padding: 12px 14px; border-left: 2px solid var(--muted-2); background: rgba(255, 255, 255, 0.03); font-size: 15px; line-height: 1.5; }
+  .draw-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+  .draw-list li { border-bottom: 1px solid var(--line); }
+  .draw-list a { display: flex; align-items: center; gap: 16px; padding: 16px 4px; color: inherit; text-decoration: none; }
+  .draw-list a:hover .dl-go, .draw-list a:focus-visible .dl-go { transform: translateX(3px); }
+  .dl-main { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
+  .dl-go { transition: transform 0.2s ease; }
+  .badge { display: inline-block; white-space: nowrap; padding: 3px 9px; border: 1px solid var(--line-3); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+  .badge--b { color: var(--muted-2); border-style: dashed; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
+  @media (max-width: 700px) {
+    .lookup { padding: 18px; }
+    .lookup-row { flex-direction: column; align-items: stretch; }
+    .lookup-row .btn { width: 100%; }
+    .draw-list a { flex-wrap: wrap; gap: 8px 12px; }
+    .dl-go { display: none; }
+  }
+  @media (prefers-reduced-motion: reduce) { .dl-go { transition: none; } }
+</style>

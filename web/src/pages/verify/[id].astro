@@ -4,6 +4,7 @@ import PageHero from '../../components/PageHero.astro';
 import { getCertificate } from '../../lib/api';
 
 const { id } = Astro.params;
+if (!/^\d+$/.test(id ?? '')) return Astro.redirect(`/verify?q=${encodeURIComponent(id ?? '')}`, 303);
 const found = await getCertificate(id!);
 if (!found) return Astro.rewrite('/404');   // not drawn, or not published yet: nothing is revealed early
 const { certificate: c, url } = found;

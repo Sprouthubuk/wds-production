@@ -5,7 +5,8 @@ import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getSettings } from '../lib/api';
 const settings = await getSettings();
-const groups: [string, [string, string][]][] = [
+type Faq = [q: string, a: string, link?: { href: string; label: string }];
+const groups: [string, Faq[]][] = [
   ['Entering', [
     ['Who can enter?', 'Anyone aged 18 or over who lives in the UK. [Confirm any exclusions, e.g. employees and their households.]'],
     ['Can I enter for free?', 'Yes. Every competition can be entered free by post. See the free postal entry page for the address and what to include.'],
@@ -22,6 +23,7 @@ const groups: [string, [string, string][]][] = [
   ['The draw', [
     ['When and where are draws held?', `Live on ${drawChannels(settings).youtube && drawChannels(settings).instagram ? `our socials: Instagram @${settings.drawsInstagram} and YouTube` : drawChannels(settings).where}. Each competition page shows its draw date and time.`],
     ['How is the winner chosen?', 'By a verified random draw from every allocated ticket number, shown live on stream, with a certificate published afterwards.'],
+    ['How do I check a draw?', 'Go to Verify a draw and enter the draw reference (it starts WDS-) or the certificate ID from the certificate or winner announcement. The page re-checks the draw in your own browser: that the entries were sealed before the draw, and how the winner was picked.', { href: '/verify', label: 'Verify a draw' }],
     ['What if not every ticket sells?', '[To confirm: whether the draw goes ahead as planned or the closing date is extended.]'],
   ]],
   ['Winning', [
@@ -39,7 +41,7 @@ const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntit
   <section class="section" style="border-bottom: 0">
     <div class="container faq" style="max-width: 960px">
       {groups.map(([cat, items], gi) => (
-        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a], qi) => <details open={gi === 0 && qi === 1}><summary>{q}</summary><p>{a}</p></details>)}</div></div>
+        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a, link], qi) => <details open={gi === 0 && qi === 1}><summary>{q}</summary><p>{a}{link ? <> <a href={link.href}>{link.label} →</a></> : null}</p></details>)}</div></div>
       ))}
       <p class="body">Can't find your answer? <a href="/contact">Contact us</a>.</p>
     </div>
