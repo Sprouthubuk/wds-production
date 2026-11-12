@@ -63,7 +63,7 @@ class MeController extends Controller
                 'competition' => $c->title,
                 'slug' => $c->slug,
                 'image' => $c->images[0]['src'] ?? null,
-                'drawAt' => $c->draw_at->toIso8601String(),
+                'drawAt' => $c->draw_at?->toIso8601String(),
                 'totalTickets' => $c->total_tickets,
                 'status' => $c->status,
                 'online' => $group->where('channel', '!=', 'postal')->map(fn ($t) => $t->display($c->total_tickets))->values(),

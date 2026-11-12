@@ -6,7 +6,7 @@ const { competition: c } = Astro.props;
 const pct = percentSold(c.ticketsSold, c.totalTickets);
 const left = Math.max(0, c.totalTickets - c.ticketsSold);
 const href = `/competitions/${c.slug}`;
-const drawDate = new Date(c.drawAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' });
+const drawDate = c.drawAt ? new Date(c.drawAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', timeZone: 'Europe/London' }) : 'TBC';
 ---
 <article class="card comp">
   <a href={href} class="zoom media">

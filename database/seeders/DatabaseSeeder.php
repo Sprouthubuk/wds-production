@@ -7,6 +7,7 @@ use App\Models\Competition;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Winner;
+use App\Support\ClientDrafts;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -56,6 +57,11 @@ class DatabaseSeeder extends Seeder
             'postal_entry_enabled' => true,
             'event_sales_enabled' => true,
         ]);
+
+        // The client's other confirmed drafts (created once, never overwritten): wds:client-drafts does the same in production.
+        foreach (ClientDrafts::newDrafts() as $slug => $attributes) {
+            Competition::firstOrCreate(['slug' => $slug], $attributes);
+        }
 
         Winner::firstOrCreate(['display_name' => 'Mark Robinson', 'prize' => 'Alpina D3 Coupé'], [
             'image' => '/images/winner-mark-robinson.jpg', 'verification' => 'approved', 'handover' => 'delivered', 'show_on_site' => true,

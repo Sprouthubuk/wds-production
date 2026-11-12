@@ -25,7 +25,7 @@ class OrderResource extends JsonResource
                 'competition' => $l->competition->title,
                 'slug' => $l->competition->slug,
                 'qty' => $l->qty,
-                'drawAt' => $l->competition->draw_at->toIso8601String(),
+                'drawAt' => $l->competition->draw_at?->toIso8601String(),
                 'ticketNumbers' => $l->tickets->sortBy('number')->map(fn ($t) => $t->display($l->competition->total_tickets))->values(),
             ]),
         ];

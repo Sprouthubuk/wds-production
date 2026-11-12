@@ -30,7 +30,7 @@ class CompetitionResource extends JsonResource
             'closesAt' => $this->closes_at?->toIso8601String(),
             'postalClosesAt' => $this->postalClosesAt()?->toIso8601String(),   // effective deadline
             'postalClosesAtCustom' => $this->postal_closes_at?->toIso8601String(), // null = the default
-            'drawAt' => $this->draw_at->toIso8601String(),
+            'drawAt' => $this->draw_at?->toIso8601String(),   // empty only on a draft whose dates aren't confirmed
             'cashAlternative' => Money::pounds($this->cash_alternative_pence),
             'buildVideoUrl' => $this->build_video_url,
             'postalEntryEnabled' => (bool) $this->postal_entry_enabled,

@@ -45,6 +45,12 @@ class VerityDrawEngine
         if ($competition->closes_at->isPast()) {
             throw new EntryException('The closing time has passed.');
         }
+        if (! $competition->draw_at) {
+            throw new EntryException('Set the live draw time before publishing.');
+        }
+        if ($competition->draw_at->lt($competition->closes_at)) {
+            throw new EntryException('The live draw can\'t be before entries close.');
+        }
         if ($competition->drawsExternally() && ! $competition->drawTool()) {
             throw new EntryException('Name the random number tool for the external draw (and its https link) before publishing.');
         }

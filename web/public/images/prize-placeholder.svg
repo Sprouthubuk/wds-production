@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="768" viewBox="0 0 1024 768" role="img" aria-label="Photos coming soon">
+  <rect width="1024" height="768" fill="#0b0b0b"/>
+  <rect x="24" y="24" width="976" height="720" fill="none" stroke="#2e2e2e" stroke-width="2" stroke-dasharray="10 10"/>
+  <text x="512" y="372" fill="#ffffff" font-family="Helvetica, Arial, sans-serif" font-size="44" font-weight="700" letter-spacing="6" text-anchor="middle">WDS COMPETITIONS</text>
+  <text x="512" y="428" fill="#8a8a8a" font-family="Helvetica, Arial, sans-serif" font-size="24" letter-spacing="8" text-anchor="middle">PHOTOS COMING SOON</text>
+</svg>
