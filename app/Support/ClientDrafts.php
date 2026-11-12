@@ -4,8 +4,8 @@ namespace App\Support;
 
 /**
  * The competitions the client has confirmed, as data, for `php artisan wds:client-drafts` (and the local
- * seeder). New drafts are only ever created, never overwritten; the main event's confirmed details are
- * only applied while it is still an unpublished draft.
+ * seeder). Missing drafts are created; the confirmed details (confirmed()) are applied to each one only
+ * while it is still an unpublished draft. Anything else edited in Admin (title, copy, photos) is kept.
  */
 final class ClientDrafts
 {
@@ -14,12 +14,34 @@ final class ClientDrafts
     /** Until real photos arrive (served by the website). */
     public const PLACEHOLDER_IMAGE = '/images/prize-placeholder.svg';
 
+    public const COILOVERS = 'bc-racing-br-series-coilovers';
+
+    public const ENGINE_TABLE = 'bespoke-built-bedside-engine-table';
+
     /**
-     * The main event's confirmed details. Times are UTC (UK winter time is GMT): entries close Thu 24 Dec
-     * 2026 at 19:00, live draw 19:30. The postal deadline is the 48-hour default: 19:00 on Tue 22 Dec.
-     *
-     * @return array<string, mixed>
+     * Christmas Eve 2026. Times are UTC (UK winter time is GMT). All three close Thu 24 Dec at 19:00; the
+     * live draws run from 19:30 in the order engine table, coilovers, BMW. Postal entries for the paid ones
+     * must be received by 19:00 on Tue 22 Dec (the 48-hour default, so postal_closes_at stays empty).
      */
+    private const CLOSES_AT = '2026-12-24 19:00:00';
+
+    private const DRAW_AT = '2026-12-24 19:30:00';
+
+    /**
+     * The confirmed details, by slug: applied while that competition is an unpublished draft.
+     *
+     * @return array<string, array<string, mixed>>
+     */
+    public static function confirmed(): array
+    {
+        return [
+            self::MAIN_EVENT => self::mainEvent(),
+            self::COILOVERS => ['closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+            self::ENGINE_TABLE => ['closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+        ];
+    }
+
+    /** @return array<string, mixed> */
     public static function mainEvent(): array
     {
         return [
@@ -27,21 +49,21 @@ final class ClientDrafts
             'bundles' => [['qty' => 3, 'price_pence' => 4000], ['qty' => 10, 'price_pence' => 12500]],
             'total_tickets' => 750,
             'cash_alternative_pence' => 500000,
-            'closes_at' => '2026-12-24 19:00:00',
+            'closes_at' => self::CLOSES_AT,
             'postal_closes_at' => null,
-            'draw_at' => '2026-12-24 19:30:00',
+            'draw_at' => self::DRAW_AT,
         ];
     }
 
     /**
-     * New drafts, by slug. Dates are left empty until the client confirms them.
+     * New drafts, by slug, as first created (then confirmed() is applied on top).
      *
      * @return array<string, array<string, mixed>>
      */
     public static function newDrafts(): array
     {
         return [
-            'bc-racing-br-series-coilovers' => [
+            self::COILOVERS => [
                 'title' => 'BC Racing BR Series Coilovers',
                 'strapline' => 'A brand-new set of BC Racing BR Series coilovers to suit your car, or £500 cash.',
                 'category' => 'parts',
@@ -69,7 +91,7 @@ final class ClientDrafts
                 'event_sales_enabled' => true,
                 'sort_order' => 2,
             ],
-            'bespoke-built-bedside-engine-table' => [
+            self::ENGINE_TABLE => [
                 'title' => 'Bespoke Built Bedside Engine Table',
                 'strapline' => 'A one-off bedside table built around an engine. Free to enter.',
                 'category' => 'merch',
