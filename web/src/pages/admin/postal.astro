@@ -6,7 +6,7 @@ import { ukDateTime } from '../../lib/postal';
 interface Row { id: number; competition: string; name: string; email: string; receivedOn: string; receivedAt: string; status: string; reason: string | null; ticket: string | null }
 const [page, comps] = await Promise.all([
   adminGet<{ data: Row[] }>(Astro.cookies, '/postal'),
-  adminGet<{ data: Competition[] }>(Astro.cookies, '/event-sales/competitions').catch(() => ({ data: [] as Competition[] })),
+  adminGet<{ data: Competition[] }>(Astro.cookies, '/postal/competitions').catch(() => ({ data: [] as Competition[] })),
 ]);
 const nowLocal = localInput(new Date().toISOString());
 // "Tuesday 22 December 2026, 6:00pm": the competition's actual postal close (its own, or 48 hours before close).
