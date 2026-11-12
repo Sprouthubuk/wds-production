@@ -8,6 +8,7 @@ use App\Services\ResponsiblePlay;
 use App\Services\TicketAllocator;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Validation\Rules\Password;
 use Illuminate\Validation\ValidationException;
 
@@ -65,6 +66,38 @@ class AuthController extends Controller
             'isAdmin' => $user->isAdmin(),
             'isStaff' => $user->isStaff(),
         ]);
+    }
+
+    /** "Forgotten your password?": always the same answer, so it can't be used to find accounts. */
+    public function forgotPassword(Request $request)
+    {
+        $data = $request->validate(['email' => ['required', 'email', 'max:190']]);
+        PasswordBroker::sendResetLink(['email' => TicketAllocator::normaliseEmail($data['email'])]);
+
+        return response()->json(['message' => "If there's an account for that email, we've sent a link to set a new password. It works for "
+            .config('auth.passwords.users.expire', 60).' minutes.']);
+    }
+
+    /** The website's /reset-password page posts here with the token from the email. */
+    public function resetPassword(Request $request)
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'confirmed', Password::min(10)],
+        ]);
+        $status = PasswordBroker::reset(
+            ['email' => TicketAllocator::normaliseEmail($data['email']), 'password' => $data['password'], 'password_confirmation' => $request->input('password_confirmation'), 'token' => $data['token']],
+            function (User $user, string $password) {
+                $user->forceFill(['password' => $password])->save();
+                $user->tokens()->delete(); // sign out everywhere
+            },
+        );
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            throw ValidationException::withMessages(['token' => 'This link has expired or has already been used. Ask for a new one.']);
+        }
+
+        return response()->json(['message' => 'Password saved. You can sign in now.']);
     }
 
     public function logout(Request $request)

@@ -1,10 +1,5 @@
-<!doctype html>
-<html lang="en">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>{{ $competition->title }}</title></head>
-<body style="margin:0;background:#000;color:#fff;font-family:Helvetica,Arial,sans-serif">
-  <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#000"><tr><td align="center" style="padding:32px 16px">
-    <table width="560" cellpadding="0" cellspacing="0" role="presentation" style="max-width:560px;width:100%">
-      <tr><td style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a">{{ $settings['tradingName'] }} · Free postal entry</td></tr>
+@include('mail.partials.head', ['title' => $competition->title, 'preheader' => $entry->status === 'allocated' ? 'Your free postal entry is in the draw.' : "We couldn't accept your postal entry."])
+      <tr><td style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;padding-top:24px">{{ $settings['tradingName'] }} · Free postal entry</td></tr>
       @if ($entry->status === 'allocated')
         <tr><td style="font-size:36px;font-weight:700;padding:8px 0 16px">You're in, {{ strtok($entry->name, ' ') }}.</td></tr>
         <tr><td style="border-top:1px solid #222;padding:16px 0">
@@ -24,8 +19,4 @@
         <tr><td style="color:#9a9a9a;font-size:14px;padding:0 0 16px">{{ $deadline }}</td></tr>
       @endif
       <tr><td style="padding:8px 0 24px"><a href="{{ $competitionUrl }}" style="background:#fff;color:#000;text-decoration:none;font-weight:700;padding:14px 22px;display:inline-block">View the competition</a></td></tr>
-      @include('mail.partials.footer')
-    </table>
-  </td></tr></table>
-</body>
-</html>
+@include('mail.partials.foot')

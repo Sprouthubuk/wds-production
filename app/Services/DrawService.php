@@ -3,12 +3,14 @@
 namespace App\Services;
 
 use App\Exceptions\EntryException;
+use App\Mail\WinnerNotified;
 use App\Models\Competition;
 use App\Models\Draw;
 use App\Models\Ticket;
 use App\Models\Winner;
 use App\Services\Draws\VerityDrawEngine;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Sprouthub\Verity\Models\Competition as VerityCompetition;
 use Sprouthub\Verity\Models\Redraw;
 use Sprouthub\Verity\Models\Winner as VerityWinner;
@@ -146,6 +148,12 @@ class DrawService
             throw new EntryException($draw->status === 'published' ? 'This result is already published.' : 'The draw hasn\'t run yet: Verity draws once the committed drand round is out.');
         }
         $draw->update(['status' => 'published', 'published_at' => now()]);
+
+        // The public reveal is when the winner hears from us by email too (the team also phones them).
+        $winner = Winner::with('ticket', 'competition')->where('draw_id', $draw->id)->where('ticket_id', $draw->winning_ticket_id)->first();
+        if ($winner?->ticket?->email) {
+            Mail::to($winner->ticket->email)->queue(new WinnerNotified($winner));
+        }
 
         return $draw;
     }

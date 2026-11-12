@@ -137,7 +137,10 @@ class VerityDrawFlowTest extends TestCase
 
         // Not public until WDS publishes (the reveal).
         $this->getJson("/api/draws/{$draw->id}/certificate")->assertNotFound();
+        \Illuminate\Support\Facades\Mail::fake();
         app(DrawService::class)->publish($draw);
+        // The winner is emailed at the reveal.
+        \Illuminate\Support\Facades\Mail::assertQueued(\App\Mail\WinnerNotified::class, fn ($m) => $m->hasTo($draw->winningTicket->email) && $m->winner->ticket_id === $draw->winning_ticket_id);
 
         $res = $this->getJson("/api/draws/{$draw->id}/certificate")->assertOk();
         $cert = $res->json('certificate');

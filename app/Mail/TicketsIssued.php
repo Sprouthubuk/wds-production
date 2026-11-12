@@ -20,14 +20,14 @@ class TicketsIssued extends Mailable implements ShouldQueue
 
     public function envelope(): Envelope
     {
-        return new Envelope(subject: "You're in — your WDS Competitions tickets ({$this->order->reference})");
+        return new Envelope(subject: "You're in: your WDS Competitions ticket numbers ({$this->order->reference})");
     }
 
     public function content(): Content
     {
         $this->order->loadMissing('lines.competition', 'lines.tickets');
 
-        return new Content(view: 'mail.tickets-issued', with: [
+        return new Content(view: 'mail.tickets-issued', text: 'mail.tickets-issued-text', with: [
             'order' => $this->order,
             'url' => app(CheckoutService::class)->orderUrl($this->order),
             'settings' => SettingsPayload::get(),
