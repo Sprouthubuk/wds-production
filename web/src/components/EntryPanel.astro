@@ -17,7 +17,7 @@ const left = Math.max(0, c.totalTickets - c.ticketsSold);
 const cap = Math.max(1, Math.min(c.maxPerPerson || 50, left || 1));
 const startQty = Math.min(c.bundles.find((b) => b.qty === 3)?.qty ?? 1, cap);
 const pct = percentSold(c.ticketsSold, c.totalTickets);
-const cd = countdownParts(c.drawAt);
+const cd = countdownParts(c.drawAt ?? new Date().toISOString());
 const options = [{ qty: 1, price: c.ticketPrice }, ...[...c.bundles].sort((a, b) => a.qty - b.qty)].filter((o) => o.qty <= cap);
 const soldOut = left === 0;
 const postalSentence = postalDeadlineSentence(c);
@@ -32,7 +32,7 @@ const config = JSON.stringify({
     <div><span>Only</span><b class="num">{c.totalTickets.toLocaleString('en-GB')} <small>tickets</small></b></div>
   </div>
 
-  {variant === 'hero' ? (
+  {variant === 'hero' && c.drawAt ? (
     <div class="drawline"><span><span class="dot"></span> Draw in</span><b class="num" data-countdown={c.drawAt} data-countdown-text>{cd.text}</b></div>
   ) : null}
 
@@ -44,7 +44,7 @@ const config = JSON.stringify({
     <div class="sold-foot num"><span><strong data-count-to={variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}>{variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}</strong> sold</span><span><strong>{left.toLocaleString('en-GB')}</strong> left</span></div>
   </div>
 
-  {variant === 'full' ? (
+  {variant === 'full' && c.drawAt ? (
     <div class="countdown" data-countdown={c.drawAt}>
       <div><b data-unit="d">{cd.d}</b><small>Days</small></div>
       <div><b data-unit="h">{cd.h}</b><small>Hrs</small></div>

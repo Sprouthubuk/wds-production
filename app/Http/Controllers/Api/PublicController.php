@@ -116,7 +116,7 @@ class PublicController extends Controller
         $upcoming = Competition::whereIn('status', ['live', 'closed'])->orderBy('draw_at')->get()->map(fn ($c) => [
             'id' => null,
             'competition' => $c->title,
-            'drawAt' => $c->draw_at->toIso8601String(),
+            'drawAt' => $c->draw_at?->toIso8601String(),
             'winningTicket' => null,
             'winner' => null,
             'certificateUrl' => null,

@@ -128,7 +128,8 @@ class CompetitionController extends Controller
             'opensAt' => ['nullable', 'date'], 'closesAt' => ['nullable', 'date'],
             // Empty = 48 hours before closesAt (Competition::postalClosesAt()).
             'postalClosesAt' => ['nullable', 'date', ...($request->filled('closesAt') ? ['before_or_equal:closesAt'] : [])],
-            'drawAt' => [$existing ? 'sometimes' : 'required', 'date'],
+            // Optional on a draft (dates not confirmed yet); publishing requires it.
+            'drawAt' => ['sometimes', 'nullable', 'date', ...($request->filled('closesAt') && $request->filled('drawAt') ? ['after_or_equal:closesAt'] : [])],
             'postalEntryEnabled' => ['boolean'], 'eventSalesEnabled' => ['boolean'], 'sortOrder' => ['integer'],
             'drawMethod' => ['sometimes', Rule::in([Competition::DRAW_VERITY, Competition::DRAW_EXTERNAL])],
             // An external draw's random number tool (e.g. random.org): sealed with the entry list when entries close.

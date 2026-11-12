@@ -71,7 +71,7 @@ class Competition extends Model
         return $this->status === 'live'
             && (! $this->opens_at || $this->opens_at->isPast())
             && (! $this->closes_at || $this->closes_at->isFuture())
-            && $this->draw_at->isFuture();
+            && $this->draw_at?->isFuture() === true;
     }
 
     /** Tickets held by pending (unpaid, unexpired) online orders. */

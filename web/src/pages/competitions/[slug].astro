@@ -16,15 +16,15 @@ if (!c) {
   return Astro.rewrite('/404');
 }
 const ch = drawChannels(settings);
-const drawDate = new Date(c.drawAt);
-const drawLabel = drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+const drawDate = c.drawAt ? new Date(c.drawAt) : null;
+const drawLabel = drawDate ? drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'To be confirmed';
 const postalLabel = postalBy(c);
 const postalSentence = postalDeadlineSentence(c);
 const postNote = seasonalPostNote(c);
 const drawRule = 'The draw goes ahead on the stated date and time however many tickets have sold. Closing dates are not extended.';
 const closesLabel = c.closesAt ? new Date(c.closesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'When sold out or before the draw';
 const faqs = [
-  { q: 'When is the draw?', a: `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}. ${ch.youtube && ch.instagram ? `Watch it live on our socials: Instagram @${ch.instagram.handle} or YouTube.` : `Watch it live on ${ch.where}.`}` },
+  { q: 'When is the draw?', a: `${drawDate ? `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}.` : 'The date is to be confirmed.'} ${ch.youtube && ch.instagram ? `Watch it live on our socials: Instagram @${ch.instagram.handle} or YouTube.` : `Watch it live on ${ch.where}.`}` },
   { q: 'Can I enter for free?', a: `Yes. Post a postcard or letter with your details to the free entry address. ${postalSentence} Postal entries have exactly the same chance of winning.` },
   { q: 'How do I get my ticket numbers?', a: 'Ticket numbers are issued in order. Online entries get theirs by email straight after payment and can see them in their account. Postal entries are emailed once logged.' },
   { q: 'What if not every ticket sells?', a: drawRule },
@@ -107,7 +107,7 @@ const jsonLd = {
 
   <div class="sticky-bar" slot="after">
     <div class="container">
-      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · {percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
+      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">{c.drawAt ? <>Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · </> : null}{percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
       {pre.on
         ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
         : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>Enter · from {money(c.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>}

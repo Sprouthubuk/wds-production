@@ -32,7 +32,7 @@ class DashboardController extends Controller
             'daily' => $last7->map(fn ($r) => ['day' => $r->day, 'revenue' => Money::pounds((int) $r->pence), 'orders' => (int) $r->orders]),
             'live' => Competition::where('status', 'live')->orderBy('draw_at')->get()->map(fn ($c) => [
                 'id' => $c->id, 'title' => $c->title, 'sold' => $c->tickets_allocated, 'total' => $c->total_tickets,
-                'drawAt' => $c->draw_at->toIso8601String(),
+                'drawAt' => $c->draw_at?->toIso8601String(),
                 'revenue' => Money::pounds((int) DB::table('order_lines')->join('orders', 'orders.id', '=', 'order_lines.order_id')
                     ->where('orders.status', 'paid')->where('order_lines.competition_id', $c->id)->sum('order_lines.line_total_pence')),
             ]),
