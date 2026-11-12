@@ -23,6 +23,8 @@ Route::get('/settings', [PublicController::class, 'settings']);
 Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
+    Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
     Route::post('/newsletter', [EngagementController::class, 'newsletter']);
     Route::post('/contact', [EngagementController::class, 'contact']);
 });

@@ -25,7 +25,7 @@ QUEUE_CONNECTION=database
 PAYMENT_DRIVER=fake          # cashflows once the gateway is finished
 VERITY_BEACON=drand          # required in production (section 5); local randomness is refused
 SEED_ADMIN_EMAIL=…  SEED_ADMIN_PASSWORD=…
-MAIL_… (Postmark/SES)
+MAIL_MAILER=resend  RESEND_API_KEY=…  (section 7, Email)
 ```
 Then:
 - **Background process**: `php8.5 /home/forge/<api-site>/artisan queue:work --sleep=3 --tries=3 --max-time=3600`
@@ -197,11 +197,8 @@ CACHE_STORE=database
 QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 
-MAIL_MAILER=smtp                         # or postmark / ses
-MAIL_HOST=<smtp host>
-MAIL_PORT=587
-MAIL_USERNAME=<smtp user>
-MAIL_PASSWORD=<smtp password>
+MAIL_MAILER=resend                       # section 7, Email (Resend)
+RESEND_API_KEY=<from Resend, sending access, this domain only>
 MAIL_FROM_ADDRESS=competitions@wdsoriginals.com
 MAIL_FROM_NAME="WDS Competitions"
 
@@ -242,7 +239,7 @@ staging site (its own server or database), and only read-only checks here.
 - [ ] `https://<api-domain>/up` returns 200 and `https://<api-domain>/api/competitions` returns JSON.
 - [ ] The website loads (the seeded competition is a draft, so the list is empty until it's published).
 - [ ] `/admin` signs in with the seeded admin. Change the password. The competition opens in the editor.
-- [ ] Mail works: a password reset to yourself arrives. (The Verity alert test runs on staging, section 5.)
+- [ ] Mail works: `php8.5 artisan wds:mail-test <your email>` arrives in the inbox (not spam), and a password reset to yourself arrives (section 7). (The Verity alert test runs on staging, section 5.)
 - [ ] `php8.5 artisan schedule:list` lists `orders:expire` and the six Verity commands.
 - [ ] `php8.5 artisan verity:check --strict` is all OK (section 5).
 - [ ] On staging: publish a test competition, buy online, log a postal entry, let it close and draw, publish
@@ -407,3 +404,31 @@ SEED_ADMIN_EMAIL=<staging admin's email>
 - [ ] After the close and the drand round: Admin → Draws shows it drawn; Publish result; `/verify/{id}` shows every check passed.
 - [ ] The late-close alert reaches liam@rafflelabs.co.uk (section 5, go-live checks).
 - [ ] Staging data stays on staging: never copy `wds_staging` into `wds`.
+
+## 7. Email (Resend)
+
+Customer email (order confirmations with ticket numbers, postal entries, password links, winners) and
+the Verity alerts go through **Resend** (`MAIL_MAILER=resend`, package `resend/resend-php`). Every email
+has a plain-text part and the company footer; links open the website (`FRONTEND_URL`).
+
+**Go-live, once** (production and staging can share the Resend account; use one API key per site):
+1. Resend → Domains → **Add domain** `wdsoriginals.com` (the from address is `competitions@wdsoriginals.com`).
+   Region: EU (Ireland). If the root domain's DNS is busy with other mail, add a subdomain instead
+   (e.g. `send.wdsoriginals.com`) and change `MAIL_FROM_ADDRESS` to match.
+2. Add the DNS records Resend shows at the domain's DNS host: the **DKIM** TXT record(s), the **SPF**
+   MX + TXT records for the `send` subdomain, and (recommended) a **DMARC** record such as
+   `_dmarc.wdsoriginals.com TXT "v=DMARC1; p=none; rua=mailto:<a mailbox you read>"`. Don't replace an
+   existing SPF or DMARC record: merge with it (one SPF record per name).
+3. Wait until Resend shows the domain as **Verified**.
+4. Resend → API keys → **Create**: permission *Sending access*, domain `wdsoriginals.com` only. Copy it once.
+5. Forge → Site → Environment: `MAIL_MAILER=resend`, `RESEND_API_KEY=<the key>`,
+   `MAIL_FROM_ADDRESS=competitions@wdsoriginals.com`, `MAIL_FROM_NAME="WDS Competitions"`. Never put the key
+   in git, chat or tickets.
+6. Commands: `php8.5 artisan config:cache`, `php8.5 artisan queue:restart` (emails are queued), then
+   `php8.5 artisan wds:mail-test <your email>`. It prints the mailer and sender; check the email arrives, isn't
+   in spam, and that "show original" says SPF, DKIM and DMARC **pass**.
+7. Make sure `competitions@wdsoriginals.com` can **receive** replies (customers reply to it).
+
+Staging: its own API key, the same verified domain, and the same `wds:mail-test` check. Locally use
+`MAIL_MAILER=log` (emails go to `storage/logs`).
+

@@ -119,7 +119,7 @@ class PostalCloseTest extends TestCase
         $html = (new PostalEntryLogged($in))->render();
         $this->assertStringContainsString('#'.$in->ticket->display(100), $html);
         $this->assertStringContainsString('at least 48 hours before close: by 6:00pm on Tuesday 22 December 2026', $html);
-        $this->assertStringContainsString('Company no. 13330886', $html);
+        $this->assertStringContainsString('company no. 13330886', $html);
 
         $rejected = new PostalEntryLogged($out);
         $this->assertStringContainsString('Received less than 48 hours before close', $rejected->render());
