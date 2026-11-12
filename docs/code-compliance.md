@@ -29,7 +29,7 @@ Last checked: 12 November 2026.
 | 15 | Odds and maximum entries shown before purchase | **done** | Entry panel |
 | 16 | Admin reminder if a winner hasn't been contacted within 48 hours | **built** | `wds:winner-contact-reminders` (hourly), dashboard, Winners page |
 | 17 | 14-day claim deadline | **done**; shown to admins **built** | `raffle.draws.claim_days` = 14, `Winner::claimBy()` |
-| 18 | Optional site-wide monthly spend cap (off by default) | **built** in the next PR | Admin → Settings |
+| 18 | Optional site-wide monthly spend cap (off by default) | **built**, off by default | Admin → Settings; `ResponsiblePlay::assertWithinSiteCap` |
 
 ## Details
 

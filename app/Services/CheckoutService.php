@@ -128,6 +128,7 @@ class CheckoutService
                 if ($account) {
                     $this->responsiblePlay->assertCanSpend($account, $total + $credit);
                 }
+                $this->responsiblePlay->assertWithinSiteCap($account, $email, $total);
 
                 $order = Order::create([
                     'reference' => self::newReference(),

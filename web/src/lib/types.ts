@@ -98,6 +98,8 @@ export interface SiteSettings {
   youtubeUrl: string;
   /** Optional YouTube channel for live draws (Instagram stays primary). */
   drawsYoutubeUrl: string | null;
+  siteSpendCapEnabled?: boolean;
+  siteSpendCapMonthly?: number | null;
 }
 
 export interface BasketLine {
