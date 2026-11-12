@@ -1,0 +1,360 @@
+---
+/**
+ * Event sales "stand mode": a full-screen, tablet-first till for car shows (768–1366px, portrait
+ * and landscape; works on phones too). Pick a competition → tickets → customer → payment →
+ * a big confirmation the customer can read, then "New sale".
+ * Payment buttons come from the API (App\Enums\EventPaymentMethod): the extension point for
+ * card payment through the site later.
+ */
+import '../../../styles/global.css';
+import { currentAdmin, adminGet } from '../../../lib/admin';
+import type { Competition } from '../../../lib/types';
+
+const admin = await currentAdmin(Astro.cookies);
+if (!admin) return Astro.redirect('/admin/sign-in');
+const [comps, sum] = await Promise.all([
+  adminGet<{ data: Competition[]; paymentMethods?: { value: string; label: string }[] }>(Astro.cookies, '/event-sales/competitions'),
+  adminGet<{ data: { orders: number; cash: number; card: number } }>(Astro.cookies, '/event-sales/summary'),
+]);
+const methods = comps.paymentMethods ?? [{ value: 'card_reader', label: 'Card reader' }, { value: 'cash', label: 'Cash' }];
+const slim = (c: Competition) => ({
+  id: c.id, title: c.title, image: c.images[0]?.src ?? '', price: c.ticketPrice, bundles: c.bundles,
+  sold: c.ticketsSold, total: c.totalTickets, max: c.maxPerPerson, drawAt: c.drawAt,
+});
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="icon" href="/favicon.svg" />
+  <title>Stand mode · WDS</title>
+</head>
+<body class="stand" data-comps={JSON.stringify(comps.data.map(slim))} data-methods={JSON.stringify(methods)}>
+  <header class="bar">
+    <img src="/images/wds-logo.png" alt="WDS Competitions" width="120" height="40" class="logo" />
+    <div class="takings" aria-live="polite">
+      <span><b data-sum-orders>{sum.data.orders}</b> sales today</span>
+      <span>Cash <b data-sum-cash>£{sum.data.cash.toFixed(2)}</b></span>
+      <span>Card <b data-sum-card>£{sum.data.card.toFixed(2)}</b></span>
+    </div>
+    <div class="bar-actions">
+      <button type="button" class="ghost" data-fullscreen>Full screen</button>
+      <a href="/admin/event-sales" class="ghost">Exit</a>
+    </div>
+  </header>
+
+  <main class="main">
+    {/* 1. Competition */}
+    <section class="step" data-step="pick" aria-labelledby="pick-h">
+      <h1 id="pick-h" class="step-h">Choose a competition</h1>
+      {comps.data.length ? (
+        <div class="cards" data-cards></div>
+      ) : (
+        <p class="empty">No competitions have event sales turned on. In the admin, turn on "Event ticket sales" for a live competition.</p>
+      )}
+    </section>
+
+    {/* 2. Tickets + customer + payment */}
+    <section class="step" data-step="sell" hidden aria-labelledby="sell-h">
+      <div class="sell">
+        <div class="sell-left">
+          <button type="button" class="back" data-back>← All competitions</button>
+          <div class="chosen">
+            <img alt="" data-c-img width="640" height="480" />
+            <div>
+              <h1 id="sell-h" class="chosen-title" data-c-title></h1>
+              <p class="meta" data-c-meta></p>
+            </div>
+          </div>
+          <div class="packs" data-packs role="group" aria-label="Quick quantities"></div>
+          <div class="qty">
+            <button type="button" class="qbtn" data-q="-1" aria-label="One fewer ticket">−</button>
+            <output class="qn" data-qty aria-live="polite">1</output>
+            <button type="button" class="qbtn" data-q="1" aria-label="One more ticket">+</button>
+          </div>
+          <p class="limit" data-limit></p>
+          <div class="total"><span>Total</span><b data-total>£0.00</b></div>
+        </div>
+
+        <form class="sell-right" data-form novalidate>
+          <h2 class="form-h">Customer</h2>
+          <label class="f"><span>Name</span><input name="name" required autocomplete="off" autocapitalize="words" maxlength="160" /></label>
+          <label class="f"><span>Email <em>(tickets are emailed)</em></span><input name="email" type="email" required autocomplete="off" inputmode="email" autocapitalize="off" spellcheck="false" /></label>
+          <label class="f"><span>Date of birth <em>(18+ only)</em></span><input name="dateOfBirth" type="date" required /></label>
+          <label class="tick"><input type="checkbox" name="marketingOptIn" /><span>Email me about new competitions</span></label>
+          <p class="err" data-err role="alert" hidden></p>
+          <div class="pay" data-pay></div>
+        </form>
+      </div>
+    </section>
+
+    {/* 3. Confirmation, turned to face the customer */}
+    <section class="step done" data-step="done" hidden aria-labelledby="done-h">
+      <p class="done-eyebrow">You're in</p>
+      <h1 id="done-h" class="done-h" data-d-name></h1>
+      <p class="done-comp" data-d-comp></p>
+      <div class="nums" data-d-nums></div>
+      <p class="done-note" data-d-note></p>
+      <button type="button" class="new" data-new>New sale</button>
+    </section>
+  </main>
+
+  <style is:global>
+    .stand { --pad: clamp(16px, 2.6vw, 32px); background: #000; color: #fff; min-height: 100dvh; display: flex; flex-direction: column; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+    .stand button, .stand a { touch-action: manipulation; }
+    .bar { display: flex; align-items: center; gap: 16px; padding: 12px var(--pad); padding-top: max(12px, env(safe-area-inset-top)); border-bottom: 1px solid #222; flex-wrap: wrap; }
+    .bar .logo { height: 28px; width: auto; }
+    .takings { display: flex; gap: 18px; font-size: 14px; color: #aaa; margin-left: auto; flex-wrap: wrap; }
+    .takings b { color: #fff; font-variant-numeric: tabular-nums; }
+    .bar-actions { display: flex; gap: 8px; }
+    .ghost { border: 1px solid #444; background: none; color: #fff; padding: 10px 14px; font: inherit; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; cursor: pointer; }
+    .main { flex: 1; padding: var(--pad); padding-bottom: max(var(--pad), env(safe-area-inset-bottom)); }
+    .step-h { font-size: clamp(22px, 3vw, 32px); text-transform: uppercase; letter-spacing: .02em; margin: 0 0 20px; }
+    .empty { font-size: 20px; color: #aaa; max-width: 40ch; }
+
+    .cards { display: grid; gap: var(--pad); grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); }
+    .card { display: flex; flex-direction: column; text-align: left; background: #0b0b0b; border: 1px solid #333; color: #fff; padding: 0; font: inherit; cursor: pointer; min-height: 44px; }
+    .card:focus-visible, .ghost:focus-visible, .pk:focus-visible, .qbtn:focus-visible, .paybtn:focus-visible, .new:focus-visible, .back:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+    .card[disabled] { opacity: .45; cursor: not-allowed; }
+    .card img { width: 100%; aspect-ratio: 16 / 10; object-fit: cover; background: #111; display: block; }
+    .card-body { padding: 18px 20px 20px; display: flex; flex-direction: column; gap: 10px; }
+    .card-title { font-size: 22px; font-weight: 700; line-height: 1.15; }
+    .card-price { font-size: 16px; color: #ccc; }
+    .bar-meter { height: 6px; background: #222; }
+    .bar-meter i { display: block; height: 100%; background: #fff; }
+    .card-left { display: flex; justify-content: space-between; font-size: 15px; color: #aaa; font-variant-numeric: tabular-nums; }
+    .card-left b { color: #fff; }
+
+    .sell { display: grid; gap: calc(var(--pad) * 1.25); grid-template-columns: 1fr; }
+    @media (min-width: 900px) and (orientation: landscape), (min-width: 1100px) { .sell { grid-template-columns: 1.1fr 1fr; align-items: start; } }
+    .back { background: none; border: 0; color: #aaa; font: inherit; font-size: 15px; padding: 10px 0; min-height: 44px; cursor: pointer; }
+    .chosen { display: flex; gap: 16px; align-items: center; margin: 6px 0 20px; }
+    .chosen img { width: 120px; height: 90px; object-fit: cover; background: #111; flex: none; }
+    .chosen-title { font-size: clamp(22px, 2.8vw, 30px); margin: 0 0 6px; line-height: 1.1; }
+    .meta { color: #aaa; margin: 0; font-size: 15px; font-variant-numeric: tabular-nums; }
+    .packs { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
+    .pk { background: #000; color: #fff; border: 1px solid #555; padding: 16px 10px; font: inherit; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 84px; }
+    .pk b { font-size: 26px; line-height: 1; }
+    .pk span { font-size: 14px; color: #bbb; }
+    .pk[aria-pressed='true'] { background: #fff; color: #000; border-color: #fff; }
+    .pk[aria-pressed='true'] span { color: #333; }
+    .qty { display: grid; grid-template-columns: 88px 1fr 88px; gap: 10px; align-items: stretch; }
+    .qbtn { background: #000; color: #fff; border: 1px solid #555; font-size: 40px; line-height: 1; min-height: 88px; cursor: pointer; }
+    .qbtn:disabled { opacity: .35; cursor: not-allowed; }
+    .qn { display: flex; align-items: center; justify-content: center; border: 1px solid #222; font-size: 48px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .limit { color: #888; font-size: 14px; margin: 8px 0 0; min-height: 1.4em; }
+    .total { display: flex; justify-content: space-between; align-items: baseline; border-top: 1px solid #222; margin-top: 14px; padding-top: 14px; }
+    .total span { text-transform: uppercase; letter-spacing: .12em; font-size: 14px; color: #aaa; }
+    .total b { font-size: clamp(36px, 5vw, 52px); font-variant-numeric: tabular-nums; }
+
+    .sell-right { border: 1px solid #333; padding: var(--pad); display: flex; flex-direction: column; gap: 14px; background: #0b0b0b; }
+    .form-h { font-size: 15px; text-transform: uppercase; letter-spacing: .12em; margin: 0; color: #aaa; }
+    .f { display: flex; flex-direction: column; gap: 6px; }
+    .f span { font-size: 14px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+    .f em { font-style: normal; font-weight: 400; color: #888; text-transform: none; letter-spacing: 0; }
+    .f input { font: inherit; font-size: 20px; padding: 14px; min-height: 56px; background: #000; color: #fff; border: 1px solid #555; border-radius: 0; width: 100%; color-scheme: dark; }
+    .f input:focus { outline: 2px solid #fff; outline-offset: 0; border-color: #fff; }
+    .tick { display: flex; gap: 12px; align-items: center; font-size: 16px; min-height: 44px; cursor: pointer; }
+    .tick input { width: 26px; height: 26px; accent-color: #fff; }
+    .err { background: #2a0f0f; border: 1px solid #7a2a2a; padding: 12px 14px; margin: 0; font-size: 16px; }
+    .pay { display: grid; gap: 10px; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-top: 4px; }
+    .paybtn { font: inherit; font-size: 18px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; min-height: 72px; cursor: pointer; border: 1px solid #fff; background: #fff; color: #000; }
+    .paybtn.alt { background: #000; color: #fff; }
+    .paybtn:disabled { opacity: .5; cursor: progress; }
+    .paybtn small { display: block; font-size: 13px; font-weight: 400; letter-spacing: 0; text-transform: none; margin-top: 2px; }
+
+    .done { text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; min-height: 70dvh; }
+    .done-eyebrow { text-transform: uppercase; letter-spacing: .2em; color: #aaa; margin: 0; font-size: 15px; }
+    .done-h { font-size: clamp(36px, 6vw, 64px); margin: 0; text-transform: uppercase; line-height: 1; }
+    .done-comp { font-size: clamp(18px, 2.4vw, 24px); margin: 0; color: #ddd; }
+    .nums { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; margin: 14px 0; max-width: 1100px; }
+    .nums span { font-family: Menlo, Consolas, monospace; font-size: clamp(30px, 5vw, 56px); font-weight: 700; border: 2px solid #fff; padding: 10px 18px; font-variant-numeric: tabular-nums; }
+    .nums.many span { font-size: clamp(20px, 2.6vw, 28px); padding: 6px 12px; border-width: 1px; }
+    .done-note { color: #aaa; font-size: 16px; margin: 0; max-width: 46ch; }
+    .new { margin-top: 18px; font: inherit; font-size: 22px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; background: #fff; color: #000; border: 0; padding: 22px 56px; min-height: 80px; cursor: pointer; }
+
+    @media (prefers-reduced-motion: no-preference) {
+      .step:not([hidden]) { animation: stand-in .22s ease-out; }
+      .nums span { animation: stand-pop .32s ease-out backwards; }
+      .pk, .card, .paybtn, .qbtn { transition: background-color .12s, color .12s, transform .08s; }
+      .pk:active, .card:active, .paybtn:active, .qbtn:active, .new:active { transform: scale(.98); }
+    }
+    @keyframes stand-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    @keyframes stand-pop { from { opacity: 0; transform: scale(.9); } to { opacity: 1; transform: none; } }
+    @media (max-width: 600px) { .takings { order: 3; width: 100%; margin-left: 0; gap: 12px; font-size: 13px; } .bar-actions { margin-left: auto; } .qty { grid-template-columns: 72px 1fr 72px; } .chosen img { width: 88px; height: 66px; } }
+  </style>
+
+  <script>
+    import { priceFor } from '../../../lib/pricing';
+    type Comp = { id: number; title: string; image: string; price: number; bundles: { qty: number; price: number }[]; sold: number; total: number; max: number; drawAt: string };
+    type Method = { value: string; label: string };
+
+    const body = document.body;
+    let comps: Comp[] = JSON.parse(body.dataset.comps || '[]');
+    const methods: Method[] = JSON.parse(body.dataset.methods || '[]');
+    const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
+    const gbp = (n: number) => `£${n.toFixed(2)}`;
+    const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
+    const left = (c: Comp) => Math.max(0, c.total - c.sold);
+    const cap = (c: Comp) => Math.max(0, Math.min(left(c), c.max || left(c)));
+    const drawDay = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit', timeZone: 'Europe/London' });
+
+    let current: Comp | null = null;
+    let qty = 1;
+    let busy = false;
+
+    const steps = { pick: $('[data-step=pick]'), sell: $('[data-step=sell]'), done: $('[data-step=done]') };
+    function show(step: keyof typeof steps) {
+      for (const [k, el] of Object.entries(steps)) el.hidden = k !== step;
+      window.scrollTo(0, 0);
+      const focus = steps[step].querySelector<HTMLElement>(step === 'done' ? '[data-new]' : 'h1');
+      if (focus) { if (!focus.hasAttribute('tabindex') && focus.tagName === 'H1') focus.tabIndex = -1; focus.focus({ preventScroll: true }); }
+    }
+
+    // 1. Competition cards (live sold / remaining)
+    function drawCards() {
+      const wrap = document.querySelector<HTMLElement>('[data-cards]');
+      if (!wrap) return;
+      wrap.innerHTML = comps.map((c) => {
+        const pct = c.total ? Math.min(100, Math.round((c.sold / c.total) * 100)) : 0;
+        const out = left(c) === 0;
+        return `<button type="button" class="card" data-pick="${c.id}" ${out ? 'disabled' : ''}>
+          ${c.image ? `<img src="${esc(c.image.replace('.jpg', '-720.jpg'))}" alt="" width="720" height="450" loading="lazy" />` : ''}
+          <span class="card-body">
+            <span class="card-title">${esc(c.title)}</span>
+            <span class="card-price">${gbp(c.price)} a ticket · draw ${esc(drawDay(c.drawAt))}</span>
+            <span class="bar-meter" aria-hidden="true"><i style="width:${pct}%"></i></span>
+            <span class="card-left"><span><b>${c.sold.toLocaleString('en-GB')}</b> sold</span><span>${out ? '<b>Sold out</b>' : `<b>${left(c).toLocaleString('en-GB')}</b> left`}</span></span>
+          </span></button>`;
+      }).join('');
+      wrap.querySelectorAll<HTMLButtonElement>('[data-pick]').forEach((b) => b.addEventListener('click', () => pick(Number(b.dataset.pick))));
+    }
+
+    // 2. Tickets
+    function pick(id: number) {
+      current = comps.find((c) => c.id === id) ?? null;
+      if (!current) return;
+      qty = Math.min(1, cap(current)) || 1;
+      $('[data-c-title]').textContent = current.title;
+      const img = $<HTMLImageElement>('[data-c-img]');
+      img.hidden = !current.image;
+      if (current.image) img.src = current.image.replace('.jpg', '-720.jpg');
+      $('[data-err]').hidden = true;
+      drawPacks();
+      renderQty();
+      show('sell');
+    }
+    function drawPacks() {
+      if (!current) return;
+      const c = current;
+      const sizes = [1, ...c.bundles.map((b) => b.qty).filter((n) => n > 1)];
+      const extra = [5, 10, 25].filter((n) => !sizes.includes(n));
+      const all = [...new Set([...sizes, ...(sizes.length < 4 ? extra : [])])].sort((a, b) => a - b).filter((n) => n <= cap(c));
+      $('[data-packs]').innerHTML = all.map((n) => `<button type="button" class="pk" data-pk="${n}" aria-pressed="false"><b>${n}</b><span>${gbp(priceFor(n, c.price, c.bundles))}</span></button>`).join('');
+      document.querySelectorAll<HTMLButtonElement>('[data-pk]').forEach((b) => b.addEventListener('click', () => { qty = Number(b.dataset.pk); renderQty(); }));
+    }
+    function renderQty() {
+      if (!current) return;
+      const c = current;
+      const max = cap(c);
+      qty = Math.max(1, Math.min(qty, max || 1));
+      $('[data-qty]').textContent = String(qty);
+      $('[data-total]').textContent = gbp(priceFor(qty, c.price, c.bundles));
+      document.querySelectorAll<HTMLButtonElement>('[data-pk]').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.pk) === qty)));
+      $<HTMLButtonElement>('[data-q="-1"]').disabled = qty <= 1;
+      $<HTMLButtonElement>('[data-q="1"]').disabled = qty >= max;
+      $('[data-c-meta]').textContent = `${gbp(c.price)} a ticket · ${c.sold.toLocaleString('en-GB')} sold · ${left(c).toLocaleString('en-GB')} left`;
+      $('[data-limit]').textContent = max < left(c) ? `Up to ${max} per person.` : left(c) <= 50 ? `Only ${left(c)} left.` : '';
+      const pay = methods.map((m, i) => `<button type="submit" class="paybtn${i ? ' alt' : ''}" value="${esc(m.value)}">Paid by ${esc(m.label.toLowerCase())}<small>${gbp(priceFor(qty, c.price, c.bundles))}</small></button>`).join('');
+      const payEl = $('[data-pay]');
+      if (payEl.dataset.sig !== pay) { payEl.innerHTML = pay; payEl.dataset.sig = pay; }
+    }
+    document.querySelectorAll<HTMLButtonElement>('[data-q]').forEach((b) => b.addEventListener('click', () => { qty += Number(b.dataset.q); renderQty(); }));
+    $('[data-back]').addEventListener('click', () => { current = null; show('pick'); });
+
+    // Sale
+    const form = $<HTMLFormElement>('[data-form]');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!current || busy) return;
+      const err = $('[data-err]');
+      err.hidden = true;
+      if (!form.reportValidity()) return;
+      const submitter = (e as SubmitEvent).submitter as HTMLButtonElement | null;
+      const method = submitter?.value || methods[0]?.value;
+      const fd = new FormData(form);
+      busy = true;
+      form.querySelectorAll<HTMLButtonElement>('.paybtn').forEach((b) => (b.disabled = true));
+      try {
+        const res = await fetch('/api/admin/event-sales', {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ competitionId: current.id, qty, name: fd.get('name'), email: fd.get('email'), dateOfBirth: fd.get('dateOfBirth'), paymentMethod: method, marketingOptIn: fd.get('marketingOptIn') === 'on' }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (data.preview) throw new Error(data.message);
+        if (!res.ok) {
+          const first = data.errors ? (Object.values(data.errors) as string[][])[0]?.[0] : null;
+          throw new Error(first || data.message || 'The sale did not go through. Nothing was recorded; try again.');
+        }
+        done(data.data, String(fd.get('name') || ''));
+        form.reset();
+        refresh();
+      } catch (ex) {
+        err.textContent = (ex as Error).message || 'No connection. Nothing was recorded; try again.';
+        err.hidden = false;
+      } finally {
+        busy = false;
+        form.querySelectorAll<HTMLButtonElement>('.paybtn').forEach((b) => (b.disabled = false));
+      }
+    });
+
+    // 3. Confirmation
+    function done(order: { reference: string; lines: { competition: string; ticketNumbers: string[] }[] }, name: string) {
+      const nums = order.lines.flatMap((l) => l.ticketNumbers);
+      $('[data-d-name]').textContent = name.trim().split(/\s+/)[0] || 'Thank you';
+      $('[data-d-comp]').textContent = `${order.lines[0]?.competition ?? ''}: ${nums.length} ticket${nums.length === 1 ? '' : 's'}`;
+      const box = $('[data-d-nums]');
+      box.classList.toggle('many', nums.length > 12);
+      box.innerHTML = nums.map((n, i) => `<span style="animation-delay:${Math.min(i, 20) * 30}ms">#${esc(n)}</span>`).join('');
+      $('[data-d-note]').textContent = `Order ${order.reference}. Your ticket numbers are on their way by email.`;
+      show('done');
+    }
+    $('[data-new]').addEventListener('click', () => { current = null; drawCards(); show('pick'); });
+
+    // Live sold / remaining and today's takings.
+    async function refresh() {
+      try {
+        const [c, s] = await Promise.all([
+          fetch('/api/admin/event-sales/competitions', { headers: { Accept: 'application/json' } }).then((r) => (r.ok ? r.json() : null)),
+          fetch('/api/admin/event-sales/summary', { headers: { Accept: 'application/json' } }).then((r) => (r.ok ? r.json() : null)),
+        ]);
+        if (c?.data) {
+          comps = c.data.map((x: any) => ({ id: x.id, title: x.title, image: x.images?.[0]?.src ?? '', price: x.ticketPrice, bundles: x.bundles, sold: x.ticketsSold, total: x.totalTickets, max: x.maxPerPerson, drawAt: x.drawAt }));
+          if (!steps.pick.hidden) drawCards();
+          if (current && !steps.sell.hidden) { current = comps.find((x) => x.id === current!.id) ?? current; renderQty(); }
+        }
+        if (s?.data) {
+          $('[data-sum-orders]').textContent = String(s.data.orders);
+          $('[data-sum-cash]').textContent = gbp(s.data.cash);
+          $('[data-sum-card]').textContent = gbp(s.data.card);
+        }
+      } catch { /* offline: keep the last figures */ }
+    }
+    setInterval(() => { if (!document.hidden) refresh(); }, 15000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+
+    // Full screen (tablets); hidden where unsupported.
+    const fsBtn = $<HTMLButtonElement>('[data-fullscreen]');
+    if (!document.fullscreenEnabled) fsBtn.hidden = true;
+    fsBtn.addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen()).catch(() => {}));
+    document.addEventListener('fullscreenchange', () => (fsBtn.textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen'));
+
+    drawCards();
+  </script>
+</body>
+</html>

@@ -8,6 +8,7 @@ const [comps, sum] = await Promise.all([
 ]);
 ---
 <AdminLayout title="Event sales" active="event-sales" staffOk>
+  <a slot="actions" class="btn" href="/admin/event-sales/stand">Open stand mode</a>
   <div class="kpis">
     <div class="kpi"><span class="label">Sales today</span><b>{sum.data.orders}</b></div>
     <div class="kpi"><span class="label">Cash</span><b>{gbp(sum.data.cash)}</b></div>
