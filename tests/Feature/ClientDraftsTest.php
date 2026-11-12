@@ -47,6 +47,8 @@ class ClientDraftsTest extends TestCase
             $this->assertSame(['2026-12-24 19:00', '2026-12-24 19:30', 'draft'], [$c->closes_at->utc()->format('Y-m-d H:i'), $c->draw_at->utc()->format('Y-m-d H:i'), $c->status]);
         }
         $this->assertSame('2026-12-22 19:00', $bc->postalClosesAt()->utc()->format('Y-m-d H:i'));
+        $table = Competition::where('slug', ClientDrafts::ENGINE_TABLE)->firstOrFail();
+        $this->assertSame([0, 500, 1, false, false], [$table->ticket_price_pence, $table->total_tickets, $table->max_per_person, (bool) $table->postal_entry_enabled, $table->hasPostalRoute()]);
 
         // Run again: nothing to do, and edits made in Admin are kept.
         $bc->update(['title' => 'Edited in Admin']);

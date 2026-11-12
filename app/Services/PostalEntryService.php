@@ -75,6 +75,9 @@ class PostalEntryService
 
     private function rejectionReason(Competition $competition, array $data, Carbon $received): ?string
     {
+        if ($competition->isFree()) {
+            return 'Free competitions have no postal entry';
+        }
         if (! $competition->postal_entry_enabled) {
             return 'Postal entry not enabled for this competition';
         }

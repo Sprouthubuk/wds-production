@@ -1,14 +1,13 @@
 ---
 /**
  * The entry panel for a free competition (ticket price £0): no bundles, basket or payment. One online
- * entry per signed-in account with a confirmed email; the free postal route is there as usual.
+ * entry per signed-in account with a confirmed email. Online only: free competitions have no postal route.
  * States: preview · not signed in · email not confirmed · already entered · can enter.
  */
 import type { Competition } from '../lib/types';
 import type { Me } from '../lib/session';
 import { odds, percentSold } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
-import { postalDeadlineSentence } from '../lib/postal';
 
 interface Props { competition: Competition; me: Me | null; entered: string[] | null }
 const { competition: c, me, entered } = Astro.props;
@@ -38,7 +37,7 @@ const here = `/competitions/${c.slug}`;
   {c.preview ? (
     <button type="button" class="btn btn--block btn--lg" disabled>Preview: entries disabled</button>
   ) : left === 0 ? (
-    <p class="alert">All places have gone. Free postal entries already received are included in the draw.</p>
+    <p class="alert">All places have gone.</p>
   ) : entered && entered.length ? (
     <div class="state">
       <strong>You're in. Good luck!</strong>
@@ -71,7 +70,6 @@ const here = `/competitions/${c.slug}`;
     </form>
   )}
 
-  <div class="post small muted">Or enter free by post: <a href="/free-postal-entry">how to enter by post</a>. {postalDeadlineSentence(c)}</div>
 </div>
 
 <style>

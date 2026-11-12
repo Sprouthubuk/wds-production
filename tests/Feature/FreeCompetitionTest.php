@@ -8,6 +8,7 @@ use App\Models\Competition;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Services\PostalEntryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
@@ -127,6 +128,21 @@ class FreeCompetitionTest extends TestCase
         $this->get(URL::temporarySignedRoute('auth.verify-email', now()->addHour(), ['user' => $sam->id, 'hash' => sha1('sam@example.com')]))
             ->assertRedirectContains('email=link-invalid');
         $this->assertFalse($sam->fresh()->hasVerifiedEmail());
+    }
+
+    public function test_free_competitions_have_no_postal_route(): void
+    {
+        Mail::fake();
+        $c = $this->freeCompetition();
+        $c->update(['postal_entry_enabled' => true]); // even if the box was left ticked
+        $this->getJson("/api/competitions/{$c->slug}")->assertOk()
+            ->assertJsonPath('data.postalEntryEnabled', false)->assertJsonPath('data.postalClosesAt', null);
+
+        $entry = app(PostalEntryService::class)->log($c, [
+            'name' => 'Alex Smith', 'address' => '1 High St', 'date_of_birth' => '1990-05-05', 'email' => 'alex@example.com', 'received_on' => now()->toDateTimeString(),
+        ], User::factory()->create(['role' => 'staff']));
+        $this->assertSame(['rejected', 'Free competitions have no postal entry'], [$entry->status, $entry->rejection_reason]);
+        $this->assertSame(0, Ticket::where('competition_id', $c->id)->count());
     }
 
     private function enter(Competition $c, User $user, array $overrides = [])

@@ -28,12 +28,12 @@ class CompetitionResource extends JsonResource
             'bundles' => collect($this->bundles ?? [])->map(fn ($b) => ['qty' => (int) $b['qty'], 'price' => Money::pounds((int) $b['price_pence'])])->values(),
             'opensAt' => $this->opens_at?->toIso8601String(),
             'closesAt' => $this->closes_at?->toIso8601String(),
-            'postalClosesAt' => $this->postalClosesAt()?->toIso8601String(),   // effective deadline
+            'postalClosesAt' => $this->hasPostalRoute() ? $this->postalClosesAt()?->toIso8601String() : null,   // effective deadline; null = no postal route
             'postalClosesAtCustom' => $this->postal_closes_at?->toIso8601String(), // null = the default
             'drawAt' => $this->draw_at?->toIso8601String(),   // empty only on a draft whose dates aren't confirmed
             'cashAlternative' => Money::pounds($this->cash_alternative_pence),
             'buildVideoUrl' => $this->build_video_url,
-            'postalEntryEnabled' => (bool) $this->postal_entry_enabled,
+            'postalEntryEnabled' => $this->hasPostalRoute(), // never on a free competition
             'eventSalesEnabled' => (bool) $this->event_sales_enabled,
             'drawMethod' => $this->draw_method ?? 'verity',
             'drawTool' => $this->when($request->is('api/admin/*'), fn () => $this->resource->drawTool()),

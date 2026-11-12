@@ -6,6 +6,9 @@
  */
 export const POSTAL_HOURS_BEFORE_CLOSE = 48;
 
+/** Free postal entry is for paid competitions only (free ones are entered online, one per verified account). */
+export const hasPostalRoute = (c: { ticketPrice: number; postalEntryEnabled?: boolean }): boolean => c.ticketPrice > 0 && c.postalEntryEnabled !== false;
+
 /** The general rule, for pages that aren't about one competition. */
 export const POSTAL_RULE = `Postal entries must be received at least ${POSTAL_HOURS_BEFORE_CLOSE} hours before the competition closes.`;
 
