@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Route;
 // Public
 Route::get('/competitions', [PublicController::class, 'competitions']);
 Route::get('/competitions/{slug}', [PublicController::class, 'competition']);
+Route::get('/upcoming', [PublicController::class, 'upcoming']);
+Route::get('/upcoming/{slug}', [PublicController::class, 'upcomingBySlug']);
 Route::get('/winners', [PublicController::class, 'winners']);
 Route::get('/draws', [PublicController::class, 'draws']);
 Route::get('/draws/{draw}/certificate', [PublicController::class, 'certificate'])->name('draws.certificate');

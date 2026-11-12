@@ -1,0 +1,44 @@
+---
+/**
+ * "Get first access" email sign-up (posts to /api/newsletter). Used by the newsletter strip and the
+ * pre-launch hero, card and page. Several can sit on one page.
+ */
+interface Props { id: string; label?: string }
+const { id, label = 'Get first access' } = Astro.props;
+---
+<form class="signup" data-signup>
+  <label for={id} class="sr-only">Email address</label>
+  <input id={id} name="email" type="email" required placeholder="Your email address" autocomplete="email" />
+  <button class="btn" type="submit">{label}</button>
+  <p class="small" data-signup-msg role="status" aria-live="polite" hidden></p>
+</form>
+
+<style>
+  .signup { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .signup input { flex: 1 1 220px; min-width: 0; min-height: 56px; padding: 0 18px; background: #0d0d0d; border: 1px solid var(--line-3); color: #fff; font-size: 16px; }
+  .signup input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+  .signup .btn { min-height: 56px; }
+  .signup p { flex: 1 1 100%; margin: 0; }
+  @media (max-width: 600px) { .signup .btn { flex: 1 1 100%; } }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLFormElement>('form[data-signup]').forEach((form) => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const msg = form.querySelector<HTMLElement>('[data-signup-msg]')!;
+      const btn = form.querySelector<HTMLButtonElement>('button')!;
+      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      btn.disabled = true;
+      try {
+        const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        msg.textContent = res.ok ? "You're on the list. We'll email you the moment entries open." : 'Something went wrong, please try again.';
+        if (res.ok) form.reset();
+      } catch {
+        msg.textContent = 'Something went wrong, please try again.';
+      }
+      btn.disabled = false;
+      msg.hidden = false;
+    });
+  });
+</script>

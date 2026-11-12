@@ -1,0 +1,34 @@
+---
+/**
+ * Pre-launch card for a competition that isn't live yet (CompetitionTeaser): first image, title,
+ * draw date and a "Get first access" sign-up. Shown on /competitions and in the home page grid
+ * while nothing is live. No prices, ticket counts or entry buttons.
+ */
+import type { CompetitionTeaser } from '../lib/types';
+import SignupForm from './SignupForm.astro';
+interface Props { teaser: CompetitionTeaser; id: string }
+const { teaser, id } = Astro.props;
+const drawLabel = teaser.drawAt ? new Date(teaser.drawAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' }) : null;
+---
+<article class="card lc">
+  <a class="lc-media" href={`/competitions/${teaser.slug}`} tabindex="-1" aria-hidden="true">
+    {teaser.image ? <img src={teaser.image.src} alt="" loading="lazy" /> : null}
+    <span class="chip chip--line lc-tag"><span class="dot"></span>Coming soon</span>
+  </a>
+  <div class="card__body lc-body">
+    <h3 class="h3"><a href={`/competitions/${teaser.slug}`}>{teaser.title}</a></h3>
+    {drawLabel ? <p class="small muted">Live draw {drawLabel}</p> : null}
+    <p class="small">Entries open soon. Sign up and we'll email you first.</p>
+    <SignupForm id={id} />
+  </div>
+</article>
+
+<style>
+  .lc { display: flex; flex-direction: column; }
+  .lc-media { position: relative; display: block; aspect-ratio: 4 / 3; overflow: hidden; background: #0b0b0b; }
+  .lc-media img { width: 100%; height: 100%; object-fit: cover; }
+  .lc-tag { position: absolute; left: 14px; top: 14px; background: rgba(0,0,0,.6); border-color: rgba(255,255,255,.5); }
+  .lc-body { gap: 12px; }
+  .lc-body p { margin: 0; }
+  .lc-body h3 a { color: inherit; text-decoration: none; }
+</style>

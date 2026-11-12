@@ -1,0 +1,22 @@
+---
+/**
+ * "Launching soon": what /competitions/{slug} shows for a competition that isn't live yet (the
+ * competition page rewrites here). Teaser only (title, first image, draw date), a countdown and the
+ * "Get first access" sign-up. Not indexed, so the real page is the one search engines keep.
+ */
+import Layout from '../../layouts/Layout.astro';
+import LaunchHero from '../../components/LaunchHero.astro';
+import { getUpcomingBySlug } from '../../lib/api';
+
+const { slug } = Astro.params;
+const teaser = await getUpcomingBySlug(slug!);
+if (!teaser) return Astro.rewrite('/404');
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+---
+<Layout title={`${teaser.title}: launching soon`} description={`${teaser.title} is launching soon at WDS Competitions. Sign up for first access.`} image={teaser.image?.src}>
+  <meta slot="head" name="robots" content="noindex" />
+  <LaunchHero teaser={teaser} chip="Launching soon" />
+  <section class="section section--tight" style="border-bottom: 0">
+    <div class="container row" style="gap: 12px"><a href="/" class="btn btn--outline">Back to home</a><a href="/how-it-works" class="btn btn--outline">How it works</a></div>
+  </section>
+</Layout>

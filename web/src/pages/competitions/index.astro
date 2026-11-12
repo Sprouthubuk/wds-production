@@ -3,9 +3,12 @@ import Layout from '../../layouts/Layout.astro';
 import PageHero from '../../components/PageHero.astro';
 import CompetitionCard from '../../components/CompetitionCard.astro';
 import ComingSoonCard from '../../components/ComingSoonCard.astro';
-import { getCompetitions } from '../../lib/api';
+import LaunchCard from '../../components/LaunchCard.astro';
+import { getCompetitions, getUpcoming } from '../../lib/api';
 
-const competitions = await getCompetitions();
+const [competitions, upcoming] = await Promise.all([getCompetitions(), getUpcoming()]);
+// Nothing live yet: show the featured draft's teaser card instead of empty placeholders.
+const prelaunch = !competitions.some((c) => c.status === 'live') && upcoming ? upcoming : null;
 const filters = [
   { key: 'all', label: 'All' },
   { key: 'cars', label: 'Cars' },
@@ -14,7 +17,7 @@ const filters = [
 ];
 ---
 <Layout title="Competitions" active="competitions">
-  <PageHero eyebrow="Competitions" title="Live competitions" intro="Low ticket numbers and a live draw on every competition. Enter online, or enter free by post with exactly the same chance of winning." />
+  <PageHero eyebrow="Competitions" title={prelaunch ? 'Coming soon' : 'Live competitions'} intro="Low ticket numbers and a live draw on every competition. Enter online, or enter free by post with exactly the same chance of winning." />
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 32px">
       <div class="row filters" role="group" aria-label="Filter competitions">
@@ -22,9 +25,10 @@ const filters = [
       </div>
       <div class="grid grid--cards" data-grid>
         {competitions.map((c) => <div data-cat={c.category}><CompetitionCard competition={c} /></div>)}
-        {competitions.length < 3 ? [1, 2].map((n) => <div data-cat="parts"><ComingSoonCard n={competitions.length + n} /></div>) : null}
+        {prelaunch ? <div data-cat="all"><LaunchCard teaser={prelaunch} id="list-email" /></div> : null}
+        {!prelaunch && competitions.length < 3 ? [1, 2].map((n) => <div data-cat="parts"><ComingSoonCard n={competitions.length + n} /></div>) : null}
       </div>
-      <p class="body muted" data-empty hidden>No competitions here right now. Follow @wds_originals on Instagram to hear about new prizes first.</p>
+      <p class="body muted" data-empty hidden>No competitions here right now. Sign up for first access on the home page to hear about new prizes first.</p>
     </div>
   </section>
 </Layout>
@@ -46,7 +50,7 @@ const filters = [
     const f = b.dataset.filter;
     buttons.forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
     let shown = 0;
-    items.forEach((it) => { const show = f === 'all' || it.dataset.cat === f; it.hidden = !show; if (show) shown++; });
+    items.forEach((it) => { const show = f === 'all' || it.dataset.cat === f || it.dataset.cat === 'all'; it.hidden = !show; if (show) shown++; });
     empty.hidden = shown > 0;
   }));
 </script>

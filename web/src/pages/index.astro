@@ -3,17 +3,25 @@ import Layout from '../layouts/Layout.astro';
 import EntryPanel from '../components/EntryPanel.astro';
 import CompetitionCard from '../components/CompetitionCard.astro';
 import ComingSoonCard from '../components/ComingSoonCard.astro';
-import { getCompetitions, getSettings, getWinners } from '../lib/api';
+import LaunchHero from '../components/LaunchHero.astro';
+import LaunchCard from '../components/LaunchCard.astro';
+import SignupForm from '../components/SignupForm.astro';
+import { getCompetitions, getSettings, getUpcoming, getWinners } from '../lib/api';
 import { money, odds, percentSold } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
 import { drawChannels } from '../lib/channels';
 
-const [competitions, settings, winners] = await Promise.all([getCompetitions(), getSettings(), getWinners()]);
+const [competitions, settings, winners, upcoming] = await Promise.all([getCompetitions(), getSettings(), getWinners(), getUpcoming()]);
 const ch = drawChannels(settings);
-const featured = competitions.find((c) => c.badge) ?? competitions[0];
+// Pre-launch: nothing is live, so the home page teases the featured draft (title, image, draw date
+// only) with a countdown and the "Get first access" sign-up, and never shows prices or entry.
+const prelaunch = !competitions.some((c) => c.status === 'live') && upcoming ? upcoming : null;
+const featured = prelaunch ? undefined : competitions.find((c) => c.badge) ?? competitions[0];
 const latestWinner = winners[0];
-const placeholders = Math.max(0, 3 - competitions.length);
-const ticker = featured
+const placeholders = Math.max(0, 3 - competitions.length - (prelaunch ? 1 : 0));
+const ticker = prelaunch
+  ? [`Coming soon: ${prelaunch.title}`, 'Get first access', 'Free postal entry on every competition', ch.drawnLive, '18+ UK only']
+  : featured
   ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every competition', ch.drawnLive, '18+ UK only']
   : ['Free postal entry on every competition', ch.drawnLive, '18+ UK only'];
 const specs = featured?.specs ?? [];
@@ -25,6 +33,8 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   <div class="ticker" aria-hidden="true">
     <div class="track">{[...ticker, ...ticker].map((t) => <span>{t}<i></i></span>)}</div>
   </div>
+
+  {prelaunch ? <LaunchHero teaser={prelaunch} /> : null}
 
   {featured ? (
     <section class="hero">
@@ -82,12 +92,13 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   <section class="section section--alt">
     <div class="container">
       <div class="section-head" data-reveal>
-        <div class="stack"><span class="eyebrow">Live competitions</span><h2 class="display display--m">Pick your prize</h2></div>
+        <div class="stack"><span class="eyebrow">{prelaunch ? 'Coming soon' : 'Live competitions'}</span><h2 class="display display--m">{prelaunch ? 'First up' : 'Pick your prize'}</h2></div>
         <a href="/competitions" class="link-caps">View all competitions →</a>
       </div>
       <div class="grid grid--cards cards" data-reveal-group>
+        {prelaunch ? <LaunchCard teaser={prelaunch} id="grid-email" /> : null}
         {competitions.map((c) => <CompetitionCard competition={c} />)}
-        {Array.from({ length: placeholders }, (_, i) => <ComingSoonCard n={competitions.length + i + 1} />)}
+        {Array.from({ length: placeholders }, (_, i) => <ComingSoonCard n={competitions.length + (prelaunch ? 1 : 0) + i + 1} />)}
       </div>
     </div>
   </section>
@@ -100,13 +111,13 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
           <div class="way-top"><span class="eyebrow">Option A</span></div>
           <h3 class="display display--s">Enter online</h3>
           <ol><li><b>1</b>Choose your tickets or a bundle</li><li><b>2</b>Check out securely by card</li><li><b>3</b>Numbers emailed instantly</li></ol>
-          <a href={featured ? `/competitions/${featured.slug}` : '/competitions'} class="btn btn--block">Enter online</a>
+          {prelaunch ? <a href="#first-access" class="btn btn--block">Get first access</a> : <a href={featured ? `/competitions/${featured.slug}` : '/competitions'} class="btn btn--block">Enter online</a>}
         </div>
         <div class="way">
           <div class="way-top"><span class="eyebrow">Option B</span></div>
           <h3 class="display display--s">Enter free by post</h3>
           <ol><li><b>1</b>Write your details on a postcard</li><li><b>2</b>Post it to arrive 48 hours before close</li><li><b>3</b>Number emailed once allocated</li></ol>
-          <a href="/free-postal-entry" class="btn btn--block">Enter free by post</a>
+          <a href="/free-postal-entry" class="btn btn--block">{prelaunch ? 'How postal entry works' : 'Enter free by post'}</a>
         </div>
       </div>
     </div>
@@ -153,12 +164,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   <section class="section section--tight" id="notify">
     <div class="container split" style="align-items: center" data-reveal>
       <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">Get first access</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
-      <form class="notify" data-notify style="flex: 1 1 460px">
-        <label for="nl-email" class="sr-only">Email address</label>
-        <input id="nl-email" name="email" type="email" required placeholder="Your email address" autocomplete="email" />
-        <button class="btn" type="submit">Sign me up</button>
-        <p class="small" data-notify-msg role="status" hidden></p>
-      </form>
+      <div style="flex: 1 1 460px"><SignupForm id="nl-email" label="Sign me up" /></div>
     </div>
   </section>
 
@@ -261,14 +267,9 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
     .winner-body { flex-direction: column; align-items: flex-start; }
     .kicker { font-size: 16px; letter-spacing: .26em; }
     .hero-facts { gap: 8px 18px; font-size: 12px; }
-    .notify .btn { flex: 1 1 100%; }
     .date { font-size: 34vw; }
   }
 
-  .notify { display: flex; flex-wrap: wrap; gap: 8px; }
-  .notify input { flex: 1 1 260px; min-width: 0; min-height: 56px; padding: 0 18px; background: #0d0d0d; border: 1px solid var(--line-3); color: #fff; font-size: 16px; }
-  .notify .btn { min-height: 56px; }
-  .notify p { flex: 1 1 100%; margin: 0; }
 
   .sb-img { width: 64px; height: 48px; object-fit: cover; }
   .sb-text { flex: 1 1 240px; gap: 2px; font-size: 14px; text-transform: uppercase; }
@@ -277,20 +278,3 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   .sb-btns .btn { min-height: 48px; font-size: 12px; padding: 0 10px; }
   @media (max-width: 600px) { .sb-img, .sb-text { display: none; } .sb-btns { flex: 1 1 100%; } .hero-inner { padding-top: 40px; padding-bottom: 40px; } .hero-card { padding: 16px; } .hero-shade { background: linear-gradient(180deg, rgba(0,0,0,.55) 0%, rgba(0,0,0,.75) 45%, #000 100%); } }
 </style>
-
-<script>
-  document.querySelectorAll<HTMLFormElement>('[data-notify]').forEach((form) => {
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const msg = form.querySelector<HTMLElement>('[data-notify-msg]')!;
-      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
-      try {
-        const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-        msg.textContent = res.ok ? "You're on the list. We'll be in touch before the next launch." : 'Something went wrong, please try again.';
-      } catch {
-        msg.textContent = 'Something went wrong, please try again.';
-      }
-      msg.hidden = false;
-    });
-  });
-</script>

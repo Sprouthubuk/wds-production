@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\CompetitionResource;
+use App\Http\Resources\CompetitionTeaser;
 use App\Http\Resources\SettingsPayload;
 use App\Http\Resources\WinnerResource;
 use App\Models\Competition;
@@ -23,6 +24,33 @@ class PublicController extends Controller
     public function competition(string $slug)
     {
         return new CompetitionResource(Competition::visible()->where('slug', $slug)->firstOrFail());
+    }
+
+    /**
+     * Pre-launch: the draft the site teases while nothing is live ("Coming soon"). The featured
+     * draft is the one with a badge, then by sort order and draw date. Teaser fields only.
+     */
+    public function upcoming()
+    {
+        $draft = self::upcomingDrafts()
+            ->orderByRaw('case when badge is null then 1 else 0 end')
+            ->orderBy('sort_order')->orderBy('draw_at')
+            ->first();
+
+        return response()->json(['data' => $draft ? CompetitionTeaser::make($draft) : null]);
+    }
+
+    /** "Launching soon" for the slug of a draft: teaser fields only; a 404 for anything else. */
+    public function upcomingBySlug(string $slug)
+    {
+        return response()->json(['data' => CompetitionTeaser::make(self::upcomingDrafts()->where('slug', $slug)->firstOrFail())]);
+    }
+
+    /** Competitions not open yet (draft, or scheduled to open later), whose draw is still ahead. */
+    private static function upcomingDrafts()
+    {
+        return Competition::query()->whereIn('status', ['draft', 'scheduled'])
+            ->where(fn ($q) => $q->whereNull('draw_at')->orWhere('draw_at', '>', now()));
     }
 
     public function winners()
