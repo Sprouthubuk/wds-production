@@ -39,13 +39,18 @@ class ClientDraftsTest extends TestCase
         $bc = Competition::where('slug', 'bc-racing-br-series-coilovers')->firstOrFail();
         $this->assertSame(['draft', 500, 495, 50000], [$bc->status, $bc->ticket_price_pence, $bc->total_tickets, $bc->cash_alternative_pence]);
         $this->assertSame([['qty' => 5, 'price_pence' => 2000]], $bc->bundles);
-        $this->assertNull($bc->draw_at);
-        $this->assertNull($bc->closes_at);
         $this->assertStringContainsString('cash alternative instead', implode(' ', $bc->description));
 
-        // Run again: an existing draft is never overwritten.
+        // All three on Christmas Eve: close 19:00, live draws from 19:30; paid postal by 19:00 on 22 Dec.
+        foreach ([ClientDrafts::COILOVERS, ClientDrafts::ENGINE_TABLE] as $slug) {
+            $c = Competition::where('slug', $slug)->firstOrFail();
+            $this->assertSame(['2026-12-24 19:00', '2026-12-24 19:30', 'draft'], [$c->closes_at->utc()->format('Y-m-d H:i'), $c->draw_at->utc()->format('Y-m-d H:i'), $c->status]);
+        }
+        $this->assertSame('2026-12-22 19:00', $bc->postalClosesAt()->utc()->format('Y-m-d H:i'));
+
+        // Run again: nothing to do, and edits made in Admin are kept.
         $bc->update(['title' => 'Edited in Admin']);
-        $this->artisan('wds:client-drafts --apply')->expectsOutputToContain('left as it is')->assertSuccessful();
+        $this->artisan('wds:client-drafts --apply')->expectsOutputToContain('already up to date')->assertSuccessful();
         $this->assertSame('Edited in Admin', $bc->fresh()->title);
         $this->assertSame(1, Competition::where('slug', 'like', 'bc-racing%')->count());
     }
@@ -81,6 +86,24 @@ class ClientDraftsTest extends TestCase
         $admin = User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$c->id}", ['closesAt' => '2026-12-24 19:00:00', 'drawAt' => '2026-12-24 18:30:00'])
             ->assertStatus(422);
+    }
+
+    public function test_an_existing_undated_draft_gets_its_confirmed_dates_but_keeps_its_admin_edits(): void
+    {
+        Competition::create(['slug' => ClientDrafts::COILOVERS] + array_merge(ClientDrafts::newDrafts()[ClientDrafts::COILOVERS], ['title' => 'Coilovers (edited)']));
+        $this->artisan('wds:client-drafts')->expectsOutputToContain('closes_at (empty) → 2026-12-24 19:00 UTC')->assertSuccessful();
+        $this->assertNull(Competition::where('slug', ClientDrafts::COILOVERS)->value('closes_at'));
+
+        $this->artisan('wds:client-drafts --apply')->assertSuccessful();
+        $c = Competition::where('slug', ClientDrafts::COILOVERS)->firstOrFail();
+        $this->assertSame(['Coilovers (edited)', '2026-12-24 19:30'], [$c->title, $c->draw_at->utc()->format('Y-m-d H:i')]);
+    }
+
+    public function test_a_published_draft_is_never_changed(): void
+    {
+        $c = Competition::create(['slug' => ClientDrafts::ENGINE_TABLE, 'status' => 'live', 'verity_ref' => 'WDS-T'] + ClientDrafts::newDrafts()[ClientDrafts::ENGINE_TABLE]);
+        $this->artisan('wds:client-drafts --apply')->expectsOutputToContain('not changed')->assertSuccessful();
+        $this->assertNull($c->fresh()->closes_at);
     }
 
     private function mainEvent(array $overrides = []): Competition

@@ -9,8 +9,9 @@ use Illuminate\Support\Carbon;
 
 /**
  * Puts the client's confirmed competition details into the database, safely and repeatably:
- *  - creates each new draft whose slug doesn't exist yet (an existing one is left exactly as it is);
- *  - applies the main event's confirmed details only while it is still an unpublished draft.
+ *  - creates each new draft whose slug doesn't exist yet;
+ *  - applies the confirmed details (dates, prices, caps) to each one only while it is an unpublished draft,
+ *    leaving everything else edited in Admin (title, copy, photos) as it is.
  * Never publishes anything. Shows what it would change unless --apply is given.
  */
 class ClientDrafts extends Command
@@ -24,34 +25,38 @@ class ClientDrafts extends Command
         $apply = (bool) $this->option('apply');
         $this->line($apply ? 'Applying:' : 'Dry run (nothing is written; add --apply to write):');
 
-        $main = Competition::where('slug', Drafts::MAIN_EVENT)->first();
-        if (! $main) {
-            $this->warn('  '.Drafts::MAIN_EVENT.': not found, skipped.');
-        } elseif ($main->isPublished() || $main->status !== 'draft') {
-            $this->warn("  {$main->title}: already published or live, not changed (its terms are locked).");
-        } else {
-            $changes = $this->diff($main, Drafts::mainEvent());
-            if (! $changes) {
-                $this->line("  {$main->title}: already up to date.");
-            } else {
-                foreach ($changes as $col => [$from, $to]) {
-                    $this->line("  {$main->title}: {$col} {$from} → {$to}");
-                }
-                if ($apply) {
-                    $main->update(Drafts::mainEvent());
-                }
-            }
-        }
+        $new = Drafts::newDrafts();
+        foreach (Drafts::confirmed() as $slug => $confirmed) {
+            $c = Competition::where('slug', $slug)->first();
+            if (! $c) {
+                if (! isset($new[$slug])) {
+                    $this->warn("  {$slug}: not found, skipped.");
 
-        foreach (Drafts::newDrafts() as $slug => $attributes) {
-            if (Competition::where('slug', $slug)->exists()) {
-                $this->line("  {$attributes['title']}: exists, left as it is.");
+                    continue;
+                }
+                $this->line("  {$new[$slug]['title']}: create as a draft ({$slug}).");
+                if ($apply) {
+                    Competition::create(['slug' => $slug] + $confirmed + $new[$slug]);
+                }
 
                 continue;
             }
-            $this->line("  {$attributes['title']}: create as a draft ({$slug}).");
+            if ($c->isPublished() || $c->status !== 'draft') {
+                $this->warn("  {$c->title}: already published or live, not changed (its terms are locked).");
+
+                continue;
+            }
+            $changes = $this->diff($c, $confirmed);
+            if (! $changes) {
+                $this->line("  {$c->title}: already up to date.");
+
+                continue;
+            }
+            foreach ($changes as $col => [$from, $to]) {
+                $this->line("  {$c->title}: {$col} {$from} → {$to}");
+            }
             if ($apply) {
-                Competition::create(['slug' => $slug] + $attributes);
+                $c->update($confirmed);
             }
         }
 
