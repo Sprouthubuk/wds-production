@@ -51,6 +51,17 @@ const facts: [string, string | number | null][] = [
         <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
         <verity-verify src={url}></verity-verify>
       </div>
+      <script>
+        // The verifier is Verity's file, byte-for-byte (WebVerifierCopyTest), so its wording is tidied here
+        // once it has rendered: "1 entries hash to …" → "1 entry hashes to …".
+        const tidy = (root: ShadowRoot) => root.querySelectorAll('.note, li > span:not(.mark)').forEach((el) => {
+          const t = el.textContent ?? '';
+          const fixed = t.replace(/^1 entries hash to /, '1 entry hashes to ').replace(/^All 1 entries carried /, 'The 1 entry carried ')
+            .replace(/says 1 entries but/, 'says 1 entry but').replace(/lists 1\./, 'lists 1.');
+          if (fixed !== t) el.textContent = fixed;
+        });
+        document.querySelectorAll('verity-verify').forEach((el) => el.addEventListener('verity-verified', () => { if (el.shadowRoot) tidy(el.shadowRoot); }));
+      </script>
 
       {c.winners?.length ? (
         <div class="stack" style="gap:12px">

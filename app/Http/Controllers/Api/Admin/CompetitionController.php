@@ -111,7 +111,7 @@ class CompetitionController extends Controller
         }
 
         return (new CompetitionResource($competition))->additional([
-            'message' => "Postponed. The reason is on the public audit record, the page shows a notice, and {$emails->count()} entrants are being emailed.",
+            'message' => "Postponed. The reason is on the public audit record, the page shows a notice, and {$emails->count()} ".\Illuminate\Support\Str::plural('entrant', $emails->count()).' '.($emails->count() === 1 ? 'is' : 'are').' being emailed.',
         ]);
     }
 

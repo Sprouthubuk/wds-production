@@ -11,6 +11,7 @@ import '../../../../styles/global.css';
 import { currentAdmin, adminGet } from '../../../../lib/admin';
 import { usingSampleData } from '../../../../lib/api';
 import { sampleCompetitions } from '../../../../data/sample';
+import { count } from '../../../../lib/plural';
 
 const admin = await currentAdmin(Astro.cookies);
 if (!admin) return Astro.redirect(`/sign-in?next=${encodeURIComponent(Astro.url.pathname)}`); // normally handled by src/middleware.ts
@@ -59,7 +60,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 
     <!-- hero: taking entries -->
     <section class="panel" data-stage="hero">
-      <p class="lead"><span data-entries>{state.entries.toLocaleString('en-GB')}</span> entries so far</p>
+      <p class="lead"><span data-entries>{count(state.entries, 'entry', 'entries')}</span> so far</p>
       <p class="sub">Entries close live on this stream.</p>
     </section>
 
@@ -68,7 +69,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
       <p class="lead" data-wait-lead>Entries closed</p>
       <div class="count" data-countdown hidden><span data-mm>0</span><span class="colon">:</span><span data-ss>00</span></div>
       <p class="sub" data-wait-sub></p>
-      <p class="seal" data-seal hidden>Sealed: <span data-seal-n></span> entries · fingerprint <span class="mono" data-seal-hash></span></p>
+      <p class="seal" data-seal hidden>Sealed: <span data-seal-n></span> · fingerprint <span class="mono" data-seal-hash></span></p>
     </section>
 
     <!-- drawn, waiting for the presenter -->
@@ -103,6 +104,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
 
 <script>
   import QRCode from 'qrcode';
+  import { count } from '../../../../lib/plural';
 
   type Reveal = {
     competition: { id: number; title: string; image: string | null; drawAt: string | null };
@@ -137,7 +139,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
   function render() {
     const s = state;
     $('[data-title]').textContent = s.competition.title;
-    $('[data-entries]').textContent = s.entries.toLocaleString('en-GB');
+    $('[data-entries]').textContent = count(s.entries, 'entry', 'entries');
     const redrawing = !!s.redrawPending || !!s.redraw;
     $('[data-foot-method]').textContent = redrawing
       ? 'Redraw (protocol R2): drawn by Verity from a public drand round that was still in the future when the forfeit was recorded'
@@ -156,7 +158,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     $('[data-eyebrow]').textContent = s.redrawPending ? `Redraw ${s.redrawPending.number}` : 'Entries closed';
     const seal = $('[data-seal]');
     seal.hidden = !s.entriesHash;
-    $('[data-seal-n]').textContent = s.entries.toLocaleString('en-GB');
+    $('[data-seal-n]').textContent = count(s.entries, 'entry', 'entries');
     $('[data-seal-hash]').textContent = (s.entriesHash ?? '').slice(0, 16) + '…';
     const roundAt = s.redrawRoundAt ?? s.roundAt;
     const round = s.redrawRound ?? s.round;
