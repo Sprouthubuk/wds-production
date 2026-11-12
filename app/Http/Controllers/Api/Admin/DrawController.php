@@ -148,4 +148,38 @@ class DrawController extends Controller
 
         return response()->json(['message' => 'Result recorded on the audit chain. Publish it when you reveal it.']);
     }
+
+    /**
+     * The live reveal screen (item 9): what the stream shows right now. Polled every couple of seconds.
+     * Admin only; the winner's first name + initial is only here once Verity has drawn (or the external
+     * result is recorded), and the public verify link works once the result is published.
+     */
+    public function reveal(Competition $competition, DrawService $draws, VerityDrawEngine $verity)
+    {
+        abort_unless($competition->isPublished(), 404);
+        $draw = $draws->sync($competition);
+        $vc = $verity->verityCompetition($competition);
+        $drawn = $vc->status === 'drawn' && $draw?->winning_ticket_id;
+        $winner = $drawn ? Winner::where('draw_id', $draw->id)->where('ticket_id', $draw->winning_ticket_id)->whereNull('forfeited_at')->latest('id')->first() : null;
+        $pending = \Sprouthub\Verity\Services\Redraws::pending($vc);
+
+        return response()->json(['data' => [
+            'competition' => ['id' => $competition->id, 'title' => $competition->title, 'image' => $competition->images[0]['src'] ?? null, 'drawAt' => $competition->draw_at?->toIso8601String()],
+            'method' => $competition->draw_method ?? 'verity',
+            'status' => $vc->status,                                    // live | closed | drawn | void
+            'entries' => $draw?->entries_count ?? (int) $competition->tickets_allocated,
+            'entriesHash' => $draw?->entries_hash,
+            'round' => $vc->beacon_round ? (int) $vc->beacon_round : null,
+            'roundAt' => VerityDrawEngine::roundTime($vc->beacon_round ? (int) $vc->beacon_round : null)?->toIso8601String(),
+            'redrawRound' => $pending?->beacon_round ? (int) $pending->beacon_round : null,
+            'redrawRoundAt' => VerityDrawEngine::roundTime($pending?->beacon_round ? (int) $pending->beacon_round : null)?->toIso8601String(),
+            'ticket' => $drawn ? $draw->winningTicket?->display($competition->total_tickets) : null,
+            'winner' => $winner?->display_name,
+            'redraw' => $winner?->redraw_number,
+            'drawId' => $draw?->id,
+            'published' => $draw?->status === 'published',
+            'verifyUrl' => $draw ? config('raffle.draws.verify_page').'/'.$draw->id : null,
+            'serverTime' => now()->toIso8601String(),
+        ]])->header('Cache-Control', 'no-store');
+    }
 }

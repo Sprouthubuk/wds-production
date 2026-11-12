@@ -1,0 +1,331 @@
+---
+/**
+ * DRAFT (item 9): the live draw reveal screen, for the livestream. Admin only, full screen, one per
+ * competition. Stages: hero (taking entries) → waiting (method A: the committed drand round and a
+ * countdown; method B: "Drawing live") → drawn ("Ready to reveal": the presenter presses Reveal or
+ * Space) → the winning ticket rolls in → the winner's first name + initial → the verify link and QR.
+ * Polls the admin API every 2 s. ?rehearse=1 plays the whole sequence with made-up data, for setting
+ * up OBS; nothing is sent anywhere. Respects prefers-reduced-motion (no rolling digits or fades).
+ */
+import '../../../../styles/global.css';
+import { currentAdmin, adminGet } from '../../../../lib/admin';
+import { usingSampleData } from '../../../../lib/api';
+import { sampleCompetitions } from '../../../../data/sample';
+
+const admin = await currentAdmin(Astro.cookies);
+if (!admin) return Astro.redirect('/admin/sign-in');
+const id = Number(Astro.params.id);
+const rehearse = Astro.url.searchParams.has('rehearse');
+
+type Reveal = {
+  competition: { id: number; title: string; image: string | null; drawAt: string | null };
+  method: 'verity' | 'external'; status: string; entries: number; entriesHash: string | null;
+  round: number | null; roundAt: string | null; redrawRound: number | null; redrawRoundAt: string | null;
+  ticket: string | null; winner: string | null; redraw: number | null; drawId: number | null;
+  published: boolean; verifyUrl: string | null; serverTime: string;
+};
+let state: Reveal | null = null;
+if (usingSampleData) {
+  const c = sampleCompetitions.find((x) => Number(x.id) === id) ?? sampleCompetitions[0];
+  state = {
+    competition: { id, title: c.title, image: c.images[0]?.src ?? null, drawAt: c.drawAt }, method: 'verity', status: 'live',
+    entries: c.ticketsSold, entriesHash: null, round: null, roundAt: null, redrawRound: null, redrawRoundAt: null,
+    ticket: null, winner: null, redraw: null, drawId: null, published: false, verifyUrl: null, serverTime: new Date().toISOString(),
+  };
+} else {
+  try { state = (await adminGet<{ data: Reveal }>(Astro.cookies, `/competitions/${id}/reveal`)).data; } catch { state = null; }
+}
+if (!state) return Astro.rewrite('/404');
+Astro.response.headers.set('Cache-Control', 'no-store');
+---
+<!doctype html>
+<html lang="en-GB">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="icon" href="/favicon.svg" />
+  <title>Draw · {state.competition.title} · WDS</title>
+</head>
+<body class="rv" data-state={JSON.stringify(state)} data-id={id} data-rehearse={rehearse ? '1' : ''}>
+  <div class="bg" aria-hidden="true">{state.competition.image ? <img src={state.competition.image} alt="" /> : null}</div>
+
+  <main class="stage" aria-live="polite">
+    <img src="/images/wds-logo.png" alt="WDS Competitions" width="150" height="50" class="logo" />
+    <p class="eyebrow" data-eyebrow>Live draw</p>
+    <h1 class="title" data-title>{state.competition.title}</h1>
+
+    <!-- hero: taking entries -->
+    <section class="panel" data-stage="hero">
+      <p class="lead"><span data-entries>{state.entries.toLocaleString('en-GB')}</span> entries so far</p>
+      <p class="sub">Entries close live on this stream.</p>
+    </section>
+
+    <!-- waiting: closed, not drawn yet -->
+    <section class="panel" data-stage="waiting" hidden>
+      <p class="lead" data-wait-lead>Entries closed</p>
+      <div class="count" data-countdown hidden><span data-mm>0</span><span class="colon">:</span><span data-ss>00</span></div>
+      <p class="sub" data-wait-sub></p>
+      <p class="seal" data-seal hidden>Sealed: <span data-seal-n></span> entries · fingerprint <span class="mono" data-seal-hash></span></p>
+    </section>
+
+    <!-- drawn, waiting for the presenter -->
+    <section class="panel" data-stage="ready" hidden>
+      <p class="lead">The winner has been drawn</p>
+      <button class="btn reveal-btn" type="button" data-reveal-btn>Reveal the winner</button>
+      <p class="sub">or press Space</p>
+    </section>
+
+    <!-- the reveal -->
+    <section class="panel" data-stage="reveal" hidden>
+      <p class="label">Winning ticket</p>
+      <div class="ticket" data-ticket aria-label=""></div>
+      <p class="winner" data-winner></p>
+      <div class="verify" data-verify>
+        <div class="qr" data-qr aria-hidden="true"></div>
+        <div>
+          <p class="label">Check the draw yourself</p>
+          <p class="url mono" data-verify-url></p>
+          <p class="sub small" data-verify-note></p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="foot">
+    <span data-foot-method></span>
+    <span class="ctl"><button type="button" data-fs>Full screen</button>{rehearse ? <span class="tag">Rehearsal: made-up data</span> : <a href={`?rehearse=1`}>Rehearse</a>}<a href="/admin/draws">Back to Draws</a></span>
+  </footer>
+</body>
+</html>
+
+<script>
+  import QRCode from 'qrcode';
+
+  type Reveal = {
+    competition: { id: number; title: string; image: string | null; drawAt: string | null };
+    method: 'verity' | 'external'; status: string; entries: number; entriesHash: string | null;
+    round: number | null; roundAt: string | null; redrawRound: number | null; redrawRoundAt: string | null;
+    ticket: string | null; winner: string | null; redraw: number | null; drawId: number | null;
+    published: boolean; verifyUrl: string | null; serverTime: string;
+  };
+
+  const body = document.body;
+  const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySelector<T>(s)!;
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const id = body.dataset.id!;
+  const rehearse = body.dataset.rehearse === '1';
+  let state: Reveal = JSON.parse(body.dataset.state!);
+  let skew = Date.parse(state.serverTime) - Date.now();      // server clock minus ours, for the countdown
+  let revealed: string | null = null;                         // the ticket already shown (once per ticket)
+  let stage = '';
+
+  const show = (name: string) => {
+    if (stage === name) return;
+    stage = name;
+    body.dataset.stage = name;
+    if (name === 'reveal' || name === 'ready') $('[data-eyebrow]').textContent = 'The winner';
+    document.querySelectorAll<HTMLElement>('[data-stage]').forEach((el) => {
+      el.hidden = el.dataset.stage !== name;
+      if (!el.hidden && !reduced) { el.classList.remove('in'); void el.offsetWidth; el.classList.add('in'); }
+    });
+  };
+
+  function render() {
+    const s = state;
+    $('[data-title]').textContent = s.competition.title;
+    $('[data-entries]').textContent = s.entries.toLocaleString('en-GB');
+    $('[data-foot-method]').textContent = s.method === 'external'
+      ? 'External draw on this livestream · entries sealed by Verity'
+      : 'Verity draw on drand, the public randomness beacon';
+
+    const drawn = !!s.ticket;
+    if (drawn && revealed === s.ticket) return;              // stay on the reveal
+    if (drawn) { show('ready'); return; }
+    if (s.status === 'live') { $('[data-eyebrow]').textContent = 'Live draw'; show('hero'); return; }
+
+    // Closed (or a redraw pending): waiting.
+    show('waiting');
+    $('[data-eyebrow]').textContent = 'Entries closed';
+    const seal = $('[data-seal]');
+    seal.hidden = !s.entriesHash;
+    $('[data-seal-n]').textContent = s.entries.toLocaleString('en-GB');
+    $('[data-seal-hash]').textContent = (s.entriesHash ?? '').slice(0, 16) + '…';
+    const roundAt = s.redrawRoundAt ?? s.roundAt;
+    const round = s.redrawRound ?? s.round;
+    if (s.method === 'external') {
+      $('[data-wait-lead]').innerHTML = '<span class="pulse" aria-hidden="true"></span>Drawing live';
+      $('[data-wait-sub]').textContent = 'The winning ticket is being drawn now, from the sealed entry list.';
+      $('[data-countdown]').hidden = true;
+    } else {
+      $('[data-wait-lead]').textContent = s.redrawRound ? 'Redraw committed to drand round' : 'Drawing on drand round';
+      $('[data-wait-lead]').insertAdjacentHTML('beforeend', ` <span class="mono">${round ?? '…'}</span>`);
+      $('[data-countdown]').hidden = !roundAt;
+      tick();
+    }
+  }
+
+  function tick() {
+    const s = state;
+    const roundAt = s.redrawRoundAt ?? s.roundAt;
+    if (stage !== 'waiting' || s.method === 'external' || !roundAt) return;
+    const left = Math.max(0, Math.ceil((Date.parse(roundAt) - (Date.now() + skew)) / 1000));
+    $('[data-mm]').textContent = String(Math.floor(left / 60));
+    $('[data-ss]').textContent = String(left % 60).padStart(2, '0');
+    $('[data-wait-sub]').textContent = left > 0
+      ? 'Nobody knows this randomness yet: not us, not anyone. The winner is drawn the moment the round is published.'
+      : 'Round published. Drawing the winner…';
+  }
+
+  async function reveal() {
+    const s = state;
+    if (!s.ticket || stage === 'reveal') return;
+    revealed = s.ticket;
+    show('reveal');
+    const box = $('[data-ticket]');
+    box.setAttribute('aria-label', `Ticket ${s.ticket}`);
+    const digits = s.ticket.split('');
+    box.innerHTML = digits.map(() => '<span class="d">0</span>').join('');
+    const cells = [...box.querySelectorAll<HTMLElement>('.d')];
+    const winner = $('[data-winner]');
+    const verify = $('[data-verify]');
+    winner.textContent = s.winner ?? '';
+    winner.classList.remove('on'); verify.classList.remove('on');
+    await renderVerify();
+
+    if (reduced) {
+      cells.forEach((c, i) => { c.textContent = digits[i]; c.classList.add('set'); });
+      winner.classList.add('on'); verify.classList.add('on');
+      return;
+    }
+    // Rolling digits, settling left to right.
+    const start = performance.now();
+    const settle = (i: number) => 1400 + i * 650;
+    await new Promise<void>((done) => {
+      const spin = (t: number) => {
+        let all = true;
+        cells.forEach((c, i) => {
+          if (t - start >= settle(i)) { if (!c.classList.contains('set')) { c.textContent = digits[i]; c.classList.add('set'); } }
+          else { all = false; c.textContent = String(Math.floor(Math.random() * 10)); }
+        });
+        all ? done() : requestAnimationFrame(spin);
+      };
+      requestAnimationFrame(spin);
+    });
+    await new Promise((r) => setTimeout(r, 900));
+    winner.classList.add('on');
+    await new Promise((r) => setTimeout(r, 1600));
+    verify.classList.add('on');
+  }
+
+  async function renderVerify() {
+    const url = state.verifyUrl;
+    $('[data-verify]').hidden = !url;
+    if (!url) return;
+    $('[data-verify-url]').textContent = url.replace(/^https?:\/\//, '');
+    $('[data-verify-note]').textContent = state.published ? 'Scan to re-run the draw in your browser.' : 'Goes live when the result is published (Admin → Draws → Publish result).';
+    try {
+      $('[data-qr]').innerHTML = await QRCode.toString(url, { type: 'svg', margin: 0, errorCorrectionLevel: 'M', color: { dark: '#ffffffff', light: '#00000000' } });
+    } catch { $('[data-qr]').innerHTML = ''; }
+  }
+
+  async function poll() {
+    if (rehearse) return;
+    try {
+      const res = await fetch(`/api/admin/competitions/${id}/reveal`, { headers: { Accept: 'application/json' }, cache: 'no-store' });
+      if (!res.ok) return;
+      const next: Reveal = (await res.json()).data;
+      skew = Date.parse(next.serverTime) - Date.now();
+      // A redraw after a forfeit: a new ticket, so the reveal can run again.
+      state = next;
+      render();
+    } catch { /* keep showing the last state; try again next tick */ }
+  }
+
+  // Rehearsal: the whole sequence with made-up data, on a timer.
+  function rehearsal() {
+    const base = { ...state, entries: state.entries || 1234, entriesHash: '9f2c4be1a07d3e5f8c6b1a2d4e7f9a0b3c5d7e9f1a2b4c6d8e0f1a3b5c7d9e1f', drawId: 0, verifyUrl: `${location.origin}/verify/example`, published: true };
+    const at = (ms: number, f: () => void) => setTimeout(f, ms);
+    state = { ...base, status: 'live' }; render();
+    at(4000, () => {
+      const roundAt = new Date(Date.now() + 15000).toISOString();
+      state = base.method === 'external'
+        ? { ...base, status: 'closed' }
+        : { ...base, status: 'closed', round: 5123456, roundAt };
+      skew = 0; render();
+    });
+    at(20000, () => { state = { ...state, status: 'drawn', ticket: '0417', winner: 'Alex S.' }; render(); });
+  }
+
+  $('[data-reveal-btn]').addEventListener('click', reveal);
+  document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && stage === 'ready') { e.preventDefault(); reveal(); }
+  });
+  $('[data-fs]').addEventListener('click', () => {
+    document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen?.().catch(() => {});
+  });
+  // Hide the footer controls while the mouse is still, so they don't show on stream.
+  let idle: number | undefined;
+  const wake = () => { body.classList.remove('idle'); clearTimeout(idle); idle = window.setTimeout(() => body.classList.add('idle'), 2500); };
+  ['mousemove', 'keydown', 'touchstart'].forEach((ev) => addEventListener(ev, wake, { passive: true }));
+  wake();
+
+  render();
+  if (rehearse) rehearsal(); else setInterval(poll, 2000);
+  setInterval(tick, 250);
+</script>
+
+<style is:global>
+  .rv { margin: 0; min-height: 100dvh; background: #000; color: #fff; overflow-x: hidden; display: flex; flex-direction: column; }
+  .rv .bg { position: fixed; inset: 0; z-index: 0; }
+  .rv .bg img { width: 100%; height: 100%; object-fit: cover; opacity: .28; filter: grayscale(1) contrast(1.1); }
+  .rv .bg::after { content: ''; position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(0,0,0,.35) 0%, rgba(0,0,0,.9) 75%); }
+  .rv .stage { position: relative; z-index: 1; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 16px 24px; gap: 14px; }
+  .rv .logo { width: clamp(100px, 12vw, 170px); height: auto; margin-bottom: clamp(8px, 3vh, 36px); }
+  .rv .eyebrow { margin: 0; font-size: clamp(12px, 1.2vw, 16px); letter-spacing: .32em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+  .rv .title { margin: 0; font-size: clamp(30px, 5.6vw, 92px); line-height: 1.02; font-weight: 800; letter-spacing: -.02em; max-width: 18ch; text-wrap: balance; }
+  .rv .panel { display: flex; flex-direction: column; align-items: center; gap: clamp(10px, 2vh, 22px); margin-top: clamp(16px, 4vh, 48px); width: 100%; }
+  .rv .panel[hidden] { display: none; }
+  .rv .panel.in { animation: rv-in .6s ease both; }
+  @keyframes rv-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+  .rv .lead { margin: 0; font-size: clamp(20px, 2.6vw, 40px); font-weight: 600; display: flex; align-items: center; gap: .5em; flex-wrap: wrap; justify-content: center; }
+  .rv .sub { margin: 0; font-size: clamp(14px, 1.3vw, 20px); color: rgba(255,255,255,.7); max-width: 46ch; line-height: 1.5; }
+  .rv .small { font-size: clamp(12px, 1vw, 15px); }
+  .rv .label { margin: 0; font-size: clamp(12px, 1.1vw, 16px); letter-spacing: .28em; text-transform: uppercase; color: rgba(255,255,255,.7); }
+  .rv .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .rv .seal { margin: 0; font-size: clamp(11px, 1vw, 14px); color: rgba(255,255,255,.55); word-break: break-all; }
+  .rv .count { font-size: clamp(64px, 12vw, 200px); font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; letter-spacing: -.03em; }
+  .rv .count[hidden] { display: none; }
+  .rv .colon { opacity: .5; padding: 0 .04em; }
+  .rv .pulse { width: .5em; height: .5em; border-radius: 50%; background: #fff; display: inline-block; animation: rv-pulse 1.4s ease-in-out infinite; }
+  @keyframes rv-pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .25; transform: scale(.7); } }
+  .rv .btn.reveal-btn { font-size: clamp(14px, 1.3vw, 18px); padding: 18px 34px; background: #fff; color: #000; border: 1px solid #fff; cursor: pointer; letter-spacing: .14em; text-transform: uppercase; font-weight: 700; }
+  .rv .ticket { display: flex; gap: clamp(6px, 1vw, 16px); justify-content: center; }
+  .rv .ticket .d { display: inline-flex; align-items: center; justify-content: center; width: clamp(56px, 10vw, 170px); height: clamp(80px, 14vw, 230px); border: 1px solid rgba(255,255,255,.35); font-size: clamp(48px, 9vw, 160px); font-weight: 800; font-variant-numeric: tabular-nums; color: rgba(255,255,255,.45); background: rgba(0,0,0,.5); }
+  .rv .ticket .d.set { color: #fff; border-color: #fff; }
+  .rv:not(.reduce) .ticket .d.set { animation: rv-lock .35s ease; }
+  @keyframes rv-lock { 0% { transform: scale(1.12); } 100% { transform: scale(1); } }
+  .rv .winner { margin: 0; min-height: 1.1em; font-size: clamp(34px, 6vw, 104px); font-weight: 800; letter-spacing: -.02em; opacity: 0; transform: translateY(10px); transition: opacity .8s ease, transform .8s ease; }
+  .rv .winner.on { opacity: 1; transform: none; }
+  .rv .verify { display: flex; align-items: center; gap: clamp(14px, 2vw, 28px); text-align: left; opacity: 0; transition: opacity .8s ease; margin-top: clamp(4px, 2vh, 24px); }
+  .rv .verify.on { opacity: 1; }
+  .rv .verify[hidden] { display: none; }
+  .rv .qr { width: clamp(84px, 9vw, 150px); flex: none; }
+  .rv .qr svg { display: block; width: 100%; height: auto; }
+  .rv .url { margin: 4px 0; font-size: clamp(13px, 1.3vw, 20px); word-break: break-all; }
+  .rv .foot { position: relative; z-index: 1; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); font-size: 12px; color: rgba(255,255,255,.55); letter-spacing: .04em; }
+  .rv .ctl { display: flex; gap: 14px; align-items: center; transition: opacity .4s; }
+  .rv .ctl a, .rv .ctl button { color: rgba(255,255,255,.75); background: none; border: 0; padding: 0; font: inherit; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .rv .tag { border: 1px solid rgba(255,255,255,.4); padding: 2px 8px; }
+  .rv[data-stage='reveal'] .title { font-size: clamp(22px, 3.2vw, 52px); }
+  .rv[data-stage='reveal'] .logo { width: clamp(80px, 8vw, 120px); margin-bottom: 0; }
+  .rv[data-stage='reveal'] .panel { margin-top: clamp(8px, 2vh, 28px); }
+  .rv.idle .ctl { opacity: 0; }
+  .rv.idle { cursor: none; }
+  @media (max-width: 600px) { .rv .verify { flex-direction: column; text-align: center; } }
+  @media (prefers-reduced-motion: reduce) {
+    .rv .panel.in, .rv .pulse, .rv .ticket .d.set { animation: none !important; }
+    .rv .winner, .rv .verify { transition: none; transform: none; }
+  }
+</style>
