@@ -2,6 +2,7 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, when } from '../../lib/admin';
 import ForfeitForm from '../../components/ForfeitForm.astro';
+import { count } from '../../lib/plural';
 
 interface TrailEvent { seq: number; type: string; at: string | null; hash: string }
 interface DrawState {
@@ -131,8 +132,8 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
         <form class="stack" style="margin-top:12px;gap:10px;max-width:560px" data-admin-form={`/api/admin/competitions/${r.competitionId}/external-result`} data-method="POST" data-reload
           data-confirm="Record this result? It goes on the audit chain for good and can't be changed (a winner can still forfeit and be redrawn).">
           {r.externalKind === 'physical'
-            ? <p class="small" style="margin:0">1. <a href={`/admin/draws/${r.competitionId}/chip-sheet`} target="_blank" rel="noopener">Print the chip sheet</a> ({r.draw.entries} valid tickets, fingerprint <span class="mono">{r.draw.entriesHash.slice(0, 12)}…</span>) and check the numbered tokens against it. 2. On the livestream, with the independent witness, draw one token by hand. 3. Record it here, with the livestream link (required).</p>
-            : <p class="small" style="margin:0">1. <a href={`/api/admin/draws/${r.draw.id}/entries.csv`}>Download the sealed entry list</a> ({r.draw.entries} entries, fingerprint <span class="mono">{r.draw.entriesHash.slice(0, 12)}…</span>). 2. Draw a ticket on the livestream with the sealed tool{r.drawTool ? <> (<a href={r.drawTool.url} target="_blank" rel="noopener">{r.drawTool.name}</a>)</> : null}. 3. Record it here, with the livestream link (required).</p>}
+            ? <p class="small" style="margin:0">1. <a href={`/admin/draws/${r.competitionId}/chip-sheet`} target="_blank" rel="noopener">Print the chip sheet</a> ({count(r.draw.entries, 'valid ticket')}, fingerprint <span class="mono">{r.draw.entriesHash.slice(0, 12)}…</span>) and check the numbered tokens against it. 2. On the livestream, with the independent witness, draw one token by hand. 3. Record it here, with the livestream link (required).</p>
+            : <p class="small" style="margin:0">1. <a href={`/api/admin/draws/${r.draw.id}/entries.csv`}>Download the sealed entry list</a> ({count(r.draw.entries, 'entry', 'entries')}, fingerprint <span class="mono">{r.draw.entriesHash.slice(0, 12)}…</span>). 2. Draw a ticket on the livestream with the sealed tool{r.drawTool ? <> (<a href={r.drawTool.url} target="_blank" rel="noopener">{r.drawTool.name}</a>)</> : null}. 3. Record it here, with the livestream link (required).</p>}
           <div class="form-grid">
             <div class="field"><label for={`xt-${r.competitionId}`}>Winning ticket number</label><input id={`xt-${r.competitionId}`} name="ticket" type="number" data-type="number" min="1" max={r.totalTickets} required inputmode="numeric" /></div>
             <div class="field"><label for={`xl-${r.competitionId}`}>Livestream link</label><input id={`xl-${r.competitionId}`} name="livestreamUrl" type="url" pattern="https://.*" placeholder="https://" required /></div>
