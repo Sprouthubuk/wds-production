@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Competition;
+
 /**
  * The competitions the client has confirmed, as data, for `php artisan wds:client-drafts` (and the local
  * seeder). Missing drafts are created; the confirmed details (confirmed()) are applied to each one only
@@ -35,10 +37,10 @@ final class ClientDrafts
     public static function confirmed(): array
     {
         return [
-            self::MAIN_EVENT => self::mainEvent(),
-            self::COILOVERS => ['max_per_person' => null, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+            self::MAIN_EVENT => self::mainEvent() + ['draw_method' => Competition::DRAW_PHYSICAL],
+            self::COILOVERS => ['draw_method' => Competition::DRAW_PHYSICAL, 'max_per_person' => null, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
             // Free: 500 entries, one per verified account, online only (no postal route).
-            self::ENGINE_TABLE => ['total_tickets' => 500, 'max_per_person' => 1, 'postal_entry_enabled' => false,
+            self::ENGINE_TABLE => ['draw_method' => Competition::DRAW_PHYSICAL, 'total_tickets' => 500, 'max_per_person' => 1, 'postal_entry_enabled' => false,
                 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
         ];
     }
