@@ -14,7 +14,7 @@ interface Props { competition: Competition; settings: SiteSettings; variant?: 'f
 const { competition: c, settings, variant = 'full' } = Astro.props;
 
 const left = Math.max(0, c.totalTickets - c.ticketsSold);
-const cap = Math.max(1, Math.min(c.maxPerPerson || 50, left || 1));
+const cap = Math.max(1, Math.min(c.maxPerPerson ?? left, left || 1)); // no per-person cap: up to what's left
 const startQty = Math.min(c.bundles.find((b) => b.qty === 3)?.qty ?? 1, cap);
 const pct = percentSold(c.ticketsSold, c.totalTickets);
 const cd = countdownParts(c.drawAt ?? new Date().toISOString());
@@ -88,7 +88,7 @@ const config = JSON.stringify({
         </div>
 
         <div class="own">
-          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span><span class="small muted">Max {c.maxPerPerson} per person</span></div> : null}
+          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span>{c.maxPerPerson ? <span class="small muted">Max {c.maxPerPerson} per person</span> : null}</div> : null}
           <div class="stepper">
             <button type="button" data-step="-1" aria-label="One fewer ticket">−</button>
             <div><span class="qty num" data-qty aria-live="polite">{startQty}</span><span class="word" data-word>{startQty === 1 ? 'ticket' : 'tickets'}</span></div>
@@ -134,7 +134,7 @@ const config = JSON.stringify({
   ) : null}
 
   {variant === 'hero' ? (
-    <span class="foot">Same draw, same chance · Max {c.maxPerPerson} per person</span>
+    <span class="foot">Same draw, same chance{c.maxPerPerson ? ` · Max ${c.maxPerPerson} per person` : ''}</span>
   ) : (
     <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>{drawChannels(settings).drawnLive}</span></div>
   )}
@@ -221,7 +221,7 @@ const config = JSON.stringify({
   import type { Bundle } from '../lib/types';
   import { pop } from '../lib/motion';
 
-  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number; cap: number; totalTickets: number; drawAt: string };
+  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number | null; cap: number; totalTickets: number; drawAt: string };
 
   document.querySelectorAll<HTMLElement>('[data-entry-panel]').forEach((root) => {
     const cfg: Cfg = JSON.parse(root.dataset.config || '{}');

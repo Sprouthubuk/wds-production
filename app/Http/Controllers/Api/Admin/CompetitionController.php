@@ -127,7 +127,7 @@ class CompetitionController extends Controller
             }],
             'bundles' => ['array'], 'bundles.*.qty' => ['required', 'integer', 'min:2'], 'bundles.*.price' => ['required', 'numeric', 'min:0.1'],
             'totalTickets' => [$existing ? 'sometimes' : 'required', 'integer', 'min:1', 'max:1000000'],
-            'maxPerPerson' => [$existing ? 'sometimes' : 'required', 'integer', 'min:1'],
+            'maxPerPerson' => ['sometimes', 'nullable', 'integer', 'min:1'], // empty = no cap
             'cashAlternative' => ['nullable', 'numeric', 'min:0'],
             'buildVideoUrl' => ['nullable', 'url'],
             'opensAt' => ['nullable', 'date'], 'closesAt' => ['nullable', 'date'],

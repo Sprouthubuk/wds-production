@@ -45,7 +45,7 @@ class DatabaseSeeder extends Seeder
             'ticket_price_pence' => 1495,
             'bundles' => [['qty' => 3, 'price_pence' => 4000], ['qty' => 10, 'price_pence' => 12500]],
             'total_tickets' => 750,
-            'max_per_person' => 50,
+            'max_per_person' => null,
             'cash_alternative_pence' => 500000,
             'opens_at' => now(),
             // Confirmed by the client: entries close Thu 24 Dec 2026 at 19:00 UK time (GMT, so UTC), live

@@ -29,7 +29,7 @@ export interface Competition {
   ticketPrice: number;
   totalTickets: number;
   ticketsSold: number;
-  maxPerPerson: number;
+  maxPerPerson: number | null; // null = no per-person cap
   bundles: Bundle[];
   opensAt: string | null;
   closesAt: string | null;
@@ -105,6 +105,6 @@ export interface BasketLine {
   qty: number;
   ticketPrice: number;
   bundles: Bundle[];
-  maxPerPerson: number;
+  maxPerPerson: number | null; // null = no per-person cap
   drawAt: string;
 }
