@@ -147,7 +147,8 @@ class CompetitionController extends Controller
             'strapline' => ['nullable', 'string', 'max:300'],
             'category' => [$existing ? 'sometimes' : 'required', Rule::in(['cars', 'parts', 'cash', 'merch'])],
             'badge' => ['nullable', 'string', 'max:40'],
-            'status' => [$existing ? 'sometimes' : 'required', Rule::in(['draft', 'scheduled', 'live', 'closed', 'drawn'])],
+            // Not needed on create: a new competition is always a draft (store()); it goes live only through publish().
+            'status' => ['sometimes', Rule::in($existing ? ['draft', 'scheduled', 'live', 'closed', 'drawn'] : ['draft'])],
             'images' => ['array'], 'images.*.src' => ['required', 'string'], 'images.*.alt' => ['nullable', 'string', 'max:200'],
             'description' => ['array'], 'description.*' => ['string', 'max:3000'],
             'specs' => ['array'], 'specs.*.label' => ['required', 'string', 'max:60'], 'specs.*.value' => ['required', 'string', 'max:120'],
