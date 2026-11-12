@@ -20,6 +20,7 @@ Repository admins can bypass this in an emergency; don't, unless the owner says 
 - Never edit `vendor/sprouthub/verity-engine`: its fingerprints must match the reviewed release (`verity:check`).
 - Never write to `verity_*` tables directly, and never copy a database between staging and production.
 - Migrations are additive. A draw's result is only changed through Verity (forfeit / redraw), never by hand.
+- On this Windows machine, only stop processes you started, by the PID you recorded when starting them (e.g. Stop-Process -Id <pid>). Never stop processes by name pattern or wildcard, and never touch system processes.
 
 ## Business rules
 
