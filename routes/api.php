@@ -17,6 +17,7 @@ Route::get('/upcoming/{slug}', [PublicController::class, 'upcomingBySlug']);
 Route::get('/preview/{token}', [PublicController::class, 'preview'])->middleware('throttle:30,1');
 Route::get('/winners', [PublicController::class, 'winners']);
 Route::get('/draws', [PublicController::class, 'draws']);
+Route::get('/draws/lookup', [PublicController::class, 'lookup'])->middleware('throttle:60,1');
 Route::get('/draws/{draw}/certificate', [PublicController::class, 'certificate'])->name('draws.certificate');
 Route::get('/settings', [PublicController::class, 'settings']);
 

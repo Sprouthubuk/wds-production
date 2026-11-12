@@ -111,6 +111,17 @@ export interface DrawCertificate {
 }
 
 /** A published draw's certificate summary (null until the result is published). */
+/** The /verify lookup: a draw reference or certificate ID as typed; null when no published draw matches. */
+export async function lookupDraw(q: string): Promise<{ id: number; reference: string } | null> {
+  if (usingSampleData) return null;
+  try {
+    return (await api<{ data: { id: number; reference: string } }>(`/draws/lookup?q=${encodeURIComponent(q)}`)).data;
+  } catch (e) {
+    if (e instanceof ApiError && (e.status === 404 || e.status === 422)) return null;
+    throw e;
+  }
+}
+
 export async function getCertificate(id: string): Promise<{ certificate: DrawCertificate; url: string } | null> {
   if (usingSampleData) return null;
   try {

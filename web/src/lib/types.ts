@@ -68,6 +68,9 @@ export interface DrawResult {
   /** "Redraw pending" / "Prize unawarded" when the winner was forfeited and there's no current winner. */
   note?: string | null;
   redraws?: number;
+  /** The draw reference (e.g. WDS-7KQ2MX) and method (A: verity, B: external) of a published draw. */
+  reference?: string | null;
+  method?: 'verity' | 'external';
 }
 
 /** A competition that isn't live yet: only what the public may see (never prices or ticket counts). */
