@@ -24,7 +24,7 @@ const drawDate = c.drawAt ? new Date(c.drawAt).toLocaleDateString('en-GB', { day
     <div class="row-between prices">{c.ticketPrice === 0 ? <span><strong>Free</strong> to enter</span> : <span><strong>{money(c.ticketPrice)}</strong> online</span>}{hasPostalRoute(c) ? <span><strong>Free</strong> by post</span> : <span>One per person</span>}</div>
     <div class="btn-pair">
       <a href={href} class="btn">{c.ticketPrice === 0 ? 'Enter free' : 'Enter online'}</a>
-      {hasPostalRoute(c) ? <a href="/free-postal-entry" class="btn">Enter by post</a> : null}
+      {hasPostalRoute(c) ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}
     </div>
   </div>
 </article>
