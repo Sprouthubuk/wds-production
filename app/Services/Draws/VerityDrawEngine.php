@@ -255,7 +255,9 @@ class VerityDrawEngine
         try {
             Verity::recordExternalResult($this->verityCompetition($competition), $number, $livestreamUrl, 'admin:'.$admin->id);
         } catch (VerityException $e) {
-            throw new EntryException($e->getMessage());
+            throw new EntryException(str_contains($e->getMessage(), 'sealed entry list')
+                ? 'Ticket '.\App\Models\Ticket::format($number, (int) $competition->total_tickets).' is not on the sealed entry list.'
+                : $e->getMessage());
         }
         app(DrawService::class)->sync($competition);
 

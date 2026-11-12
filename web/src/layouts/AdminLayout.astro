@@ -103,6 +103,8 @@ const nav = [
     .bar > span { display: block; height: 100%; background: #fff; }
     .adm-toast { position: fixed; right: 24px; bottom: 24px; max-width: 380px; padding: 14px 18px; background: #fff; color: #000; font-weight: 700; font-size: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.6); z-index: 50; }
     .adm-toast.err { background: #ff8a8a; }
+    .adm-error { margin: 0 0 12px; flex-basis: 100%; }
+    .adm-error[hidden] { display: none; }
     .chart { display: flex; align-items: flex-end; gap: 6px; height: 140px; }
     .chart div { flex: 1; background: #fff; min-height: 2px; position: relative; }
     .chart div:hover::after { content: attr(data-tip); position: absolute; bottom: 100%; left: 50%; transform: translateX(-50%); white-space: nowrap; background: #222; color: #fff; padding: 3px 6px; font-size: 11px; margin-bottom: 4px; }
