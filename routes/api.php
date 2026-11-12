@@ -66,6 +66,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:staff'])->group(functi
     Route::post('/event-sales', [Admin\EventSaleController::class, 'store']);
     Route::get('/event-sales/summary', [Admin\EventSaleController::class, 'summary']);
     Route::get('/postal', [Admin\PostalController::class, 'index']);
+    Route::get('/postal/competitions', [Admin\PostalController::class, 'competitions']);
     Route::post('/postal', [Admin\PostalController::class, 'store']);
 });
 
