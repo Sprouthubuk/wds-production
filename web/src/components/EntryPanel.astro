@@ -4,6 +4,7 @@
  * variant="full"  → competition page / mobile (tabs for online vs free postal entry)
  * variant="hero"  → compact card in the homepage hero
  */
+import { drawChannels } from '../lib/channels';
 import type { Competition, SiteSettings } from '../lib/types';
 import { postalDeadlineSentence } from '../lib/postal';
 import { money, odds, percentSold, priceFor, savingFor, statusLabel } from '../lib/pricing';
@@ -124,7 +125,7 @@ const config = JSON.stringify({
   {variant === 'hero' ? (
     <span class="foot">Same draw, same chance · Max {c.maxPerPerson} per person</span>
   ) : (
-    <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>Drawn live on Instagram @{settings.drawsInstagram}</span></div>
+    <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>{drawChannels(settings).drawnLive}</span></div>
   )}
 </div>
 

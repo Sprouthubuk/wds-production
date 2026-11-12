@@ -19,13 +19,14 @@ const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).d
     </section>
     <section class="panel">
       <h2>Free postal entry</h2>
-      <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="4">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on every competition and the Free Postal Entry page.</span></div>
+      <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="7">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on every competition and the Free Postal Entry page.</span></div>
     </section>
     <section class="panel">
       <h2>Live draws &amp; socials</h2>
       <div class="form-grid">
         <div class="field"><label for="ig">Instagram for live draws</label><input id="ig" name="drawsInstagram" value={s.drawsInstagram} /><span class="hint">Without the @</span></div>
-        <div class="field"><label for="yt">YouTube channel</label><input id="yt" name="youtubeUrl" type="url" value={s.youtubeUrl} /></div>
+        <div class="field"><label for="dyt">YouTube for live draws (optional)</label><input id="dyt" name="drawsYoutubeUrl" type="url" placeholder="https://youtube.com/@…" value={s.drawsYoutubeUrl ?? ''} /><span class="hint">When set, the site says "Drawn live on our socials". Instagram stays the main link.</span></div>
+        <div class="field"><label for="yt">YouTube channel (builds)</label><input id="yt" name="youtubeUrl" type="url" value={s.youtubeUrl} /><span class="hint">The WDS Originals channel in the footer and About page.</span></div>
       </div>
     </section>
     <div><button class="btn" type="submit">Save settings</button></div>

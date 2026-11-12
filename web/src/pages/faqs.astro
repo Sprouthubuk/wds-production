@@ -1,4 +1,5 @@
 ---
+import { drawChannels } from '../lib/channels';
 import { POSTAL_HOURS_BEFORE_CLOSE, POSTAL_RULE } from '../lib/postal';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
@@ -19,7 +20,7 @@ const groups: [string, [string, string][]][] = [
     ['Can I get a refund?', '[To confirm in the terms: when entries can and cannot be refunded, including if a competition is cancelled.]'],
   ]],
   ['The draw', [
-    ['When and where are draws held?', `Live on Instagram @${settings.drawsInstagram}. Each competition page shows its draw date and time.`],
+    ['When and where are draws held?', `Live on ${drawChannels(settings).youtube && drawChannels(settings).instagram ? `our socials: Instagram @${settings.drawsInstagram} and YouTube` : drawChannels(settings).where}. Each competition page shows its draw date and time.`],
     ['How is the winner chosen?', 'By a verified random draw from every allocated ticket number, shown live on stream, with a certificate published afterwards.'],
     ['What if not every ticket sells?', '[To confirm: whether the draw goes ahead as planned or the closing date is extended.]'],
   ]],

@@ -26,6 +26,7 @@ class SettingsController extends Controller
             'drawsInstagram' => ['sometimes', 'string', 'max:60'],
             'socials' => ['sometimes', 'array'], 'socials.*.label' => ['required', 'string'], 'socials.*.url' => ['required', 'url'],
             'youtubeUrl' => ['sometimes', 'nullable', 'url'],
+            'drawsYoutubeUrl' => ['sometimes', 'nullable', 'url:https'],
         ]);
         Setting::put('site', array_merge(Setting::get('site', []) ?? [], $d));
 

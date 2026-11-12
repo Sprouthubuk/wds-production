@@ -1,4 +1,5 @@
 ---
+import { drawChannels } from '../../lib/channels';
 import Layout from '../../layouts/Layout.astro';
 import PageHero from '../../components/PageHero.astro';
 import { api, ApiError, usingSampleData, getSettings } from '../../lib/api';
@@ -27,6 +28,7 @@ if (usingSampleData) {
 }
 if (!order) return Astro.rewrite('/404');
 const waiting = order.status === 'pending';
+const ch = drawChannels(settings);
 ---
 <Layout title={order.status === 'paid' ? "You're in" : 'Order'}>
   {waiting ? <meta slot="head" http-equiv="refresh" content="4" /> : null}
@@ -56,9 +58,10 @@ const waiting = order.status === 'pending';
       </div>
       <div class="watch">
         <span class="label">Watch the draw</span>
-        <h2 class="h3" style="font-size: 22px">Live on Instagram @{settings.drawsInstagram}</h2>
+        <h2 class="h3" style="font-size: 22px">Live on {ch.where}</h2>
         <p class="small muted" style="margin:0">Follow so you don't miss your number.</p>
-        <a href={`https://instagram.com/${settings.drawsInstagram}`} class="btn btn--outline">Follow @{settings.drawsInstagram}</a>
+        {ch.primary ? <a href={ch.primary.url} class="btn btn--outline">{ch.primary.label}</a> : null}
+        {ch.instagram && ch.youtube ? <a href={ch.youtube.url} class="btn btn--outline">Watch on YouTube</a> : null}
       </div>
     </div>
   </section>

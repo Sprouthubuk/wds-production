@@ -8,7 +8,7 @@
       @foreach ($order->lines as $line)
         <tr><td style="border-top:1px solid #222;padding:16px 0">
           <div style="font-size:18px;font-weight:700">{{ $line->competition->title }}</div>
-          <div style="color:#9a9a9a;font-size:14px;padding:4px 0 10px">Drawn {{ $line->competition->draw_at->timezone('Europe/London')->format('l j F, g:ia') }} — live on Instagram @{{ $settings['drawsInstagram'] }}</div>
+          <div style="color:#9a9a9a;font-size:14px;padding:4px 0 10px">Drawn {{ $line->competition->draw_at->timezone('Europe/London')->format('l j F, g:ia') }} — live on {{ \App\Http\Resources\SettingsPayload::drawnLiveOn($settings) }}</div>
           <div style="font-size:16px;font-family:Menlo,monospace">
             @foreach ($line->tickets->sortBy('number') as $t)<span style="display:inline-block;border:1px solid #444;padding:4px 8px;margin:0 6px 6px 0">#{{ $t->display($line->competition->total_tickets) }}</span>@endforeach
           </div>

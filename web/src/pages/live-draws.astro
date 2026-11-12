@@ -2,19 +2,24 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getDraws, getSettings } from '../lib/api';
+import { drawChannels } from '../lib/channels';
 const [draws, settings] = await Promise.all([getDraws(), getSettings()]);
+const ch = drawChannels(settings);
 const fmt = (iso: string) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' }) : '—');
 const upcoming = draws.filter((d) => !d.winningTicket && !d.winner);
 ---
 <Layout title="Live draws & results">
-  <PageHero eyebrow="Live draws" title="Live draws & results" intro={`Every winner is drawn live on Instagram @${settings.drawsInstagram}. Results and draw certificates are published here.`} />
+  <PageHero eyebrow="Live draws" title="Live draws & results" intro={`Every winner is drawn live on ${ch.where}. Results and draw certificates are published here.`} />
   <section class="section">
     <div class="container row" style="gap: 40px; align-items: flex-start">
       <div class="live-box" data-reveal>
         <span class="label">Next live draw</span>
         <h2 class="display display--s">{upcoming[0] ? `${upcoming[0].competition}` : 'Coming soon'}</h2>
         {upcoming[0] ? <p class="lead">{new Date(upcoming[0].drawAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p> : null}
-        <a href={`https://instagram.com/${settings.drawsInstagram}`} class="btn">Watch on Instagram</a>
+        <div class="row" style="gap: 10px">
+          {ch.instagram ? <a href={ch.instagram.url} class="btn">Watch on Instagram</a> : null}
+          {ch.youtube ? <a href={ch.youtube.url} class={ch.instagram ? 'btn btn--outline' : 'btn'}>Watch on YouTube</a> : null}
+        </div>
         <span class="small muted">Turn on post notifications so you don't miss your number.</span>
       </div>
     </div>

@@ -1,15 +1,16 @@
 ---
+import { drawChannels } from '../lib/channels';
 import LegalPage from '../components/LegalPage.astro';
 import { getSettings } from '../lib/api';
 const s = await getSettings();
 const sections: [string, string[]][] = [
   ['The promoter', [`The promoter is ${s.legalName} (company no. ${s.companyNumber}), trading as ${s.tradingName}, of ${s.registeredOffice}.`]],
   ['Who can enter', ['Entry is open to UK residents aged 18 or over. [List any exclusions, e.g. employees of the promoter and their households.]']],
-  ['How to enter', ['You can enter online by buying tickets, or free by post. Both routes have equal standing and the same chance of winning.', 'Free postal entries must follow the instructions on the <a href="/free-postal-entry">free postal entry page</a> and arrive before the closing date.']],
+  ['How to enter', ['You can enter online by buying tickets, or free by post. Both routes have equal standing and the same chance of winning.', 'Free postal entries must follow the instructions on the <a href="/free-postal-entry">free postal entry page</a> and must be received at least 48 hours before the competition closes (or by the postal deadline shown on the competition page).']],
   ['Entries and limits', ['Each competition has a fixed maximum number of entries, shown on its page. Each person may make up to the stated maximum per competition across online and postal routes combined. Ticket numbers are issued in sequence.']],
   ['Bundles and pricing', ['Bundles are offered at fixed prices. The price charged is the cheapest combination of single tickets and bundles for the number of tickets selected.']],
   ['Closing dates', ['Each competition closes at the date and time shown, or earlier if all entries are allocated. [State the policy if entries do not sell out.]']],
-  ['The draw', [`Winners are chosen by a verified random draw from all allocated ticket numbers, streamed live on Instagram @${s.drawsInstagram} and published on the site.`]],
+  ['The draw', [`Winners are chosen by a verified random draw from all allocated ticket numbers, streamed live on ${drawChannels(s).youtube && drawChannels(s).instagram ? `our socials (Instagram @${s.drawsInstagram} and YouTube)` : drawChannels(s).where} and published on the site.`]],
   ['Winners', ['We will contact the winner by phone and email after the draw. Winners must verify their identity and age before a prize is released. [State how long a winner has to respond before a redraw.]']],
   ['Prizes', ['Prizes are as described on each competition page. [Cash alternative terms.] [Collection or delivery terms for vehicles.]']],
   ['Refunds and cancellations', ['[Refund policy, including what happens if a competition is cancelled.]']],

@@ -6,14 +6,16 @@ import ComingSoonCard from '../components/ComingSoonCard.astro';
 import { getCompetitions, getSettings, getWinners } from '../lib/api';
 import { money, odds, percentSold } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
+import { drawChannels } from '../lib/channels';
 
 const [competitions, settings, winners] = await Promise.all([getCompetitions(), getSettings(), getWinners()]);
+const ch = drawChannels(settings);
 const featured = competitions.find((c) => c.badge) ?? competitions[0];
 const latestWinner = winners[0];
 const placeholders = Math.max(0, 3 - competitions.length);
 const ticker = featured
-  ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every competition', `Drawn live on Instagram @${settings.drawsInstagram}`, '18+ UK only']
-  : ['Free postal entry on every competition', `Drawn live on Instagram @${settings.drawsInstagram}`, '18+ UK only'];
+  ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every competition', ch.drawnLive, '18+ UK only']
+  : ['Free postal entry on every competition', ch.drawnLive, '18+ UK only'];
 const specs = featured?.specs ?? [];
 const spec = (label: string) => specs.find((s) => s.label.toLowerCase() === label.toLowerCase())?.value;
 const drawTime = featured ? new Date(featured.drawAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '';
@@ -36,7 +38,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
             <h1 class="display display--xl">{featured.title.replace(/^BMW\s+/i, '')}</h1>
           </div>
           <p class="lead hero-lead">{featured.strapline}</p>
-          <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>Free postal entry</span><span>Drawn live on Instagram</span></div>
+          <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>Free postal entry</span><span>{ch.youtube ? 'Drawn live on our socials' : 'Drawn live on Instagram'}</span></div>
         </div>
         <div class="hero-card hero-anim-card">
           <EntryPanel competition={featured} settings={settings} variant="hero" />
@@ -49,7 +51,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
     <div class="container usp-grid" data-reveal-group>
       <div><b>01</b><span><strong>Better odds</strong><br />Low ticket numbers, always</span></div>
       <div><b>02</b><span><strong>Instant numbers</strong><br />Emailed at checkout</span></div>
-      <div><b>03</b><span><strong>Drawn live</strong><br />Instagram @{settings.drawsInstagram}</span></div>
+      <div><b>03</b><span><strong>Drawn live</strong><br />{ch.youtube ? 'Instagram & YouTube' : ch.where}</span></div>
       <div><b>04</b><span><strong>Free by post</strong><br />On every competition</span></div>
     </div>
   </section>
@@ -103,7 +105,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
         <div class="way">
           <div class="way-top"><span class="eyebrow">Option B</span></div>
           <h3 class="display display--s">Enter free by post</h3>
-          <ol><li><b>1</b>Write your details on a postcard</li><li><b>2</b>Post it before the closing date</li><li><b>3</b>Number emailed once allocated</li></ol>
+          <ol><li><b>1</b>Write your details on a postcard</li><li><b>2</b>Post it to arrive 48 hours before close</li><li><b>3</b>Number emailed once allocated</li></ol>
           <a href="/free-postal-entry" class="btn btn--block">Enter free by post</a>
         </div>
       </div>
@@ -116,12 +118,13 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
         <div class="stack" style="gap: 8px; flex: 1 1 520px">
           <span class="eyebrow" style="color:#555">Christmas Eve live draw</span>
           <span class="date">{drawDay}</span>
-          <p class="body" style="color:#333; margin-top: 16px">The smaller prizes go first, then the Clubsport. Streamed live on Instagram @{settings.drawsInstagram}. Turn on notifications so you don't miss your number.</p>
+          <p class="body" style="color:#333; margin-top: 16px">The smaller prizes go first, then the Clubsport. Streamed live on {ch.where}. Turn on notifications so you don't miss your number.</p>
         </div>
         <div class="stack" style="flex: 1 1 380px">
           <div class="runorder"><span>Supporting prize draws</span><span>Before</span></div>
           <div class="runorder last"><span>{featured.title}</span><span>{drawTime}</span></div>
-          <a href={`https://instagram.com/${settings.drawsInstagram}`} class="btn btn--dark btn--block" style="margin-top: 24px">Follow @{settings.drawsInstagram}</a>
+          {ch.primary ? <a href={ch.primary.url} class="btn btn--dark btn--block" style="margin-top: 24px">{ch.primary.label}</a> : null}
+          {ch.instagram && ch.youtube ? <a href={ch.youtube.url} class="btn btn--block" style="margin-top: 10px; background:#fff; color:#000; border-color:#000">Watch on YouTube</a> : null}
         </div>
       </div>
     </section>
