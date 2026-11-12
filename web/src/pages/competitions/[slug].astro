@@ -132,7 +132,7 @@ const jsonLd = {
       <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">{c.drawAt ? <>Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · </> : null}{percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
       {pre.on
         ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
-        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a>{postal ? <a href="/free-postal-entry" class="btn">By post · Free</a> : null}</div>}
+        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a>{postal ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}</div>}
     </div>
   </div>
 </Layout>

@@ -21,10 +21,10 @@ const featured = prelaunch ? undefined : competitions.find((c) => c.badge) ?? co
 const latestWinner = winners[0];
 const placeholders = Math.max(0, 3 - competitions.length - (prelaunch ? 1 : 0));
 const ticker = prelaunch
-  ? [`Coming soon: ${prelaunch.title}`, 'Get first access', 'Free postal entry on every competition', ch.drawnLive, '18+ UK only']
+  ? [`Coming soon: ${prelaunch.title}`, 'Get first access', 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
   : featured
-  ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every competition', ch.drawnLive, '18+ UK only']
-  : ['Free postal entry on every competition', ch.drawnLive, '18+ UK only'];
+  ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
+  : ['Free postal entry on every paid competition', ch.drawnLive, '18+ UK only'];
 const launchCd = prelaunch ? launchCountdown(prelaunch) : null;
 const specs = featured?.specs ?? [];
 const spec = (label: string) => specs.find((s) => s.label.toLowerCase() === label.toLowerCase())?.value;
@@ -183,7 +183,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
       <div class="container">
         <img src={featured.images[1]?.src.replace('.jpg', '-720.jpg') ?? ''} alt="" width="64" height="48" class="sb-img" />
         <div class="stack sb-text"><strong>{featured.title}</strong><span class="small muted num">Live draw in <span data-countdown={featured.drawAt} data-countdown-text>{countdownParts(featured.drawAt).text}</span> · {percentSold(featured.ticketsSold, featured.totalTickets)}% sold</span></div>
-        <div class="btn-pair sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">{featured.ticketPrice === 0 ? 'Enter free' : <>Enter · {money(featured.ticketPrice)}</>}</a>{featured.ticketPrice > 0 ? <a href="/free-postal-entry" class="btn">By post · Free</a> : null}</div>
+        <div class="btn-pair sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">{featured.ticketPrice === 0 ? 'Enter free' : <>Enter · {money(featured.ticketPrice)}</>}</a>{featured.ticketPrice > 0 ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}</div>
       </div>
     </div>
   ) : null}
