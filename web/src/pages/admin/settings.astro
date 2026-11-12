@@ -29,6 +29,14 @@ const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).d
         <div class="field"><label for="yt">YouTube channel (builds)</label><input id="yt" name="youtubeUrl" type="url" value={s.youtubeUrl} /><span class="hint">The WDS Originals channel in the footer and About page.</span></div>
       </div>
     </section>
+    <section class="panel">
+      <h2>Site-wide monthly spend cap</h2>
+      <p class="small muted" style="margin:0 0 14px">Optional, and off unless the client decides to use it. When on, no customer (account or email) can spend more than this in a calendar month across all competitions, online and at events, whatever their own limits say. Customers' own limits and the £250 credit card cap always apply.</p>
+      <div class="form-grid">
+        <label class="check" for="scap-on"><input id="scap-on" name="siteSpendCapEnabled" type="checkbox" checked={!!s.siteSpendCapEnabled} />Turn the site-wide cap on</label>
+        <div class="field"><label for="scap">Monthly cap per customer (£)</label><input id="scap" name="siteSpendCapMonthly" data-type="number" type="number" min="1" step="1" value={s.siteSpendCapMonthly ?? ''} placeholder="e.g. 500" /></div>
+      </div>
+    </section>
     <div><button class="btn" type="submit">Save settings</button></div>
   </form>
 </AdminLayout>

@@ -4,6 +4,8 @@ namespace App\Services;
 
 use App\Exceptions\EntryException;
 use App\Exceptions\LimitReachedException;
+use App\Http\Resources\Money;
+use App\Http\Resources\SettingsPayload;
 use App\Models\Order;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -43,6 +45,31 @@ class ResponsiblePlay
                     ? "Your {$label} spend limit is £0, so you can't make paid entries. You can raise it in your account (increases take effect after ".config('raffle.limit_increase_delay_hours').' hours).'
                     : sprintf('This would take you over your %s spending limit. You have £%s left.', $label, number_format($left / 100, 2)), $label);
             }
+        }
+    }
+
+    /**
+     * Optional site-wide monthly cap (Admin → Settings, off by default): what one customer (account or email)
+     * spends this calendar month, UK time, on every channel and payment method, paid or still reserved.
+     */
+    public function assertWithinSiteCap(?User $account, string $email, int $amountPence): void
+    {
+        $s = SettingsPayload::get();
+        $cap = Money::pence($s['siteSpendCapMonthly'] ?? null);
+        if (empty($s['siteSpendCapEnabled']) || $cap === null || $amountPence <= 0) {
+            return;
+        }
+        $from = CarbonImmutable::now('Europe/London')->startOfMonth()->utc();
+        $spent = (int) Order::where(fn ($q) => $q->where('email', $email)->when($account, fn ($q) => $q->orWhere('user_id', $account->id)))
+            ->where(fn ($q) => $q->where('status', 'paid')
+                ->orWhere(fn ($q) => $q->where('status', 'pending')->where('reserved_until', '>', now())))
+            ->where('created_at', '>=', $from)
+            ->sum('total_pence');
+        if ($spent + $amountPence > $cap) {
+            throw new EntryException(sprintf(
+                'Each customer can spend up to £%s a month on WDS Competitions. This would take you over it: you have £%s left this month.',
+                number_format($cap / 100, 2), number_format(max(0, $cap - $spent) / 100, 2),
+            ));
         }
     }
 
