@@ -43,7 +43,7 @@ class PhysicalDrawTest extends TestCase
     {
         Carbon::setTestNow('2026-10-20 12:00:00');
         $c = Competition::create([
-            'slug' => 'token-car', 'title' => 'Token car', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 1000, 'bundles' => [],
+            'slug' => 'token-car', 'title' => 'Token car', 'images' => [['src' => '/images/prize.jpg', 'alt' => 'The prize']], 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 1000, 'bundles' => [],
             'total_tickets' => 150, 'max_per_person' => null, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00',
             'postal_entry_enabled' => true, 'event_sales_enabled' => true,
         ]);

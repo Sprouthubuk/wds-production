@@ -124,7 +124,8 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     <section class="panel" style="margin-top:20px">
       <h2>Publish</h2>
       <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and the winner is drawn automatically on the public drand round about a minute after closing. Check everything above (and save) first.</p>
-      <button class="btn" data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, max ${v.maxPerPerson} per person. It can't be undone.`} data-reload>Publish and lock the draw</button>
+      {v.images.length ? null : <p class="alert alert--error" style="margin:0 0 12px">Upload at least one photo of the prize (Photos, then Save) before publishing.</p>}
+      <button class="btn" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, max ${v.maxPerPerson} per person. It can't be undone.`} data-reload>Publish and lock the draw</button>
     </section>
   ) : null}
   {!isNew && !locked ? (
