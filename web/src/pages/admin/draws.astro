@@ -74,6 +74,7 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
           {r.method === 'external'
             ? <button class="btn" data-admin-action={`/api/admin/competitions/${r.competitionId}/close-entries`} data-confirm={`Close entries for ${r.competition} now? Nobody can enter after this, and the entry list is sealed for your draw.`} data-reload>Close entries</button>
             : <button class="btn" data-admin-action={`/api/admin/competitions/${r.competitionId}/close-now`} data-confirm={`Close entries for ${r.competition} and draw now? The winner is drawn on the next drand round, about a minute from now.`} data-reload>Close &amp; draw now</button>}
+          <a class="btn btn--outline" href={`/admin/draws/${r.competitionId}/reveal`} target="_blank" rel="noopener">Open reveal screen ↗</a>
           <span class="small muted">Press it on the livestream. Otherwise entries close at {when(r.closesAt)}.</span>
         </div>
       ) : null}
@@ -89,6 +90,8 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
           <button class="btn" type="submit">Record result</button>
         </form>
       ) : null}
+
+      {r.status !== 'live' ? <p class="small" style="margin:10px 0 0"><a href={`/admin/draws/${r.competitionId}/reveal`} target="_blank" rel="noopener">Open the reveal screen for the stream ↗</a></p> : null}
 
       {r.draw?.status === 'drawn' ? (
         <div style="margin-top:12px"><button class="btn" data-admin-action={`/api/admin/draws/${r.draw.id}/publish`} data-confirm="Publish the result? It goes on the Live draws page with its certificate." data-reload>Publish result</button></div>
