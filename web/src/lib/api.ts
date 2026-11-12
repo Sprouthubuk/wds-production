@@ -1,4 +1,5 @@
 import type { Competition, CompetitionTeaser, DrawResult, SiteSettings, Winner } from './types';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { sampleCompetitions, sampleDraws, sampleSettings, sampleWinners } from '../data/sample';
 
 /**
@@ -15,9 +16,18 @@ export class ApiError extends Error {
   }
 }
 
+/** The draft preview token for the request being rendered (set by src/middleware.ts). */
+const previewToken = new AsyncLocalStorage<string>();
+export function withPreviewToken<T>(token: string, fn: () => T): T {
+  return previewToken.run(token, fn);
+}
+
 export async function api<T>(path: string, init: RequestInit & { token?: string | null } = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
+  // Reads made while a draft preview is active see the draft as if live (the API never lets it be entered).
+  const preview = previewToken.getStore();
+  if (preview) headers.set('X-Preview-Token', preview);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   if (init.token) headers.set('Authorization', `Bearer ${init.token}`);
   const res = await fetch(`${API_URL}/api${path}`, { ...init, headers });

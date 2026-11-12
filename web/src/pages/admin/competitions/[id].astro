@@ -18,6 +18,11 @@ const v = c ?? {
 } as Competition;
 // Published on Verity = the draw is locked in: the terms that are part of it can't change.
 const locked = !!v.verityRef;
+// A draft can have a private preview link for the client (14 days; regenerate or revoke at any time).
+const previewLink = !isNew && !locked && !usingSampleData
+  ? (await adminGet<{ data: { url: string; expiresAt: string; createdAt: string } | null }>(Astro.cookies, `/competitions/${id}/preview-link`).catch(() => ({ data: null }))).data
+  : null;
+const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 ---
 <AdminLayout title={isNew ? 'New competition' : v.title} active="competitions">
   <a slot="actions" class="btn btn--outline" href="/admin/competitions">Back</a>
@@ -110,6 +115,28 @@ const locked = !!v.verityRef;
       <button class="btn" data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, max ${v.maxPerPerson} per person. It can't be undone.`} data-reload>Publish and lock the draw</button>
     </section>
   ) : null}
+  {!isNew && !locked ? (
+    <section class="panel" style="margin-top:20px" data-preview-panel>
+      <h2>Preview link</h2>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)">A private link for the client to see this draft on the real site as if it were live, with a "Preview: not live yet" banner. Entries stay disabled, and nothing is sent to the draw engine. The link works for 14 days and stops when you make a new one, revoke it, or publish.</p>
+      {previewLink ? (
+        <div class="stack" style="gap:12px">
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <label class="sr-only" for="preview-url">Preview link</label>
+            <input id="preview-url" class="mono" style="flex:1 1 320px;min-width:0" readonly value={previewLink.url} data-preview-url />
+            <button type="button" class="btn" data-copy-preview>Copy link</button>
+          </div>
+          <p class="small muted" style="margin:0">Made {fmtWhen(previewLink.createdAt)} · works until <strong>{fmtWhen(previewLink.expiresAt)}</strong> UK time.</p>
+          <div class="row" style="gap:10px">
+            <button type="button" class="btn btn--outline" data-admin-action={`/api/admin/competitions/${v.id}/preview-link`} data-confirm="Make a new preview link? The current link stops working straight away." data-reload>Regenerate</button>
+            <button type="button" class="btn btn--outline" data-admin-action={`/api/admin/competitions/${v.id}/preview-link`} data-method="DELETE" data-confirm="Revoke the preview link? Anyone using it loses access." data-reload>Revoke</button>
+          </div>
+        </div>
+      ) : (
+        <button type="button" class="btn" data-admin-action={`/api/admin/competitions/${v.id}/preview-link`} data-reload>Create preview link</button>
+      )}
+    </section>
+  ) : null}
   {locked ? (
     <section class="panel" style="margin-top:20px">
       <h2>Draw</h2>
@@ -127,6 +154,15 @@ const locked = !!v.verityRef;
     </section>
   ) : null}
 
+  <script>
+    document.querySelector<HTMLButtonElement>('[data-copy-preview]')?.addEventListener('click', async (e) => {
+      const btn = e.currentTarget as HTMLButtonElement;
+      const input = document.querySelector<HTMLInputElement>('[data-preview-url]')!;
+      try { await navigator.clipboard.writeText(input.value); } catch { input.select(); document.execCommand('copy'); }
+      btn.textContent = 'Copied';
+      setTimeout(() => (btn.textContent = 'Copy link'), 1800);
+    });
+  </script>
   <script>
     import { say, send } from '../../../lib/admin-client';
     const form = document.querySelector<HTMLFormElement>('[data-comp-form]')!;

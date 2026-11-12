@@ -14,6 +14,7 @@ Route::get('/competitions', [PublicController::class, 'competitions']);
 Route::get('/competitions/{slug}', [PublicController::class, 'competition']);
 Route::get('/upcoming', [PublicController::class, 'upcoming']);
 Route::get('/upcoming/{slug}', [PublicController::class, 'upcomingBySlug']);
+Route::get('/preview/{token}', [PublicController::class, 'preview'])->middleware('throttle:30,1');
 Route::get('/winners', [PublicController::class, 'winners']);
 Route::get('/draws', [PublicController::class, 'draws']);
 Route::get('/draws/{draw}/certificate', [PublicController::class, 'certificate'])->name('draws.certificate');
@@ -66,6 +67,9 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::put('/competitions/{competition}', [Admin\CompetitionController::class, 'update']);
     Route::post('/competitions/{competition}/publish', [Admin\CompetitionController::class, 'publish']);
     Route::post('/competitions/{competition}/extend', [Admin\CompetitionController::class, 'extend']);
+    Route::get('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'show']);
+    Route::post('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'store']);
+    Route::delete('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'destroy']);
     Route::post('/uploads/competition-image', [Admin\CompetitionController::class, 'uploadImage']);
 
     Route::get('/orders', [Admin\OrderController::class, 'index']);
