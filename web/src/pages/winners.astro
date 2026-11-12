@@ -1,4 +1,5 @@
 ---
+import { ticket } from '../lib/ticket';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getCompetitions, getWinners } from '../lib/api';
@@ -12,7 +13,7 @@ const next = competitions.find((c) => c.badge) ?? competitions[0];
       {winners.map((w) => (
         <div class="card">
           {w.image ? <img src={w.image.replace('.jpg', '-720.jpg')} alt={`${w.name} with the ${w.prize}`} class="w-img" loading="lazy" /> : <div class="ph">Winner photo</div>}
-          <div class="card__body"><span class="label">Winner</span><h2 class="h3">{w.name}</h2><span class="muted-2">{w.prize}</span>{w.ticketNumber ? <span class="small muted">Ticket {w.ticketNumber}</span> : null}{w.verifyUrl ? <a class="small" href={w.verifyUrl.replace(/^https?:\/\/[^/]+/, '')}>Verify the draw</a> : null}</div>
+          <div class="card__body"><span class="label">Winner</span><h2 class="h3">{w.name}</h2><span class="muted-2">{w.prize}</span>{w.ticketNumber ? <span class="small muted">Ticket {ticket(w.ticketNumber)}</span> : null}{w.verifyUrl ? <a class="small" href={w.verifyUrl.replace(/^https?:\/\/[^/]+/, '')}>Verify the draw</a> : null}</div>
         </div>
       ))}
       {next ? (

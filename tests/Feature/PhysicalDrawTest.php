@@ -73,7 +73,7 @@ class PhysicalDrawTest extends TestCase
         $vc->refresh();
 
         $sheet = $this->actingAs($this->admin)->getJson("/api/admin/competitions/{$c->id}/chip-sheet")->assertOk()->json('data');
-        $this->assertSame(['001', '002', '003', '006', '007'], $sheet['tickets']);   // sold only, the withdrawn ones gone
+        $this->assertSame(['0001', '0002', '0003', '0006', '0007'], $sheet['tickets']);   // sold only (withdrawn ones gone), 4 digits like everywhere else
         $this->assertSame(5, $sheet['count']);
         $this->assertSame((int) $draw->entries_count, $sheet['count']);
         $this->assertSame($vc->entries_hash, $sheet['entriesHash']);
@@ -85,7 +85,11 @@ class PhysicalDrawTest extends TestCase
         $this->assertSame($vc->entries_hash, $csv->headers->get('X-Entries-Hash'));
         $lines = array_values(array_filter(explode("\n", trim($csv->streamedContent()))));
         $this->assertSame('"valid tickets",5', $lines[2]);
-        $this->assertSame(['ticket', '001', '002', '003', '006', '007'], array_slice($lines, -6));
+        $this->assertSame(['ticket', '#0001', '#0002', '#0003', '#0006', '#0007'], array_slice($lines, -6));
+
+        $entries = $this->actingAs($this->admin)->get("/api/admin/draws/{$draw->id}/entries.csv")->assertOk()->streamedContent();
+        $this->assertSame('#0001,"Alex S.",online', explode("
+", trim($entries))[1]);
 
         $row = collect($this->actingAs($this->admin)->getJson('/api/admin/draws')->json())->firstWhere('competitionId', $c->id);
         $this->assertSame(['external', 'physical'], [$row['method'], $row['externalKind']]);
