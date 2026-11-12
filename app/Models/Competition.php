@@ -12,7 +12,7 @@ class Competition extends Model
         'slug', 'title', 'strapline', 'category', 'badge', 'status', 'images', 'description', 'specs',
         'ticket_price_pence', 'bundles', 'total_tickets', 'max_per_person', 'cash_alternative_pence',
         'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order', 'draw_method', 'draw_tool_name', 'draw_tool_url',
-        'verity_ref', 'verity_status', 'published_at',
+        'verity_ref', 'verity_status', 'published_at', 'postponed_at', 'postponed_from', 'postponement_reason',
     ];
 
     /** Verity draws on drand ("Close & draw now" on stream, or automatically at the closing time). */
@@ -105,6 +105,8 @@ class Competition extends Model
             'closes_at' => 'datetime',
             'postal_closes_at' => 'datetime',
             'draw_at' => 'datetime',
+            'postponed_at' => 'datetime',
+            'postponed_from' => 'datetime',
             'published_at' => 'datetime',
             'postal_entry_enabled' => 'boolean',
             'event_sales_enabled' => 'boolean',

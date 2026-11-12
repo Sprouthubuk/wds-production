@@ -31,6 +31,12 @@ class CompetitionResource extends JsonResource
             'postalClosesAt' => $this->hasPostalRoute() ? $this->postalClosesAt()?->toIso8601String() : null,   // effective deadline; null = no postal route
             'postalClosesAtCustom' => $this->postal_closes_at?->toIso8601String(), // null = the default
             'drawAt' => $this->draw_at?->toIso8601String(),   // empty only on a draft whose dates aren't confirmed
+            // Postponed (emergency only): shown as a notice on the competition page.
+            'postponement' => $this->postponed_at ? [
+                'at' => $this->postponed_at->toIso8601String(),
+                'from' => $this->postponed_from?->toIso8601String(),
+                'reason' => $this->postponement_reason,
+            ] : null,
             'cashAlternative' => Money::pounds($this->cash_alternative_pence),
             'buildVideoUrl' => $this->build_video_url,
             'postalEntryEnabled' => $this->hasPostalRoute(), // never on a free competition

@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CompetitionResource;
 use App\Http\Resources\Money;
 use App\Models\Competition;
+use App\Mail\CompetitionPostponed;
 use App\Services\Draws\VerityDrawEngine;
 use Illuminate\Support\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 
@@ -74,13 +76,39 @@ class CompetitionController extends Controller
         return (new CompetitionResource($competition))->additional(['message' => "Published as {$competition->verity_ref}. The draw is locked in: it runs on the drand round after closing."]);
     }
 
+    /**
+     * Postpone (emergency only; the terms forbid extending because of sales). Moves the close later through
+     * Verity, which records it with the public reason on the draw's audit chain; the live draw moves by the
+     * same amount; every entrant is emailed the new times and the reason; the page shows a notice.
+     */
     public function extend(Request $request, Competition $competition, VerityDrawEngine $verity)
     {
-        $d = $request->validate(['closesAt' => ['required', 'date', 'after:now'], 'reason' => ['required', 'string', 'min:10', 'max:300']]);
+        $d = $request->validate([
+            'closesAt' => ['required', 'date', 'after:now'],
+            'reason' => ['required', 'string', 'min:20', 'max:300'],
+            'confirm' => ['accepted'],
+        ], ['confirm.accepted' => 'Tick the box to confirm this is an emergency postponement, not low sales.']);
+        $from = $competition->closes_at?->copy();
+        $drawAt = $competition->draw_at?->copy();
         // A datetime-local value from the admin form is UK time; a full ISO string keeps its own offset.
-        $competition = $verity->extend($competition, Carbon::parse($d['closesAt'], 'Europe/London'), $d['reason']);
+        $competition = $verity->extend($competition, Carbon::parse($d['closesAt'], 'Europe/London'), trim($d['reason']));
 
-        return (new CompetitionResource($competition))->additional(['message' => 'Closing time extended. The reason is on the public audit record.']);
+        $shift = $from ? $competition->closes_at->getTimestamp() - $from->getTimestamp() : 0;
+        $competition->update([
+            'postponed_at' => now(),
+            'postponed_from' => $from,
+            'postponement_reason' => trim($d['reason']),
+            'draw_at' => $drawAt && $shift > 0 ? $drawAt->addSeconds($shift) : $competition->draw_at,
+        ]);
+
+        $emails = $competition->tickets()->active()->whereNotNull('email')->distinct()->pluck('email');
+        foreach ($emails as $email) {
+            Mail::to($email)->queue(new CompetitionPostponed($competition));
+        }
+
+        return (new CompetitionResource($competition))->additional([
+            'message' => "Postponed. The reason is on the public audit record, the page shows a notice, and {$emails->count()} entrants are being emailed.",
+        ]);
     }
 
     /** Columns that are part of the published draw terms. */

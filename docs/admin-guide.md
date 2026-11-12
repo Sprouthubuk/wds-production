@@ -77,9 +77,15 @@ When everything is right, press **Save changes**, then **Publish and lock the dr
 
 Photos, the description and highlights can still be updated afterwards.
 
-If you really have to give people more time (for example, the site was down), there is **Extend closing time**. It
-can only move the closing time later, it needs a public reason, and the reason is shown on the draw record. Our
-terms say there are no extensions, so treat this as an emergency tool only.
+**Postpone (emergency only)** is only for a real emergency, for example the site being down. **It's not for low
+sales: the terms forbid extending because of sales.**
+
+- **What it does:** it moves the closing time later, and the live draw moves by the same amount.
+- **What you need:** a public reason of at least 20 characters, and a ticked confirmation.
+- **What happens next:**
+  - the reason goes on the draw's public audit record;
+  - the competition page shows a "Postponed" notice;
+  - everyone with an entry is emailed the new times and the reason.
 
 Check the preview link first, every time.
 

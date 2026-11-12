@@ -30,6 +30,8 @@ export interface Competition {
   totalTickets: number;
   ticketsSold: number;
   maxPerPerson: number | null; // null = no per-person cap
+  /** Postponed (emergency only): the old closing time and the public reason. */
+  postponement?: { at: string; from: string | null; reason: string | null } | null;
   bundles: Bundle[];
   opensAt: string | null;
   closesAt: string | null;

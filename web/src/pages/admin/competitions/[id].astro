@@ -154,13 +154,15 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <h2>Draw</h2>
       <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published as <span class="mono">{v.verityRef}</span>. Draw status, the committed drand round and the audit trail are on <a href="/admin/draws">Draws</a>.</p>
       {['live', 'scheduled'].includes(v.status) ? (
-        <form class="stack" style="gap:10px" data-admin-form={`/api/admin/competitions/${v.id}/extend`} data-confirm="Extend the closing time? The reason is published on the draw's public audit record." data-reload>
-          <h3 class="label" style="margin:0">Extend closing time</h3>
+        <form class="stack" style="gap:10px" data-admin-form={`/api/admin/competitions/${v.id}/extend`} data-confirm={`Postpone ${v.title}? This is permanent and public: the reason goes on the draw's audit record, the competition page shows a notice, and every entrant is emailed the new time and the reason.`} data-reload>
+          <h3 class="label" style="margin:0">Postpone (emergency only)</h3>
+          <p class="small" style="margin:0;color:var(--muted-2)"><strong>Not for low sales: the terms forbid extending because of sales.</strong> Only for an emergency such as the site being down or the live stream being impossible. The live draw moves by the same amount.</p>
           <div class="form-grid">
             <div class="field"><label for="ext-closes">New closing time (UK)</label><input id="ext-closes" name="closesAt" type="datetime-local" required /></div>
-            <div class="field"><label for="ext-reason">Public reason</label><input id="ext-reason" name="reason" required minlength="10" maxlength="300" placeholder="e.g. Show moved to the following weekend" /></div>
+            <div class="field"><label for="ext-reason">Public reason (at least 20 characters)</label><input id="ext-reason" name="reason" required minlength="20" maxlength="300" placeholder="e.g. The site was down for three hours on Tuesday" /></div>
           </div>
-          <div><button class="btn btn--outline" type="submit">Extend</button></div>
+          <label class="check"><input type="checkbox" name="confirm" data-type="bool" required />I confirm this is an emergency, not low sales, and that entrants will be emailed.</label>
+          <div><button class="btn btn--outline" type="submit">Postpone (emergency only)</button></div>
         </form>
       ) : null}
     </section>
