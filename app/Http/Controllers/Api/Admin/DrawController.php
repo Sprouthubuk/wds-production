@@ -211,6 +211,8 @@ class DrawController extends Controller
             'roundAt' => VerityDrawEngine::roundTime($vc->beacon_round ? (int) $vc->beacon_round : null)?->toIso8601String(),
             'redrawRound' => $pending?->beacon_round ? (int) $pending->beacon_round : null,
             'redrawRoundAt' => VerityDrawEngine::roundTime($pending?->beacon_round ? (int) $pending->beacon_round : null)?->toIso8601String(),
+            // A redraw after a forfeit (protocol R2): the forfeited ticket and the redraw's number, whatever the method.
+            'redrawPending' => $pending ? ['number' => (int) $pending->number, 'forfeitedTicket' => \App\Models\Ticket::pad((int) $pending->forfeited_ticket, (int) $competition->total_tickets)] : null,
             'ticket' => $drawn ? $draw->winningTicket?->display($competition->total_tickets) : null,
             'winner' => $winner?->display_name,
             'redraw' => $winner?->redraw_number,

@@ -134,7 +134,11 @@ Whichever method you use:
 - Open the **reveal screen** for the stream with **Open reveal screen ↗**. It shows the entry count, the
   countdown, and then the winning ticket. Use **Rehearse** to practise with made-up data.
 - **No button can change a result.** If a winner forfeits (for example, they can't be reached or don't pass the
-  checks), the system draws a replacement. The original winner stays on the record.
+  checks), the forfeit goes on the record first. The replacement is then drawn **automatically by Verity from a
+  public drand round** that was still in the future at that moment (protocol R2). This is the same for all three
+  methods: a physical or random-number-generator draw is **not** redrawn by hand or with the tool. The reveal
+  screen shows "Redraw 1" with a countdown to that round, then **Reveal the winner** again. The original winner
+  stays on the record, marked forfeited. Use **Rehearse a redraw** on the reveal screen to practise it.
 
 ### Method A: Verity draw (automatic)
 
