@@ -1,12 +1,13 @@
 ---
-import { POSTAL_HOURS_BEFORE_CLOSE, POSTAL_RULE, postalBy, postalDeadlineSentence, seasonalPostNote } from '../lib/postal';
+import { POSTAL_HOURS_BEFORE_CLOSE, POSTAL_RULE, hasPostalRoute, postalBy, postalDeadlineSentence, seasonalPostNote } from '../lib/postal';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getCompetitions, getSettings } from '../lib/api';
 
 const [settings, competitions] = await Promise.all([getSettings(), getCompetitions()]);
 const address = settings.postalEntryAddress;
-const deadlines = competitions.filter((c) => c.status === 'live' && postalBy(c));
+const postalOpen = competitions.filter(hasPostalRoute); // free competitions are online only
+const deadlines = postalOpen.filter((c) => c.status === 'live' && postalBy(c));
 const include = ['The competition name, e.g. “BMW E46 330Ci Clubsport”', 'Your full name', 'Your full postal address', 'Your date of birth', 'Your phone number', 'Your email address (the one on your WDS account, if you have one)'];
 const steps = [
   ['01', 'Write your entry', 'On a postcard, or a letter in an envelope, write the competition name and your details (see the list).'],
@@ -23,8 +24,8 @@ const rules = [
   'Postal entries are entered into the same draw as online entries, with exactly the same chance of winning.',
 ];
 ---
-<Layout title="Free postal entry" active="postal" description="Every WDS competition can be entered free by post, with exactly the same chance of winning as online entries.">
-  <PageHero eyebrow="Free entry" title="Enter free by post" intro="Every WDS competition can be entered free by post. Postal entries go into the same draw as online entries, with exactly the same chance of winning." />
+<Layout title="Free postal entry" active="postal" description="Every paid WDS competition can be entered free by post, with exactly the same chance of winning as online entries.">
+  <PageHero eyebrow="Free entry" title="Enter free by post" intro="Every paid WDS competition can be entered free by post. Postal entries go into the same draw as online entries, with exactly the same chance of winning." />
   {deadlines.length ? (
     <section class="section section--tight">
       <div class="container stack" style="gap: 16px">
@@ -79,7 +80,7 @@ const rules = [
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 24px">
       <h2 class="display display--s">Open for postal entry</h2>
-      <div class="rows">{competitions.map((c) => <div><span>{c.title}</span><span>{postalBy(c) ? postalDeadlineSentence(c) : 'Open now'}</span></div>)}</div>
+      <div class="rows">{postalOpen.map((c) => <div><span>{c.title}</span><span>{postalBy(c) ? postalDeadlineSentence(c) : 'Open now'}</span></div>)}</div>
       <div><a href="/competitions" class="btn btn--outline">Prefer to enter online? View competitions</a></div>
     </div>
   </section>

@@ -102,6 +102,12 @@ class Competition extends Model
     public const POSTAL_LATE_REASON = 'Received less than 48 hours before close';
 
     /** Postal entries must be received by this moment: postal_closes_at, or 48 hours before closes_at. */
+    /** Free postal entry is the free route for paid competitions only: free ones are entered online (one per verified account). */
+    public function hasPostalRoute(): bool
+    {
+        return ! $this->isFree() && (bool) $this->postal_entry_enabled;
+    }
+
     public function postalClosesAt(): ?\Illuminate\Support\Carbon
     {
         return $this->postal_closes_at ?? $this->closes_at?->copy()->subHours(self::POSTAL_CLOSE_HOURS_BEFORE);

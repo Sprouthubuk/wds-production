@@ -37,7 +37,9 @@ final class ClientDrafts
         return [
             self::MAIN_EVENT => self::mainEvent(),
             self::COILOVERS => ['max_per_person' => null, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
-            self::ENGINE_TABLE => ['closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+            // Free: 500 entries, one per verified account, online only (no postal route).
+            self::ENGINE_TABLE => ['total_tickets' => 500, 'max_per_person' => 1, 'postal_entry_enabled' => false,
+                'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
         ];
     }
 
@@ -100,20 +102,19 @@ final class ClientDrafts
                 'images' => [['src' => self::PLACEHOLDER_IMAGE, 'alt' => 'Bespoke built bedside engine table: photos coming soon']],
                 'description' => [
                     'A bespoke bedside table built around an engine, made by WDS Originals.',
-                    'Free to enter: one entry per verified account online, or enter free by post.',
+                    'Free to enter online: one entry per verified account.',
                 ],
                 'specs' => [['label' => 'Entry', 'value' => 'Free']],
                 'ticket_price_pence' => 0,
                 'bundles' => [],
-                // Not confirmed by the client yet: the number of entries and the per-person maximum.
-                'total_tickets' => 1000,
+                'total_tickets' => 500,
                 'max_per_person' => 1,
                 'cash_alternative_pence' => null,
                 'opens_at' => null,
                 'closes_at' => null,
                 'postal_closes_at' => null,
                 'draw_at' => null,
-                'postal_entry_enabled' => true,
+                'postal_entry_enabled' => false,
                 'event_sales_enabled' => false,
                 'sort_order' => 3,
             ],
