@@ -103,6 +103,8 @@ export interface DrawCertificate {
   method?: 'verity' | 'external'; drawNow?: boolean; livestreamUrl?: string | null; recordedAt?: string | null;
   /** External draws: the random number tool, sealed with the entry list at close, and the plain statement. */
   drawTool?: { name: string; url: string } | null; seal?: string | null; statement?: string | null;
+  /** External draws: how the pick was made, a random number generator or numbered tokens drawn by hand. */
+  externalKind?: 'rng' | 'physical' | null;
   auditEvent: { seq: number; hash: string } | null; closeTimestamp: { authority: string; witnessedAt: string; token: string } | null;
   engine: { version: string; engine_sha256: string; draw_path_sha256: string } | null; howToVerify: string;
   /** Original draw, then Redraw 1, 2 …; a forfeited winner is kept (ticket and reason only). */

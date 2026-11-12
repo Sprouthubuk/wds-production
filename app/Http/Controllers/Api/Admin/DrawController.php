@@ -38,7 +38,8 @@ class DrawController extends Controller
                 'roundAt' => VerityDrawEngine::roundTime($round ? (int) $round : null)?->toIso8601String(),
                 'roundLate' => (bool) $vc->beacon_late,
                 'commitment' => $vc->commitment,
-                'method' => $c->draw_method ?? 'verity',
+                'method' => $c->engineDrawMethod(),        // verity | external
+                'externalKind' => $c->externalKind(),       // rng | physical (numbered tokens) | null
                 'drawTool' => $vc->externalTool(),
                 'seal' => \Sprouthub\Verity\Services\DrawService::closeRecord($vc)?->payload['external_seal'] ?? null,
                 'drawNow' => (bool) (\Sprouthub\Verity\Services\DrawService::closeRecord($vc)?->payload['draw_now'] ?? false),
@@ -99,6 +100,34 @@ class DrawController extends Controller
             }
             fclose($out);
         }, "entries-{$c->slug}-".substr((string) $draw->entries_hash, 0, 12).'.csv', ['Content-Type' => 'text/csv', 'X-Entries-Hash' => (string) $draw->entries_hash]);
+    }
+
+    /**
+     * The chip sheet for a closed competition: every valid ticket number on the list Verity sealed at the
+     * close (allocated and not withdrawn: withdrawn entries left the list), the count and the sealed
+     * fingerprint. For making and checking the numbered tokens of a physical draw. ?format=csv to download.
+     */
+    public function chipSheet(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $sheet = $verity->chipSheet($competition);
+        if ($request->query('format') !== 'csv') {
+            return response()->json(['data' => $sheet]);
+        }
+
+        return response()->streamDownload(function () use ($sheet) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, ['competition', $sheet['competition']]);
+            fputcsv($out, ['reference', $sheet['reference']]);
+            fputcsv($out, ['valid tickets', $sheet['count']]);
+            fputcsv($out, ['sealed fingerprint (SHA-256)', $sheet['entriesHash']]);
+            fputcsv($out, ['sealed at', $sheet['sealedAt']]);
+            fputcsv($out, []);
+            fputcsv($out, ['ticket']);
+            foreach ($sheet['tickets'] as $t) {
+                fputcsv($out, [$t]);
+            }
+            fclose($out);
+        }, "chip-sheet-{$competition->slug}-".substr((string) $sheet['entriesHash'], 0, 12).'.csv', ['Content-Type' => 'text/csv', 'X-Entries-Hash' => (string) $sheet['entriesHash']]);
     }
 
     /** The reveal: puts the result and its certificate on the Live draws page. */
@@ -165,7 +194,8 @@ class DrawController extends Controller
 
         return response()->json(['data' => [
             'competition' => ['id' => $competition->id, 'title' => $competition->title, 'image' => $competition->images[0]['src'] ?? null, 'drawAt' => $competition->draw_at?->toIso8601String()],
-            'method' => $competition->draw_method ?? 'verity',
+            'method' => $competition->engineDrawMethod(),
+            'externalKind' => $competition->externalKind(),
             'status' => $vc->status,                                    // live | closed | drawn | void
             'entries' => $draw?->entries_count ?? (int) $competition->tickets_allocated,
             'entriesHash' => $draw?->entries_hash,

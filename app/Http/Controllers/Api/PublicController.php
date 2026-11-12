@@ -133,6 +133,7 @@ class PublicController extends Controller
             'drandRound' => $d->beacon_round ? (int) $d->beacon_round : null,
             'reference' => $d->verity_ref,
             'method' => $d->method ?? 'verity',   // verity (A, drawn on drand) | external (B, drawn on the livestream)
+            'externalKind' => ($d->method ?? 'verity') === 'external' ? ($d->competition->drawsPhysically() ? 'physical' : 'rng') : null,
             // No current winner: the winner was forfeited and a redraw is waiting for its drand round, or
             // no redraw was possible and the prize went unawarded.
             'note' => $d->winning_ticket_id ? null : (self::redrawPending($d) ? 'Redraw pending' : 'Prize unawarded'),

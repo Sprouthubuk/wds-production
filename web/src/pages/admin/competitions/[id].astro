@@ -103,7 +103,8 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <fieldset class="dm" disabled={locked}>
         <legend class="label">How it's drawn {locked ? <span class="small muted">(fixed at publish)</span> : null}</legend>
         <label><input type="radio" name="drawMethod" value="verity" checked={((c as any)?.drawMethod ?? 'verity') === 'verity'} />Verity live draw: on stream press "Close &amp; draw now"; the winner appears about a minute later</label>
-        <label><input type="radio" name="drawMethod" value="external" checked={(c as any)?.drawMethod === 'external'} />External draw: on stream press "Close entries", draw from the sealed entry list with your own RNG, then record the ticket and livestream link</label>
+        <label><input type="radio" name="drawMethod" value="external" checked={(c as any)?.drawMethod === 'external'} />Random number generator: on stream press "Close entries", pick from the sealed entry list with a named RNG (its link is required), then record the ticket and livestream link</label>
+        <label><input type="radio" name="drawMethod" value="physical" checked={(c as any)?.drawMethod === 'physical'} />Physical draw (numbered tokens): on stream press "Close entries", print the chip sheet, draw a token by hand with an independent witness, then record the ticket and livestream link. No link needed</label>
         <div class="form-grid dm-tool" data-dm-tool hidden={((c as any)?.drawMethod ?? 'verity') !== 'external'}>
           <div class="field"><label for="drawToolName">Random number tool</label><input id="drawToolName" name="drawToolName" maxlength="80" placeholder="random.org" value={(c as any)?.drawTool?.name ?? ''} /></div>
           <div class="field"><label for="drawToolUrl">Its link</label><input id="drawToolUrl" name="drawToolUrl" type="url" pattern="https://.*" maxlength="300" placeholder="https://www.random.org/integers/" value={(c as any)?.drawTool?.url ?? ''} /></div>
