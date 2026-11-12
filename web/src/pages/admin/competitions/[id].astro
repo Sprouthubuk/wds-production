@@ -14,7 +14,7 @@ if (!isNew) {
 }
 const v = c ?? {
   id: 0, slug: '', title: '', strapline: '', category: 'cars', badge: null, status: 'draft', images: [], description: [''], specs: [],
-  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: 50, bundles: [], opensAt: null, closesAt: null, postalClosesAt: null, postalClosesAtCustom: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
+  ticketPrice: 1, totalTickets: 1000, ticketsSold: 0, maxPerPerson: null, bundles: [], opensAt: null, closesAt: null, postalClosesAt: null, postalClosesAtCustom: null, drawAt: '', cashAlternative: null, buildVideoUrl: null,
 } as Competition;
 // Published on Verity = the draw is locked in: the terms that are part of it can't change.
 const locked = !!v.verityRef;
