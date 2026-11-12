@@ -100,6 +100,17 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
         <label class="check"><input type="checkbox" name="postalEntryEnabled" checked={(c as any)?.postalEntryEnabled ?? true} />Free postal entry</label>
         <label class="check"><input type="checkbox" name="eventSalesEnabled" checked={(c as any)?.eventSalesEnabled ?? false} />Event ticket sales</label>
       </div>
+      <fieldset class="dm" disabled={locked}>
+        <legend class="label">How it's drawn {locked ? <span class="small muted">(fixed at publish)</span> : null}</legend>
+        <label><input type="radio" name="drawMethod" value="verity" checked={((c as any)?.drawMethod ?? 'verity') === 'verity'} />Verity live draw: on stream press "Close &amp; draw now"; the winner appears about a minute later</label>
+        <label><input type="radio" name="drawMethod" value="external" checked={(c as any)?.drawMethod === 'external'} />External draw: on stream press "Close entries", draw from the sealed entry list with your own RNG, then record the ticket and livestream link</label>
+        <div class="form-grid dm-tool" data-dm-tool hidden={((c as any)?.drawMethod ?? 'verity') !== 'external'}>
+          <div class="field"><label for="drawToolName">Random number tool</label><input id="drawToolName" name="drawToolName" maxlength="80" placeholder="random.org" value={(c as any)?.drawTool?.name ?? ''} /></div>
+          <div class="field"><label for="drawToolUrl">Its link</label><input id="drawToolUrl" name="drawToolUrl" type="url" pattern="https://.*" maxlength="300" placeholder="https://www.random.org/integers/" value={(c as any)?.drawTool?.url ?? ''} /></div>
+          <span class="small muted" style="grid-column:1/-1">Required for an external draw. It's sealed with the entry list when entries close, so it's fixed before the pick.{locked ? ' Change it on the Draws page until then.' : ''}</span>
+        </div>
+        <span class="small muted" style="display:block">Either way the closing time is the backstop: entries close then if nobody presses the button.</span>
+      </fieldset>
     </section>
 
     <div class="row" style="gap:10px;position:sticky;bottom:0;background:#050505;padding:14px 0;border-top:1px solid var(--line)">
@@ -155,6 +166,11 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   ) : null}
 
   <script>
+  // External draw: the random number tool fields appear with the method.
+  document.querySelectorAll<HTMLInputElement>('input[name=drawMethod]').forEach((r) => r.addEventListener('change', () => {
+    const box = document.querySelector<HTMLElement>('[data-dm-tool]');
+    if (box) box.hidden = document.querySelector<HTMLInputElement>('input[name=drawMethod]:checked')?.value !== 'external';
+  }));
     document.querySelector<HTMLButtonElement>('[data-copy-preview]')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget as HTMLButtonElement;
       const input = document.querySelector<HTMLInputElement>('[data-preview-url]')!;
@@ -253,6 +269,14 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
         opensAt: toIso(f('opensAt').value), closesAt: toIso(f('closesAt').value), postalClosesAt: toIso(f('postalClosesAt').value), drawAt: toIso(f('drawAt').value),
         postalEntryEnabled: f('postalEntryEnabled').checked, eventSalesEnabled: f('eventSalesEnabled').checked,
       };
+      const method = document.querySelector<HTMLInputElement>('input[name=drawMethod]:checked');
+      if (method && !method.disabled) {
+        body.drawMethod = method.value;
+        if (method.value === 'external') {
+          body.drawToolName = f('drawToolName').value.trim() || null;
+          body.drawToolUrl = f('drawToolUrl').value.trim() || null;
+        }
+      }
       if (!f('ticketPrice').disabled) body.ticketPrice = Number(f('ticketPrice').value);
       // Locked after publish: don't send the draw terms at all.
       for (const k of ['title', 'totalTickets', 'maxPerPerson', 'opensAt', 'closesAt']) if (f(k)?.disabled) delete body[k];
@@ -264,3 +288,9 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     });
   </script>
 </AdminLayout>
+<style>
+  .dm { margin: 14px 0 0; border: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+  .dm label { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.4; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
+  .dm input[type='radio'] { width: 18px; height: 18px; min-height: 0; flex: none; margin: 1px 0 0; padding: 0; accent-color: #fff; }
+  .dm[disabled] label { opacity: .6; cursor: default; }
+</style>

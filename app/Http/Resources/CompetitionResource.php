@@ -35,6 +35,8 @@ class CompetitionResource extends JsonResource
             'buildVideoUrl' => $this->build_video_url,
             'postalEntryEnabled' => (bool) $this->postal_entry_enabled,
             'eventSalesEnabled' => (bool) $this->event_sales_enabled,
+            'drawMethod' => $this->draw_method ?? 'verity',
+            'drawTool' => $this->when($request->is('api/admin/*'), fn () => $this->resource->drawTool()),
             // Published on the Verity draw engine: the draw is locked in (null = still a draft).
             'verityRef' => $this->verity_ref,
             'publishedAt' => $this->published_at?->toIso8601String(),

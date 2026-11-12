@@ -93,6 +93,10 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/draws', [Admin\DrawController::class, 'index']);
     Route::get('/draws/{draw}/entries.csv', [Admin\DrawController::class, 'entries']);
     Route::post('/draws/{draw}/publish', [Admin\DrawController::class, 'publish']);
+    Route::post('/competitions/{competition}/close-now', [Admin\DrawController::class, 'closeNow']);
+    Route::post('/competitions/{competition}/close-entries', [Admin\DrawController::class, 'closeEntries']);
+    Route::post('/competitions/{competition}/external-result', [Admin\DrawController::class, 'externalResult']);
+    Route::post('/competitions/{competition}/draw-tool', [Admin\DrawController::class, 'drawTool']);
 
     Route::get('/winners', [Admin\WinnerController::class, 'index']);
     Route::post('/winners', [Admin\WinnerController::class, 'store']);

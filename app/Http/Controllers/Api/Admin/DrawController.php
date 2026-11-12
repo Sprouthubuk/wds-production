@@ -8,6 +8,7 @@ use App\Models\Draw;
 use App\Models\Winner;
 use App\Services\DrawService;
 use App\Services\Draws\VerityDrawEngine;
+use Illuminate\Http\Request;
 
 /**
  * Draw status for the admin. The draw itself is Verity's: entries close at the closing time, a future
@@ -37,11 +38,16 @@ class DrawController extends Controller
                 'roundAt' => VerityDrawEngine::roundTime($round ? (int) $round : null)?->toIso8601String(),
                 'roundLate' => (bool) $vc->beacon_late,
                 'commitment' => $vc->commitment,
+                'method' => $c->draw_method ?? 'verity',
+                'drawTool' => $vc->externalTool(),
+                'seal' => \Sprouthub\Verity\Services\DrawService::closeRecord($vc)?->payload['external_seal'] ?? null,
+                'drawNow' => (bool) (\Sprouthub\Verity\Services\DrawService::closeRecord($vc)?->payload['draw_now'] ?? false),
                 'draw' => $draw ? [
                     'id' => $draw->id,
                     'status' => $draw->status,                             // prepared | drawn | published
                     'entries' => $draw->entries_count,
                     'entriesHash' => $draw->entries_hash,
+                    'livestreamUrl' => $draw->livestream_url,
                     'winningTicket' => $draw->winningTicket?->display($c->total_tickets),
                     'winnerName' => $draw->winningTicket?->name,
                     'drawnAt' => $draw->drawn_at?->toIso8601String(),
@@ -86,12 +92,13 @@ class DrawController extends Controller
 
         return response()->streamDownload(function () use ($rows, $c) {
             $out = fopen('php://output', 'w');
-            fputcsv($out, ['ticket', 'name', 'channel']);
+            // Ticket, first name + initial, source: what an external draw picks from (sealed at close).
+            fputcsv($out, ['ticket', 'name', 'source']);
             foreach ($rows as $t) {
                 fputcsv($out, [$t->display($c->total_tickets), DrawService::displayName($t->name), $t->channel]);
             }
             fclose($out);
-        }, "entries-{$c->slug}.csv", ['Content-Type' => 'text/csv']);
+        }, "entries-{$c->slug}-".substr((string) $draw->entries_hash, 0, 12).'.csv', ['Content-Type' => 'text/csv', 'X-Entries-Hash' => (string) $draw->entries_hash]);
     }
 
     /** The reveal: puts the result and its certificate on the Live draws page. */
@@ -100,5 +107,45 @@ class DrawController extends Controller
         $draws->publish($draw);
 
         return response()->json(['message' => 'Result published on the Live draws page, with its certificate.']);
+    }
+
+    /** Method A, pressed on the livestream: close now; the winner follows about a minute later. */
+    public function closeNow(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $c = $verity->closeAndDrawNow($competition, $request->user());
+
+        return response()->json(['message' => 'Entries closed. The draw runs on the next drand round, in about a minute.', 'status' => $c->status]);
+    }
+
+    /** Method B, pressed on the livestream: close entries and seal the list for the external draw. */
+    public function closeEntries(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $c = $verity->closeEntries($competition, $request->user());
+
+        return response()->json(['message' => 'Entries closed and sealed. Download the entry list and draw.', 'status' => $c->status]);
+    }
+
+    /** Method B: name or change the random number tool, until entries close (then it's sealed with the list). */
+    public function drawTool(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $d = $request->validate([
+            'name' => ['required', 'string', 'max:80', 'not_regex:/[|\x00-\x1f]/'],
+            'url' => ['required', 'url:https', 'max:300', 'not_regex:/[\s|]/'],
+        ]);
+        $verity->setDrawTool($competition, $d['name'], $d['url'], $request->user());
+
+        return response()->json(['message' => 'Random number tool saved. It\'s sealed with the entry list when entries close.']);
+    }
+
+    /** Method B: the winning ticket number drawn on the livestream, and the livestream link (both required). */
+    public function externalResult(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $d = $request->validate([
+            'ticket' => ['required', 'integer', 'min:1', 'max:'.max(1, (int) $competition->total_tickets)],
+            'livestreamUrl' => ['required', 'url:https', 'max:300'],
+        ]);
+        $verity->recordExternalResult($competition, (int) $d['ticket'], $d['livestreamUrl'], $request->user());
+
+        return response()->json(['message' => 'Result recorded on the audit chain. Publish it when you reveal it.']);
     }
 }

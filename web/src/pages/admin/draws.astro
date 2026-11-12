@@ -7,8 +7,8 @@ interface TrailEvent { seq: number; type: string; at: string | null; hash: strin
 interface DrawState {
   competitionId: number; competition: string; verityRef: string; status: 'live' | 'paused' | 'closed' | 'drawn' | 'void' | string;
   closesAt: string | null; ticketsSold: number; totalTickets: number;
-  round: number | null; roundCommitted: boolean; roundAt: string | null; roundLate: boolean; commitment: string;
-  draw: null | { id: number; status: 'prepared' | 'drawn' | 'published' | string; entries: number; entriesHash: string; winningTicket: string | null; winnerName: string | null; drawnAt: string | null; publishedAt: string | null; certificateUrl: string | null; verifyUrl: string | null;
+  round: number | null; roundCommitted: boolean; roundAt: string | null; roundLate: boolean; commitment: string; method: 'verity' | 'external'; drawNow: boolean; drawTool: { name: string; url: string } | null; seal: string | null;
+  draw: null | { id: number; status: 'prepared' | 'drawn' | 'published' | string; entries: number; entriesHash: string; livestreamUrl: string | null; winningTicket: string | null; winnerName: string | null; drawnAt: string | null; publishedAt: string | null; certificateUrl: string | null; verifyUrl: string | null;
     winners: { id: number; label: string; ticket: string | null; name: string | null; forfeited: boolean; reason: string | null; note: string | null; canForfeit: boolean }[];
     redrawPending: { number: number; round: number; roundAt: string | null } | null };
   trail: TrailEvent[];
@@ -17,10 +17,10 @@ const rows = await adminGet<DrawState[]>(Astro.cookies, '/draws');
 const label: Record<string, string> = {
   'competition.published': 'Published (seed committed, round planned)', 'competition.extended': 'Closing time extended', 'competition.closed_early': 'Closed early',
   'competition.closed': 'Entries closed and frozen, round committed', 'close.witnessed': 'Close timestamped', 'competition.void': 'Void (no entries)',
-  'draw.completed': 'Drawn on drand', 'draw.winner_forfeited': 'Winner forfeited', 'draw.forfeited': 'Prize unawarded', 'draw.redraw_scheduled': 'Redraw scheduled (R2)',
+  'draw.completed': 'Drawn (on drand, or the external result recorded)', 'draw.winner_forfeited': 'Winner forfeited', 'draw.forfeited': 'Prize unawarded', 'draw.redraw_scheduled': 'Redraw scheduled (R2)',
   'redraw.witnessed': 'Redraw timestamped', 'draw.redrawn': 'Redrawn (R2)', 'order.withdrawn': 'Entries withdrawn (refund while open)',
 };
-const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.status === 'closed' ? 'Closed: waiting for the drand round' : r.status === 'drawn' ? (r.draw?.status === 'published' ? 'Drawn and published' : 'Drawn: ready to publish') : r.status === 'void' ? 'Void: no entries' : r.status;
+const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.status === 'closed' ? (r.method === 'external' ? 'Sealed: record the result' : 'Closed: waiting for the drand round') : r.status === 'drawn' ? (r.draw?.status === 'published' ? 'Drawn and published' : 'Drawn: ready to publish') : r.status === 'void' ? 'Void: no entries' : r.status;
 ---
 <AdminLayout title="Draws" active="draws">
   <section class="panel">
@@ -42,6 +42,9 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
       </div>
       <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><tbody>
         <tr><th>Draw reference</th><td class="mono">{r.verityRef}</td></tr>
+        <tr><th>Draw method</th><td>{r.method === 'external' ? 'External draw on the livestream (Verity seals the entries)' : `Verity live draw${r.drawNow ? ' · closed with "Close & draw now"' : ''}`}</td></tr>
+        {r.method === 'external' ? <tr><th>Random number tool</th><td>{r.drawTool ? <><a href={r.drawTool.url} target="_blank" rel="noopener">{r.drawTool.name} ↗</a>{r.seal ? <> · <strong>sealed with the entry list</strong> <span class="mono">{r.seal.slice(0, 12)}…</span></> : <span class="muted"> · sealed when entries close</span>}</> : <strong>Not set: name it below before closing</strong>}</td></tr> : null}
+        {r.draw?.livestreamUrl ? <tr><th>Livestream</th><td><a href={r.draw.livestreamUrl} target="_blank" rel="noopener">{r.draw.livestreamUrl} ↗</a></td></tr> : null}
         <tr><th>Tickets</th><td>{r.ticketsSold} / {r.totalTickets}</td></tr>
         <tr><th>Closes</th><td>{when(r.closesAt)}</td></tr>
         <tr><th>drand round</th><td>{r.round ? <><span class="mono">{r.round}</span> · {r.roundCommitted ? 'committed at close' : 'planned at publish'} · expected {when(r.roundAt)}{r.roundLate ? <strong> · late close: a later round was committed</strong> : null}</> : '—'}</td></tr>
@@ -65,6 +68,41 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
           </tbody></table></div>
           {r.draw.redrawPending ? <p class="small" style="margin:8px 0 0">Redraw {r.draw.redrawPending.number} is committed to drand round <span class="mono">{r.draw.redrawPending.round}</span>, expected {when(r.draw.redrawPending.roundAt)}. It runs automatically.</p> : null}
         </div>
+      ) : null}
+
+      {r.status === 'live' ? (
+        <div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap">
+          {r.method === 'external'
+            ? <button class="btn" disabled={!r.drawTool} data-admin-action={`/api/admin/competitions/${r.competitionId}/close-entries`} data-confirm={`Close entries for ${r.competition} now? Nobody can enter after this. The entry list is sealed together with your random number tool (${r.drawTool?.name}, ${r.drawTool?.url}): draw with that tool, on the livestream.`} data-reload>Close entries</button>
+            : <button class="btn" data-admin-action={`/api/admin/competitions/${r.competitionId}/close-now`} data-confirm={`Close entries for ${r.competition} and draw now? The winner is drawn on the next drand round, about a minute from now.`} data-reload>Close &amp; draw now</button>}
+          <span class="small muted">Press it on the livestream. Otherwise entries close at {when(r.closesAt)}.</span>
+        </div>
+      ) : null}
+
+      {r.method === 'external' && r.status === 'live' ? (
+        <details style="margin-top:12px;max-width:560px">
+          <summary class="small">{r.drawTool ? 'Change the random number tool' : 'Name the random number tool'}</summary>
+          <form class="stack" style="margin-top:10px;gap:10px" data-admin-form={`/api/admin/competitions/${r.competitionId}/draw-tool`} data-method="POST" data-reload
+            data-confirm="Save this random number tool? The change is recorded on the audit trail, and the tool is sealed with the entry list when entries close.">
+            <div class="form-grid">
+              <div class="field"><label for={`tn-${r.competitionId}`}>Random number tool</label><input id={`tn-${r.competitionId}`} name="name" maxlength="80" required value={r.drawTool?.name ?? ''} placeholder="random.org" /></div>
+              <div class="field"><label for={`tu-${r.competitionId}`}>Its link</label><input id={`tu-${r.competitionId}`} name="url" type="url" pattern="https://.*" maxlength="300" required value={r.drawTool?.url ?? ''} placeholder="https://" /></div>
+            </div>
+            <button class="btn btn--ghost" type="submit">Save tool</button>
+          </form>
+        </details>
+      ) : null}
+
+      {r.method === 'external' && r.status === 'closed' && r.draw ? (
+        <form class="stack" style="margin-top:12px;gap:10px;max-width:560px" data-admin-form={`/api/admin/competitions/${r.competitionId}/external-result`} data-method="POST" data-reload
+          data-confirm="Record this result? It goes on the audit chain for good and can't be changed (a winner can still forfeit and be redrawn).">
+          <p class="small" style="margin:0">1. <a href={`/api/admin/draws/${r.draw.id}/entries.csv`}>Download the sealed entry list</a> ({r.draw.entries} entries, fingerprint <span class="mono">{r.draw.entriesHash.slice(0, 12)}…</span>). 2. Draw a ticket on the livestream with the sealed tool{r.drawTool ? <> (<a href={r.drawTool.url} target="_blank" rel="noopener">{r.drawTool.name}</a>)</> : null}. 3. Record it here, with the livestream link (required).</p>
+          <div class="form-grid">
+            <div class="field"><label for={`xt-${r.competitionId}`}>Winning ticket number</label><input id={`xt-${r.competitionId}`} name="ticket" type="number" data-type="number" min="1" max={r.totalTickets} required inputmode="numeric" /></div>
+            <div class="field"><label for={`xl-${r.competitionId}`}>Livestream link</label><input id={`xl-${r.competitionId}`} name="livestreamUrl" type="url" pattern="https://.*" placeholder="https://" required /></div>
+          </div>
+          <button class="btn" type="submit">Record result</button>
+        </form>
       ) : null}
 
       {r.draw?.status === 'drawn' ? (
