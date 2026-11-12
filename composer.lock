@@ -3446,12 +3446,12 @@
             "source": {
                 "type": "git",
                 "url": "git@github.com:Sprouthubuk/verity-engine.git",
-                "reference": "de2fa717a8f64101d0c957d3d34d951928d27b3f"
+                "reference": "462ff6eb866a023e7cc34db0f7337a018ba5d3bb"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Sprouthubuk/verity-engine/zipball/de2fa717a8f64101d0c957d3d34d951928d27b3f",
-                "reference": "de2fa717a8f64101d0c957d3d34d951928d27b3f",
+                "url": "https://api.github.com/repos/Sprouthubuk/verity-engine/zipball/462ff6eb866a023e7cc34db0f7337a018ba5d3bb",
+                "reference": "462ff6eb866a023e7cc34db0f7337a018ba5d3bb",
                 "shasum": ""
             },
             "require": {
@@ -3530,7 +3530,7 @@
                 "source": "https://github.com/Sprouthubuk/verity-engine/tree/draw-time",
                 "issues": "https://github.com/Sprouthubuk/verity-engine/issues"
             },
-            "time": "2026-11-12T14:13:23+00:00"
+            "time": "2026-11-12T14:20:33+00:00"
         },
         {
             "name": "symfony/clock",
