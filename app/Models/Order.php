@@ -12,7 +12,7 @@ class Order extends Model
     protected $fillable = [
         'reference', 'access_key', 'user_id', 'entrant_id', 'email', 'name', 'phone', 'date_of_birth', 'channel', 'status',
         'subtotal_pence', 'bundle_saving_pence', 'discount_pence', 'credit_used_pence', 'total_pence',
-        'discount_code_id', 'payment_method', 'payment_provider', 'provider_reference', 'staff_user_id', 'card_type', 'status_note',
+        'discount_code_id', 'payment_method', 'payment_provider', 'provider_reference', 'staff_user_id', 'card_type', 'status_note', 'card_ref',
         'marketing_opt_in', 'reserved_until', 'paid_at',
     ];
 

@@ -10,6 +10,10 @@ use App\Models\IdVerification;
 use App\Models\Ticket;
 use App\Services\ResponsiblePlay;
 use App\Services\TicketAllocator;
+use App\Models\NewsletterSubscriber;
+use App\Models\Order;
+use App\Models\User;
+use App\Services\HarmMonitor;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -40,7 +44,12 @@ class MeController extends Controller
         ], fn ($v) => $v !== null));
         if (array_key_exists('phone', $data)) $user->phone = $data['phone'];
         if (array_key_exists('address', $data)) $user->address = $data['address'];
-        if (array_key_exists('marketingOptIn', $data)) $user->marketing_opt_in = $data['marketingOptIn'];
+        if (array_key_exists('marketingOptIn', $data)) {
+            if ($data['marketingOptIn'] && $user->isExcludedFromMarketing()) {
+                abort(422, "Marketing can't be switched on while your account is self-excluded or closed.");
+            }
+            $user->marketing_opt_in = $data['marketingOptIn'];
+        }
         $user->name = trim($user->first_name.' '.$user->last_name);
         $emailChanged = $user->isDirty('email');
         if ($emailChanged) {
@@ -100,9 +109,10 @@ class MeController extends Controller
     public function limits(Request $request, ResponsiblePlay $rp)
     {
         $data = $request->validate([
-            'daily' => ['nullable', 'numeric', 'min:1', 'max:10000'],
-            'weekly' => ['nullable', 'numeric', 'min:1', 'max:10000'],
-            'monthly' => ['nullable', 'numeric', 'min:1', 'max:10000'],
+            // £0 is a valid limit: no paid entries at all.
+            'daily' => ['nullable', 'numeric', 'min:0', 'max:10000'],
+            'weekly' => ['nullable', 'numeric', 'min:0', 'max:10000'],
+            'monthly' => ['nullable', 'numeric', 'min:0', 'max:10000'],
         ]);
         $pence = [];
         foreach (['daily', 'weekly', 'monthly'] as $p) {
@@ -111,14 +121,15 @@ class MeController extends Controller
             }
         }
         $result = $rp->setLimits($request->user(), $pence);
-        $delayed = in_array('Takes effect in 24 hours.', $result, true);
+        $delayed = in_array('Delayed.', $result, true);
+        $hours = config('raffle.limit_increase_delay_hours');
 
         return response()->json(['message' => $delayed
-            ? 'Saved. Lower limits apply now; increases take effect in 24 hours.'
+            ? "Saved. Lower limits apply now; increases take effect in {$hours} hours."
             : 'Limits saved and applied.']);
     }
 
-    public function takeBreak(Request $request)
+    public function takeBreak(Request $request, HarmMonitor $harm)
     {
         $data = $request->validate(['days' => ['required', Rule::in([1, 7, 30, '1', '7', '30'])]]);
         $user = $request->user();
@@ -126,19 +137,46 @@ class MeController extends Controller
         if (! $user->break_until || $user->break_until->lt($until)) {
             $user->update(['break_until' => $until]);
         }
+        $harm->record($user, $user->email, 'break', ['days' => (int) $data['days']]);
 
         return response()->json(['message' => 'Break started. You can enter again from '.$user->break_until->format('j M Y, H:i').'.']);
     }
 
-    public function selfExclude(Request $request)
+    /** 6 months or more. It can be lengthened but never shortened; it stops entries and every kind of marketing. */
+    public function selfExclude(Request $request, HarmMonitor $harm)
     {
         $data = $request->validate(['months' => ['required', Rule::in([6, 12, 60, '6', '12', '60'])]]);
         $user = $request->user();
         $until = now()->addMonths((int) $data['months']);
+        if ($user->self_excluded_until?->gt($until)) {
+            $until = $user->self_excluded_until; // already longer: keep it
+        }
         $user->update(['self_excluded_until' => $until, 'marketing_opt_in' => false]);
-        $user->tokens()->where('id', '!=', $request->user()->currentAccessToken()?->id)->delete();
+        $this->stopMarketing($user);
+        $current = $request->user()->currentAccessToken();
+        $user->tokens()->when($current instanceof \Laravel\Sanctum\PersonalAccessToken, fn ($q) => $q->whereKeyNot($current->id))->delete();
+        $harm->record($user, $user->email, 'self_exclusion', ['until' => $until->toDateString()]);
 
-        return response()->json(['message' => 'You are self-excluded until '.$until->format('j M Y').'. We\'ve stopped all marketing emails.']);
+        return response()->json(['message' => 'You are self-excluded until '.$until->format('j M Y').'. It can\'t be shortened. We\'ve stopped all marketing emails.']);
+    }
+
+    /** Permanent closure, self-service: no entries, no marketing, signed out everywhere. Can't be reopened online. */
+    public function close(Request $request, HarmMonitor $harm)
+    {
+        $request->validate(['confirm' => ['accepted']], ['confirm.accepted' => 'Tick the box to confirm you want to close your account permanently.']);
+        $user = $request->user();
+        $user->update(['closed_at' => now(), 'marketing_opt_in' => false]);
+        $this->stopMarketing($user);
+        $harm->record($user, $user->email, 'closure');
+        $user->tokens()->delete();
+
+        return response()->json(['message' => 'Your account is closed. You won\'t be able to sign in or enter, and we\'ve stopped all marketing emails. Tickets you already hold stay in their draws.']);
+    }
+
+    private function stopMarketing(User $user): void
+    {
+        NewsletterSubscriber::where('email', $user->email)->whereNull('unsubscribed_at')->update(['unsubscribed_at' => now()]);
+        Order::where('email', $user->email)->where('marketing_opt_in', true)->update(['marketing_opt_in' => false]);
     }
 
     public function verification(Request $request)

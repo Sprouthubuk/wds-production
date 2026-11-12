@@ -16,5 +16,7 @@ final class PaymentResult
         public readonly ?string $method = null,
         // credit, debit, prepaid or unknown, as the provider confirms it (CreditCardCap::normalise); null = not a card.
         public readonly ?string $cardType = null,
+        // The provider's token/fingerprint for the card (never the card number): spots frequent card changes.
+        public readonly ?string $cardRef = null,
     ) {}
 }

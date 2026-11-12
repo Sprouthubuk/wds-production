@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\ResponsiblePlay;
 use App\Services\TicketAllocator;
+use App\Http\Resources\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
@@ -25,6 +26,8 @@ class AuthController extends Controller
             'password' => ['required', Password::min(10)],
             'ageConfirmed' => ['accepted'],
             'marketingOptIn' => ['boolean'],
+            // Optional monthly spend limit at registration (£0 = no paid entries); empty = none.
+            'monthlyLimit' => ['nullable', 'numeric', 'min:0', 'max:10000'],
         ]);
         $email = TicketAllocator::normaliseEmail($data['email']);
         if (User::where('email', $email)->exists()) {
@@ -44,6 +47,7 @@ class AuthController extends Controller
             'password' => $data['password'],
             'marketing_opt_in' => (bool) ($data['marketingOptIn'] ?? false),
             'role' => 'customer',
+            'limit_monthly_pence' => Money::pence($data['monthlyLimit'] ?? null),
         ]);
 
         \Illuminate\Support\Facades\Mail::to($email)->queue(new \App\Mail\VerifyEmail($user));
@@ -61,6 +65,9 @@ class AuthController extends Controller
         $user = User::where('email', TicketAllocator::normaliseEmail($data['email']))->first();
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages(['email' => 'Those details don\'t match an account.']);
+        }
+        if ($user->closed_at) {
+            throw ValidationException::withMessages(['email' => 'This account was closed at your request. Contact us if you need your details or tickets.']);
         }
 
         return response()->json([

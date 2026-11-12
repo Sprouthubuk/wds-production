@@ -29,6 +29,9 @@ const adminSignIn = isAdminNext(safeNext); // staff only: no registration form
           <div class="field"><label for="r-tel">Mobile</label><input id="r-tel" name="phone" type="tel" required autocomplete="tel" /></div>
         </div>
         <div class="field"><label for="r-pw">Password</label><input id="r-pw" name="password" type="password" required minlength="10" autocomplete="new-password" /><span class="hint">At least 10 characters.</span></div>
+        <div class="field"><label for="r-limit">Monthly spend limit (optional)</label>
+          <select id="r-limit" name="monthlyLimit">{[['', 'No limit'], ['0', '£0 (no paid entries)'], ['10', '£10'], ['25', '£25'], ['50', '£50'], ['100', '£100'], ['250', '£250'], ['500', '£500']].map(([v, l]) => <option value={v}>{l}</option>)}</select>
+          <span class="hint">You can change it any time in your account. Lower limits apply straight away; increases after 72 hours. <a href="/responsible-play">Responsible play</a></span></div>
         <label class="check" for="r-age"><input id="r-age" name="ageConfirmed" type="checkbox" required />I'm 18 or over and a UK resident.</label>
         <label class="check" for="r-mk"><input id="r-mk" name="marketingOptIn" type="checkbox" />Email me about new competitions and live draws (optional).</label>
         <p class="alert alert--error" data-error role="alert" hidden></p>

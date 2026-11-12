@@ -7,6 +7,7 @@ const routes: Record<string, string> = {
   limits: '/me/limits',
   break: '/me/break',
   'self-exclude': '/me/self-exclude',
+  close: '/me/close',
   'id-upload': '/me/verification',
   'verify-email': '/me/verify-email',
 };

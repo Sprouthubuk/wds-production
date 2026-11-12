@@ -3,7 +3,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, day } from '../../lib/admin';
 import ForfeitForm from '../../components/ForfeitForm.astro';
 interface W { id: number; display_name: string; prize: string; image: string | null; verification: string; handover: string; show_on_site: boolean; drawn_at: string | null; user: { email: string; phone: string | null } | null;
-  competition: { title: string } | null; redraw_number: number | null; forfeited_at: string | null; forfeit_label: string | null; forfeit_note: string | null; can_forfeit: boolean }
+  competition: { title: string } | null; redraw_number: number | null; forfeited_at: string | null; forfeit_label: string | null; forfeit_note: string | null; can_forfeit: boolean;
+  contacted_at: string | null; claim_by: string | null; contact_overdue: boolean }
 const winners = await adminGet<W[]>(Astro.cookies, '/winners');
 ---
 <AdminLayout title="Winners" active="winners">
@@ -24,6 +25,13 @@ const winners = await adminGet<W[]>(Astro.cookies, '/winners');
               <span class="small muted">{w.user ? `${w.user.email}${w.user.phone ? ` · ${w.user.phone}` : ''}` : ''} {w.drawn_at ? `· drawn ${day(w.drawn_at)}` : ''}</span>
             </form>
             {w.redraw_number || w.forfeited_at ? <p class="small" style="margin:8px 0 0">{w.redraw_number ? `Redraw ${w.redraw_number} winner. ` : ''}{w.forfeited_at ? <><span class="pill pill--forfeited">forfeited</span> {w.forfeit_label ?? 'Forfeited'} · {day(w.forfeited_at)}{w.forfeit_note ? ` · note: ${w.forfeit_note}` : ''}. ID check and handover are locked.</> : null}</p> : null}
+            {!w.forfeited_at && w.drawn_at ? (
+              <p class="small row" style="margin:8px 0 0;gap:10px;align-items:center">
+                {w.contact_overdue ? <span class="pill pill--forfeited">Contact overdue (48 hours)</span> : null}
+                {w.contacted_at ? <span>Contacted {day(w.contacted_at)}.</span> : <button class="adm-link" data-admin-action={`/api/admin/winners/${w.id}/contacted`} data-reload>Mark contacted</button>}
+                {w.claim_by ? <span class="muted">Must claim by {day(w.claim_by)} (14 days).</span> : null}
+              </p>
+            ) : null}
             {w.can_forfeit ? <div style="margin-top:8px"><ForfeitForm winnerId={w.id} ticket={null} name={w.display_name} competition={w.competition?.title} /></div> : null}
             <form class="row" style="gap:8px;margin-top:8px" data-admin-form={`/api/admin/winners/${w.id}/image`} data-reload>
               <input type="file" name="image" accept="image/*" required class="small" /><button class="adm-link" type="submit">Upload winner photo</button>
