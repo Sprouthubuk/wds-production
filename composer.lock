@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "f9c5a42ba84b7c5e012291732394222f",
+    "content-hash": "86bfbe77f91eb48f2f2fde1d91470f26",
     "packages": [
         {
             "name": "brick/math",
@@ -3442,16 +3442,16 @@
         },
         {
             "name": "sprouthub/verity-engine",
-            "version": "dev-draw-methods",
+            "version": "v3.1.0",
             "source": {
                 "type": "git",
                 "url": "git@github.com:Sprouthubuk/verity-engine.git",
-                "reference": "b6e2becf4868d8dac4185283c7daf70c0c6b9a9f"
+                "reference": "aa77e2d39e6adddf5a2d8fe842b01ff2e91dd376"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Sprouthubuk/verity-engine/zipball/b6e2becf4868d8dac4185283c7daf70c0c6b9a9f",
-                "reference": "b6e2becf4868d8dac4185283c7daf70c0c6b9a9f",
+                "url": "https://api.github.com/repos/Sprouthubuk/verity-engine/zipball/aa77e2d39e6adddf5a2d8fe842b01ff2e91dd376",
+                "reference": "aa77e2d39e6adddf5a2d8fe842b01ff2e91dd376",
                 "shasum": ""
             },
             "require": {
@@ -3527,10 +3527,10 @@
                 "verifiable"
             ],
             "support": {
-                "source": "https://github.com/Sprouthubuk/verity-engine/tree/draw-methods",
+                "source": "https://github.com/Sprouthubuk/verity-engine/tree/v3.1.0",
                 "issues": "https://github.com/Sprouthubuk/verity-engine/issues"
             },
-            "time": "2026-11-12T09:46:29+00:00"
+            "time": "2026-11-12T10:02:51+00:00"
         },
         {
             "name": "symfony/clock",
@@ -8635,18 +8635,9 @@
             "time": "2025-12-08T11:19:18+00:00"
         }
     ],
-    "aliases": [
-        {
-            "package": "sprouthub/verity-engine",
-            "version": "dev-draw-methods",
-            "alias": "3.0.99",
-            "alias_normalized": "3.0.99.0"
-        }
-    ],
+    "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {
-        "sprouthub/verity-engine": 20
-    },
+    "stability-flags": {},
     "prefer-stable": true,
     "prefer-lowest": false,
     "platform": {
