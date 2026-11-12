@@ -62,6 +62,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:staff'])->group(functi
 // Admin
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
     Route::get('/dashboard', Admin\DashboardController::class);
+    Route::get('/reports/summary', [Admin\ReportController::class, 'summary']);
+    Route::get('/reports/{type}.csv', [Admin\ReportController::class, 'export']);
 
     Route::get('/competitions', [Admin\CompetitionController::class, 'index']);
     Route::post('/competitions', [Admin\CompetitionController::class, 'store']);

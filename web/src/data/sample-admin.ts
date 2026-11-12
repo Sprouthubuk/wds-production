@@ -14,6 +14,17 @@ const orders = [
 ];
 
 export const sampleAdmin: Record<string, unknown> = {
+  '/reports/summary': {
+    data: {
+      from: new Date(now - 29 * 864e5).toISOString().slice(0, 10), to: new Date(now).toISOString().slice(0, 10),
+      sales: [{ competition: bmw.title, status: 'live', onlineTickets: 412, onlineRevenue: 5150, eventTickets: 38, eventRevenue: 475, postalEntries: 6, totalTickets: 456, totalRevenue: 5625 }],
+      totals: { tickets: 456, revenue: 5625, postalAccepted: 6, postalRejected: 2 },
+      eventTakings: [{ staff: 'Jason', paymentMethod: 'Card reader', orders: 9, tickets: 24, total: 300 }, { staff: 'Jason', paymentMethod: 'Cash', orders: 6, tickets: 14, total: 175 }],
+      postalReasons: [{ reason: 'Received less than 48 hours before close', count: 1 }, { reason: 'Entrant under 18', count: 1 }],
+      marketingCustomers: 131,
+      discounts: [{ code: 'LAUNCH10', type: '10%', orders: 18, discount: 31.5, revenue: 283.5, usedAllTime: 18, active: true }],
+    },
+  },
   '/dashboard': {
     data: {
       revenueToday: 1284.5, ordersToday: 31, revenueTotal: 6951.75, customers: 212, postalThisWeek: 6, idToReview: 1, refundsNeeded: 0,

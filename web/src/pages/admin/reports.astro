@@ -1,0 +1,111 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp } from '../../lib/admin';
+
+interface Summary {
+  from: string; to: string;
+  sales: { competition: string; status: string; onlineTickets: number; onlineRevenue: number; eventTickets: number; eventRevenue: number; postalEntries: number; totalTickets: number; totalRevenue: number }[];
+  totals: { tickets: number; revenue: number; postalAccepted: number; postalRejected: number };
+  eventTakings: { staff: string; paymentMethod: string; orders: number; tickets: number; total: number }[];
+  postalReasons: { reason: string; count: number }[];
+  marketingCustomers: number;
+  discounts: { code: string; type: string; orders: number; discount: number; revenue: number; usedAllTime: number; active: boolean }[];
+}
+const q = Astro.url.searchParams;
+const range = new URLSearchParams([...q].filter(([k, v]) => ['from', 'to'].includes(k) && /^\d{4}-\d{2}-\d{2}$/.test(v)));
+const d = (await adminGet<{ data: Summary }>(Astro.cookies, `/reports/summary${range.size ? `?${range}` : ''}`)).data;
+const qs = new URLSearchParams({ from: d.from, to: d.to }).toString();
+const csv = (type: string) => `/api/admin/reports/${type}.csv?${qs}`;
+
+// Quick ranges, as UK calendar dates.
+const ukToday = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+const shift = (iso: string, days: number) => { const t = new Date(`${iso}T12:00:00Z`); t.setUTCDate(t.getUTCDate() + days); return t.toISOString().slice(0, 10); };
+const monthStart = `${ukToday.slice(0, 8)}01`;
+const prevMonthEnd = shift(monthStart, -1);
+const quick = [
+  ['Last 7 days', shift(ukToday, -6), ukToday],
+  ['Last 30 days', shift(ukToday, -29), ukToday],
+  ['This month', monthStart, ukToday],
+  ['Last month', `${prevMonthEnd.slice(0, 8)}01`, prevMonthEnd],
+] as const;
+const ukDate = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' });
+const eventTotal = d.eventTakings.reduce((n, r) => n + r.total, 0);
+---
+<AdminLayout title="Reports" active="reports">
+  <form class="filters" method="get" aria-label="Date range">
+    <label class="rng"><span class="label">From</span><input type="date" name="from" value={d.from} max={ukToday} required /></label>
+    <label class="rng"><span class="label">To</span><input type="date" name="to" value={d.to} max={ukToday} required /></label>
+    <button class="btn btn--outline" type="submit">Apply</button>
+    <div class="quick">{quick.map(([label, from, to]) => (
+      <a href={`?from=${from}&to=${to}`} class:list={['chip', { on: from === d.from && to === d.to }]}>{label}</a>
+    ))}</div>
+  </form>
+  <p class="small muted">{ukDate(d.from)} to {ukDate(d.to)}, whole UK days. Money is paid orders by the time they were paid (refunds left out); postal entries by the time received.</p>
+
+  <div class="kpis">
+    <div class="kpi"><span class="label">Revenue</span><b>{gbp(d.totals.revenue)}</b></div>
+    <div class="kpi"><span class="label">Tickets and entries</span><b>{d.totals.tickets}</b></div>
+    <div class="kpi"><span class="label">Event takings</span><b>{gbp(eventTotal)}</b></div>
+    <div class="kpi"><span class="label">Postal entries</span><b>{d.totals.postalAccepted}</b><span class="small muted">{d.totals.postalRejected} rejected</span></div>
+  </div>
+
+  <section class="panel">
+    <div class="rph"><h2>Sales by competition</h2><a class="btn btn--outline btn--sm" href={csv('sales')} download>Export CSV</a></div>
+    {d.sales.length ? <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Competition</th><th>Online</th><th>Event</th><th>Postal</th><th>Total tickets</th><th>Revenue</th></tr></thead>
+      <tbody>{d.sales.map((r) => (
+        <tr><td><strong>{r.competition}</strong><div class="small muted">{r.status}</div></td>
+          <td>{r.onlineTickets}<div class="small muted">{gbp(r.onlineRevenue)}</div></td>
+          <td>{r.eventTickets}<div class="small muted">{gbp(r.eventRevenue)}</div></td>
+          <td>{r.postalEntries}</td><td>{r.totalTickets}</td><td><strong>{gbp(r.totalRevenue)}</strong></td></tr>
+      ))}</tbody>
+    </table></div> : <p class="muted">No sales in this range.</p>}
+  </section>
+
+  <div class="panels">
+    <section class="panel">
+      <div class="rph"><h2>Event takings</h2><a class="btn btn--outline btn--sm" href={csv('event-takings')} download>Export CSV</a></div>
+      {d.eventTakings.length ? <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Staff</th><th>Paid by</th><th>Sales</th><th>Tickets</th><th>Total</th></tr></thead>
+        <tbody>{d.eventTakings.map((r) => <tr><td>{r.staff}</td><td>{r.paymentMethod}</td><td>{r.orders}</td><td>{r.tickets}</td><td><strong>{gbp(r.total)}</strong></td></tr>)}</tbody>
+      </table></div> : <p class="muted">No event sales in this range.</p>}
+    </section>
+
+    <section class="panel">
+      <div class="rph"><h2>Postal entries</h2><a class="btn btn--outline btn--sm" href={csv('postal')} download>Export CSV</a></div>
+      <p>{d.totals.postalAccepted} accepted, {d.totals.postalRejected} rejected.</p>
+      {d.postalReasons.length ? <ul class="reasons">{d.postalReasons.map((r) => <li><span>{r.reason}</span><b>{r.count}</b></li>)}</ul> : null}
+      <p class="small muted">The CSV lists every entry with its ticket number or the reason it was rejected.</p>
+    </section>
+  </div>
+
+  <div class="panels">
+    <section class="panel">
+      <div class="rph"><h2>Discount codes</h2><a class="btn btn--outline btn--sm" href={csv('discounts')} download>Export CSV</a></div>
+      {d.discounts.length ? <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Code</th><th>Discount</th><th>Orders</th><th>Given</th><th>Revenue</th></tr></thead>
+        <tbody>{d.discounts.map((r) => <tr><td class="mono">{r.code}{r.active ? null : <span class="small muted"> (off)</span>}</td><td>{r.type}</td><td>{r.orders}</td><td>{gbp(r.discount)}</td><td>{gbp(r.revenue)}</td></tr>)}</tbody>
+      </table></div> : <p class="muted">No codes used in this range.</p>}
+    </section>
+
+    <section class="panel">
+      <div class="rph"><h2>Customers (marketing)</h2><a class="btn btn--outline btn--sm" href={csv('customers')} download>Export CSV</a></div>
+      <p><b>{d.marketingCustomers}</b> people who joined or signed up in this range and said yes to marketing.</p>
+      <p class="small muted">Only people who opted in: accounts with marketing on, guests who ticked the box at checkout, and newsletter sign-ups that haven't unsubscribed. Anyone self-excluded, suspended or whose account says no is left out. Use it for marketing only and delete old copies.</p>
+    </section>
+  </div>
+</AdminLayout>
+<style>
+  .rng { display: flex; flex-direction: column; gap: 4px; }
+  .filters { align-items: flex-end; }
+  .quick { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+  .chip { border: 1px solid var(--line); padding: 6px 12px; font-size: 13px; text-decoration: none; }
+  .chip.on { border-color: #fff; background: #fff; color: #000; }
+  .rph { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+  .rph h2 { margin: 0; }
+  .btn--sm { padding: 8px 14px; font-size: 12px; }
+  .reasons { list-style: none; padding: 0; margin: 0 0 12px; }
+  .reasons li { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .panels { grid-template-columns: repeat(auto-fit, minmax(min(380px, 100%), 1fr)); }
+  @media (max-width: 600px) { .filters input[type='date'] { width: 100%; } .rng { flex: 1 1 140px; } }
+</style>
