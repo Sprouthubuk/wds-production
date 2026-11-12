@@ -72,7 +72,7 @@ class VerityDrawEngine
                     'closes_at' => $locked->closes_at,
                     'opens_at' => $locked->opens_at,
                     'ticket_allocation' => 'sequential', // 1, 2, 3 … across online, postal and event (no instant wins)
-                    'draw_method' => $locked->draw_method ?? Competition::DRAW_VERITY, // fixed from here on
+                    'draw_method' => $locked->engineDrawMethod(), // fixed from here on (a physical draw is external to Verity)
                 ] + ($locked->drawsExternally() ? ['external_tool' => $locked->drawTool()] : []) + [
                     'meta' => ['wds_competition_id' => $locked->id, 'wds_slug' => $locked->slug],
                 ], endPrizes: [[
@@ -223,6 +223,9 @@ class VerityDrawEngine
         if (! $competition->drawsExternally()) {
             throw new EntryException('Only an externally drawn competition has a random number tool.');
         }
+        if ($competition->drawsPhysically()) {
+            throw new EntryException('A physical draw uses numbered tokens: there is no random number tool to set.');
+        }
         try {
             $vc = Verity::setExternalTool($this->verityCompetition($competition), $name, $url, 'admin:'.$admin->id);
         } catch (VerityException $e) {
@@ -291,6 +294,32 @@ class VerityDrawEngine
         return VerityCompetition::query()->where('ref', $competition->verity_ref)->firstOrFail();
     }
 
+    /**
+     * Every valid ticket number on the entry list Verity sealed at the close, with the count and the
+     * sealed fingerprint (read only). Refused until entries have closed: before then the list can change.
+     *
+     * @return array{competition:string, reference:string, count:int, entriesHash:string, sealedAt:?string, tickets:list<string>}
+     */
+    public function chipSheet(Competition $competition): array
+    {
+        $vc = $this->verityCompetition($competition);
+        if (! $vc->entries_hash || in_array($vc->status, ['draft', 'live', 'paused'], true)) {
+            throw new EntryException('The chip sheet is ready once entries have closed and the list is sealed.');
+        }
+        $numbers = array_map(fn ($e) => (int) $e['ticket'], app(\Sprouthub\Verity\Services\DrawService::class)->entries($vc));
+        sort($numbers);
+        $width = strlen((string) max(1, (int) $competition->total_tickets));
+
+        return [
+            'competition' => $competition->title,
+            'reference' => $competition->verity_ref,
+            'count' => count($numbers),
+            'entriesHash' => (string) $vc->entries_hash,
+            'sealedAt' => $vc->closed_at?->toIso8601String(),
+            'tickets' => array_map(fn ($n) => str_pad((string) $n, $width, '0', STR_PAD_LEFT), $numbers),
+        ];
+    }
+
     /** The public verification record (spec §7): everything anyone needs to re-run the draw. */
     public function verification(Draw $draw): array
     {
@@ -338,7 +367,9 @@ class VerityDrawEngine
             'livestreamUrl' => $v['external']['livestream_url'] ?? null,
             'drawTool' => $v['external']['tool'] ?? null,     // the random number tool, sealed with the entry list
             'seal' => $v['external']['seal'] ?? null,
-            'statement' => ($v['draw_method'] ?? 'verity') === 'external' ? Competition::EXTERNAL_STATEMENT : null,
+            'externalKind' => ($v['draw_method'] ?? 'verity') === 'external' ? ($draw->competition?->drawsPhysically() ? 'physical' : 'rng') : null,
+            'statement' => ($v['draw_method'] ?? 'verity') === 'external'
+                ? ($draw->competition?->drawsPhysically() ? Competition::PHYSICAL_STATEMENT : Competition::EXTERNAL_STATEMENT) : null,
             'recordedAt' => $v['external']['recorded_at'] ?? null,
         ];
     }
