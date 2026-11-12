@@ -78,6 +78,8 @@ export interface SiteSettings {
   drawsInstagram: string;
   socials: { label: string; url: string }[];
   youtubeUrl: string;
+  /** Optional YouTube channel for live draws (Instagram stays primary). */
+  drawsYoutubeUrl: string | null;
 }
 
 export interface BasketLine {

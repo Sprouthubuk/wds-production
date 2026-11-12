@@ -68,4 +68,5 @@ export const sampleSettings: SiteSettings = {
     { label: 'Instagram @wds_competitions', url: 'https://instagram.com/wds_competitions' },
   ],
   youtubeUrl: 'https://youtube.com/@wdsoriginals',
+  drawsYoutubeUrl: null,
 };

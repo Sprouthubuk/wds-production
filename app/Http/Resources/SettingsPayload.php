@@ -20,10 +20,28 @@ final class SettingsPayload
             ['label' => 'Instagram @wds_competitions', 'url' => 'https://instagram.com/wds_competitions'],
         ],
         'youtubeUrl' => 'https://youtube.com/@wdsoriginals',
+        // Optional YouTube channel for live draws. Instagram stays the primary channel; with both set
+        // the copy says "Drawn live on our socials" (web/src/lib/channels.ts, drawnLiveOn() below).
+        'drawsYoutubeUrl' => null,
     ];
 
     public static function get(): array
     {
         return array_merge(self::DEFAULTS, Setting::get('site', []) ?? []);
+    }
+
+    /** Where draws are streamed, to finish "Drawn live on …": "our socials" or "Instagram @wds_originals". */
+    public static function drawnLiveOn(?array $settings = null): string
+    {
+        $s = $settings ?? self::get();
+        $instagram = ltrim(trim((string) ($s['drawsInstagram'] ?? '')), '@');
+        $youtube = $s['drawsYoutubeUrl'] ?? null;
+
+        return match (true) {
+            $instagram !== '' && $youtube => 'our socials',
+            $instagram !== '' => "Instagram @{$instagram}",
+            (bool) $youtube => 'YouTube',
+            default => 'our socials',
+        };
     }
 }
