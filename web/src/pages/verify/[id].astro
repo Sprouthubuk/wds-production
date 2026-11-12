@@ -50,18 +50,38 @@ const facts: [string, string | number | null][] = [
       ) : null}
       <div class="verify-box" data-reveal>
         <script type="module" src="/vendor/verity/verify-page/verity-verify.js"></script>
-        <verity-verify src={url}></verity-verify>
+        <verity-verify src={url} data-physical={physical ? '1' : undefined}></verity-verify>
       </div>
       <script>
         // The verifier is Verity's file, byte-for-byte (WebVerifierCopyTest), so its wording is tidied here
-        // once it has rendered: "1 entries hash to …" → "1 entry hashes to …".
-        const tidy = (root: ShadowRoot) => root.querySelectorAll('.note, li > span:not(.mark)').forEach((el) => {
-          const t = el.textContent ?? '';
-          const fixed = t.replace(/^1 entries hash to /, '1 entry hashes to ').replace(/^All 1 entries carried /, 'The 1 entry carried ')
-            .replace(/says 1 entries but/, 'says 1 entry but').replace(/lists 1\./, 'lists 1.');
-          if (fixed !== t) el.textContent = fixed;
-        });
-        document.querySelectorAll('verity-verify').forEach((el) => el.addEventListener('verity-verified', () => { if (el.shadowRoot) tidy(el.shadowRoot); }));
+        // once it has rendered (the checks themselves are untouched):
+        //  - "1 entries hash to …" → "1 entry hashes to …";
+        //  - a physical draw has no random number tool: the sealed item is the draw method.
+        const word = (t: string) => t.replace(/^1 entries hash to /, '1 entry hashes to ').replace(/^All 1 entries carried /, 'The 1 entry carried ')
+          .replace(/says 1 entries but/, 'says 1 entry but');
+        const physicalWords = (t: string) => t
+          .replace(/^Random number tool sealed with the entry list$/, 'Draw method sealed with the entry list')
+          .replace(/^The random number tool \(Physical draw \(numbered tokens\), [^)]*\) was sealed with the entry list when entries closed, before the pick\.$/,
+            'The draw method (a physical draw by hand from numbered tokens, with an independent witness) was sealed with the entry list when entries closed, before the draw.')
+          .replace(/^The random number tool isn’t the one sealed with the entry list at the close\.$/, 'The draw method isn’t the one sealed with the entry list at the close.');
+        const tidy = (root: ShadowRoot, physical: boolean) => {
+          root.querySelectorAll('li > span:not(.mark)').forEach((el) => {
+            const t = el.textContent ?? '';
+            const fixed = physical ? physicalWords(word(t)) : word(t);
+            if (fixed !== t) el.textContent = fixed;
+          });
+          if (!physical) return;
+          // The facts list: one "Draw method" row, and the seal covers the list and the method.
+          root.querySelectorAll('dt').forEach((dt) => {
+            const dd = dt.nextElementSibling as HTMLElement | null;
+            if (dt.textContent === 'Draw method' && dd) dd.textContent = 'Physical draw by hand from numbered tokens, on a livestream';
+            if (dt.textContent === 'Random number tool') { dd?.remove(); dt.remove(); }
+            if (dt.textContent === 'Sealed (list + tool)') dt.textContent = 'Sealed (list + method)';
+          });
+        };
+        document.querySelectorAll<HTMLElement>('verity-verify').forEach((el) => el.addEventListener('verity-verified', () => {
+          if (el.shadowRoot) tidy(el.shadowRoot, el.dataset.physical === '1');
+        }));
       </script>
 
       {c.winners?.length ? (
