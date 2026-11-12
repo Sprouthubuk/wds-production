@@ -184,7 +184,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     });
   </script>
   <script>
-    import { say, send } from '../../../lib/admin-client';
+    import { say, send, showError } from '../../../lib/admin-client';
     const form = document.querySelector<HTMLFormElement>('[data-comp-form]')!;
         const id = form.dataset.id;
     const $ = <T extends Element>(s: string, r: ParentNode = form) => r.querySelector<T>(s)!;
@@ -284,11 +284,12 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       if (!f('ticketPrice').disabled) body.ticketPrice = Number(f('ticketPrice').value);
       // Locked after publish: don't send the draw terms at all.
       for (const k of ['title', 'totalTickets', 'maxPerPerson', 'opensAt', 'closesAt']) if (f(k)?.disabled) delete body[k];
+      showError(form, null);
       try {
         const res = await send(id ? `/api/admin/competitions/${id}` : '/api/admin/competitions', id ? 'PUT' : 'POST', JSON.stringify(body));
         say(res.message || 'Saved.');
         if (!id && res.data?.id) setTimeout(() => (location.href = `/admin/competitions/${res.data.id}`), 600);
-      } catch (err) { say((err as Error).message, true); }
+      } catch (err) { say((err as Error).message, true); showError(form, (err as Error).message); }
     });
   </script>
 </AdminLayout>
