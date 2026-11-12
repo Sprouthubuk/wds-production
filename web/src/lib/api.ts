@@ -1,4 +1,4 @@
-import type { Competition, DrawResult, SiteSettings, Winner } from './types';
+import type { Competition, CompetitionTeaser, DrawResult, SiteSettings, Winner } from './types';
 import { sampleCompetitions, sampleDraws, sampleSettings, sampleWinners } from '../data/sample';
 
 /**
@@ -38,6 +38,27 @@ export async function getCompetition(slug: string): Promise<Competition | null> 
   try {
     const res = await api<{ data: Competition }>(`/competitions/${encodeURIComponent(slug)}`);
     return res.data;
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
+
+/** Pre-launch: the featured draft to tease while nothing is live (null when there's none). */
+export async function getUpcoming(): Promise<CompetitionTeaser | null> {
+  if (usingSampleData) return null;
+  try {
+    return (await api<{ data: CompetitionTeaser | null }>('/upcoming')).data;
+  } catch {
+    return null;
+  }
+}
+
+/** "Launching soon" for a draft's slug; null when the slug isn't an upcoming competition. */
+export async function getUpcomingBySlug(slug: string): Promise<CompetitionTeaser | null> {
+  if (usingSampleData) return null;
+  try {
+    return (await api<{ data: CompetitionTeaser }>(`/upcoming/${encodeURIComponent(slug)}`)).data;
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;

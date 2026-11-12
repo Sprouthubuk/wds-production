@@ -68,6 +68,14 @@ export interface DrawResult {
   redraws?: number;
 }
 
+/** A competition that isn't live yet: only what the public may see (never prices or ticket counts). */
+export interface CompetitionTeaser {
+  slug: string;
+  title: string;
+  image: { src: string; alt: string } | null;
+  drawAt: string | null;
+}
+
 export interface SiteSettings {
   tradingName: string;
   legalName: string;

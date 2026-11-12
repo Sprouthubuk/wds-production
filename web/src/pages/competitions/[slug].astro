@@ -3,13 +3,17 @@ import { drawChannels } from '../../lib/channels';
 import { POSTAL_HOURS_BEFORE_CLOSE, postalBy, postalDeadlineSentence } from '../../lib/postal';
 import Layout from '../../layouts/Layout.astro';
 import EntryPanel from '../../components/EntryPanel.astro';
-import { getCompetition, getSettings } from '../../lib/api';
+import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
 import { money, percentSold, priceFor } from '../../lib/pricing';
 import { countdownParts } from '../../lib/countdown';
 
 const { slug } = Astro.params;
 const [c, settings] = await Promise.all([getCompetition(slug!), getSettings()]);
-if (!c) return Astro.rewrite('/404');
+if (!c) {
+  const teaser = await getUpcomingBySlug(slug!);
+  if (teaser) return Astro.rewrite(`/launching-soon/${encodeURIComponent(slug!)}`);
+  return Astro.rewrite('/404');
+}
 const ch = drawChannels(settings);
 const drawDate = new Date(c.drawAt);
 const drawLabel = drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
