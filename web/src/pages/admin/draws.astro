@@ -20,17 +20,50 @@ const label: Record<string, string> = {
   'draw.completed': 'Drawn (on drand, or the external result recorded)', 'draw.winner_forfeited': 'Winner forfeited', 'draw.forfeited': 'Prize unawarded', 'draw.redraw_scheduled': 'Redraw scheduled (R2)',
   'redraw.witnessed': 'Redraw timestamped', 'draw.redrawn': 'Redrawn (R2)', 'order.withdrawn': 'Entries withdrawn (refund while open)',
 };
+type Kind = 'verity' | 'rng' | 'physical';
+const kindOf = (r: Pick<DrawState, 'method' | 'externalKind'>): Kind => (r.method === 'external' ? (r.externalKind === 'physical' ? 'physical' : 'rng') : 'verity');
+const kindName: Record<Kind, string> = { verity: 'Verity draw (drand)', rng: 'Random number generator', physical: 'Physical draw' };
+// "How draws work", one set of steps per method. Only the methods in use are shown (all three when there are none yet).
+const steps: Record<Kind, string[]> = {
+  verity: [
+    '<strong>Publish</strong> the competition (Competitions → Publish). That locks the draw in: terms fixed, seed committed, drand round planned.',
+    'At the <strong>closing time</strong> (or when you press <strong>Close &amp; draw now</strong> on the stream) the draw engine freezes the entry list, fingerprints it and commits to a drand round still in the future. The close is timestamped independently.',
+    'About a minute later drand publishes that round and the engine <strong>draws automatically</strong>. Nobody, including us, could know the result earlier.',
+    '<strong>Publish result</strong> when you reveal it on the live. That puts the winner and the certificate on the Live draws page.',
+  ],
+  rng: [
+    '<strong>Name the random number tool</strong> (its name and https link) and <strong>publish</strong>. That locks the terms and records that the draw is made on the livestream.',
+    'On the stream, press <strong>Close entries</strong>. The entry list is frozen, fingerprinted and <strong>sealed together with the tool</strong>, and the close is timestamped independently.',
+    '<strong>Download the sealed entry list</strong>, pick a ticket from it with that tool on the stream, then <strong>record the ticket and the livestream link</strong>. Verity checks the ticket is on the sealed list; it doesn\'t make the pick.',
+    '<strong>Publish result</strong> when you reveal it on the live. That puts the winner and the certificate on the Live draws page.',
+  ],
+  physical: [
+    '<strong>Publish</strong> the competition. That locks the terms and records that it is drawn by hand from numbered tokens.',
+    'On the stream, press <strong>Close entries</strong>. The entry list is frozen, fingerprinted and <strong>sealed with the draw method</strong>, and the close is timestamped independently.',
+    '<strong>Print the chip sheet</strong> (every valid ticket number, the count and the sealed fingerprint) and make or check one token per number. Draw one token by hand on the stream with an <strong>independent witness</strong>, then <strong>record the ticket and the livestream link</strong>. Verity checks the ticket is on the sealed list; it doesn\'t make the pick.',
+    '<strong>Publish result</strong> when you reveal it on the live. That puts the winner and the certificate on the Live draws page.',
+  ],
+};
+const inUse = [...new Set(rows.map(kindOf))];
+const shownKinds: Kind[] = inUse.length ? (['verity', 'rng', 'physical'] as Kind[]).filter((k) => inUse.includes(k)) : ['verity', 'rng', 'physical'];
+const methodText = (r: DrawState) => kindOf(r) === 'physical' ? 'Physical draw: numbered tokens drawn by hand on the livestream, with an independent witness'
+  : kindOf(r) === 'rng' ? 'Random number generator on the livestream'
+  : `Verity draw on drand${r.drawNow ? ' · closed with "Close & draw now"' : ''}`;
 const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.status === 'closed' ? (r.method === 'external' ? 'Sealed: record the result' : 'Closed: waiting for the drand round') : r.status === 'drawn' ? (r.draw?.status === 'published' ? 'Drawn and published' : 'Drawn: ready to publish') : r.status === 'void' ? 'Void: no entries' : r.status;
 ---
 <AdminLayout title="Draws" active="draws">
   <section class="panel">
     <h2>How draws work</h2>
-    <ol class="small" style="margin:0;padding-left:18px;line-height:1.9;color:var(--muted-2)">
-      <li><strong>Publish</strong> a competition (Competitions → Publish). That locks the draw in: terms fixed, seed committed, drand round planned.</li>
-      <li>At the <strong>closing time</strong> the draw engine freezes the entry list, fingerprints it and commits to a drand round still in the future. It's timestamped independently.</li>
-      <li><strong>Verity draw:</strong> about a minute later that round is published by drand, and the engine <strong>draws automatically</strong>. Nobody, including us, could know the result earlier. <strong>Random number generator:</strong> press Close entries on the stream (the list is sealed with your named tool), pick a ticket from the sealed list with that tool, then record the ticket and the livestream link. <strong>Physical draw:</strong> press Close entries, print the chip sheet (every valid ticket number, the count and the sealed fingerprint), make or check the numbered tokens against it, draw one by hand on the stream with an independent witness, then record the ticket and the livestream link. Either way Verity checks the ticket was on the sealed list; it doesn't make the pick.</li>
-      <li><strong>Publish result</strong> when you reveal it on the Instagram live. That puts the winner and the certificate on the Live draws page.</li>
-    </ol>
+    <div class="how-grid">
+      {shownKinds.map((k) => (
+        <div>
+          {shownKinds.length > 1 ? <h3 class="label" style="margin:0 0 6px">{kindName[k]}</h3> : <p class="small muted" style="margin:0 0 6px">{kindName[k]}</p>}
+          <ol class="small" style="margin:0;padding-left:18px;line-height:1.9;color:var(--muted-2)">
+            {steps[k].map((s) => <li set:html={s} />)}
+          </ol>
+        </div>
+      ))}
+    </div>
     <p class="small muted" style="margin:10px 0 0">No button here can change a result. A winner who forfeits is replaced by a redraw on a new future drand round (protocol R2).</p>
   </section>
 
@@ -42,12 +75,12 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
       </div>
       <div class="tbl-wrap" style="margin-top:12px"><table class="tbl"><tbody>
         <tr><th>Draw reference</th><td class="mono">{r.verityRef}</td></tr>
-        <tr><th>Draw method</th><td>{r.method === 'external' ? 'External draw on the livestream (Verity seals the entries)' : `Verity live draw${r.drawNow ? ' · closed with "Close & draw now"' : ''}`}</td></tr>
-        {r.method === 'external' ? <tr><th>Random number tool</th><td>{r.drawTool ? <><a href={r.drawTool.url} target="_blank" rel="noopener">{r.drawTool.name} ↗</a>{r.seal ? <> · <strong>sealed with the entry list</strong> <span class="mono">{r.seal.slice(0, 12)}…</span></> : <span class="muted"> · sealed when entries close</span>}</> : <strong>Not set: name it below before closing</strong>}</td></tr> : null}
+        <tr><th>Draw method</th><td>{methodText(r)}{kindOf(r) === 'physical' ? (r.seal ? <> · <strong>sealed with the entry list</strong> <span class="mono">{r.seal.slice(0, 12)}…</span></> : <span class="muted"> · sealed with the entry list when entries close</span>) : null}</td></tr>
+        {kindOf(r) === 'rng' ? <tr><th>Random number tool</th><td>{r.drawTool ? <><a href={r.drawTool.url} target="_blank" rel="noopener">{r.drawTool.name} ↗</a>{r.seal ? <> · <strong>sealed with the entry list</strong> <span class="mono">{r.seal.slice(0, 12)}…</span></> : <span class="muted"> · sealed when entries close</span>}</> : <strong>Not set: name it below before closing</strong>}</td></tr> : null}
         {r.draw?.livestreamUrl ? <tr><th>Livestream</th><td><a href={r.draw.livestreamUrl} target="_blank" rel="noopener">{r.draw.livestreamUrl} ↗</a></td></tr> : null}
         <tr><th>Tickets</th><td>{r.ticketsSold} / {r.totalTickets}</td></tr>
         <tr><th>Closes</th><td>{when(r.closesAt)}</td></tr>
-        <tr><th>drand round</th><td>{r.round ? <><span class="mono">{r.round}</span> · {r.roundCommitted ? 'committed at close' : 'planned at publish'} · expected {when(r.roundAt)}{r.roundLate ? <strong> · late close: a later round was committed</strong> : null}</> : '—'}</td></tr>
+        {kindOf(r) === 'verity' ? <tr><th>drand round</th><td>{r.round ? <><span class="mono">{r.round}</span> · {r.roundCommitted ? 'committed at close' : 'planned at publish'} · expected {when(r.roundAt)}{r.roundLate ? <strong> · late close: a later round was committed</strong> : null}</> : '—'}</td></tr> : null}
         <tr><th>Seed commitment</th><td class="mono">{r.commitment.slice(0, 24)}…</td></tr>
         {r.draw ? <tr><th>Entries frozen</th><td>{r.draw.entries} · <span class="mono">{r.draw.entriesHash.slice(0, 24)}…</span> · <a href={`/api/admin/draws/${r.draw.id}/entries.csv`}>Entry list (CSV)</a></td></tr> : null}
         {r.draw?.winningTicket ? <tr><th>Winning ticket</th><td><strong>#{r.draw.winningTicket}</strong> · {r.draw.winnerName} · drawn {when(r.draw.drawnAt)}</td></tr> : null}
@@ -125,3 +158,6 @@ const stateText = (r: DrawState) => r.status === 'live' ? 'Taking entries' : r.s
     <section class="panel"><p class="muted">No published competitions yet. Publish one from Competitions.</p></section>
   )}
 </AdminLayout>
+<style>
+  .how-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+</style>
