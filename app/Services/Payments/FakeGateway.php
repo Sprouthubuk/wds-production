@@ -35,7 +35,14 @@ class FakeGateway implements PaymentGateway
             (string) $request->input('provider_reference'),
             null,
             'card',
+            // Testing: choose the card type the "provider" reports (credit / debit / prepaid / unknown).
+            (string) $request->input('card_type', 'debit'),
         );
+    }
+
+    public function refund(Order $order, string $reason): bool
+    {
+        return true;
     }
 
     public function fetchStatus(Order $order): ?PaymentResult

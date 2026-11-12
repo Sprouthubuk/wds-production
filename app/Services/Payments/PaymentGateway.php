@@ -22,4 +22,7 @@ interface PaymentGateway
 
     /** Ask the provider for the latest status (used when the customer lands back before the webhook). */
     public function fetchStatus(Order $order): ?PaymentResult;
+
+    /** Refund a paid order in full. Return false if it couldn't be done automatically (staff then refund by hand). */
+    public function refund(Order $order, string $reason): bool;
 }

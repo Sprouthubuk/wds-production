@@ -9,6 +9,7 @@ import { money } from '../../lib/pricing';
 interface OrderView {
   reference: string;
   status: 'pending' | 'paid' | 'failed' | 'cancelled' | 'refunded';
+  message?: string | null;
   total: number;
   lines: { competition: string; slug: string; qty: number; drawAt: string; ticketNumbers: string[] }[];
 }
@@ -37,7 +38,7 @@ const ch = drawChannels(settings);
   ) : waiting ? (
     <PageHero eyebrow={`Order ${order.reference}`} title="Confirming payment" intro="We're waiting for confirmation from the payment provider. This page will update automatically." />
   ) : (
-    <PageHero eyebrow={`Order ${order.reference}`} title="Payment not completed" intro="Your payment didn't go through and no tickets were issued. Your basket is still saved." />
+    <PageHero eyebrow={`Order ${order.reference}`} title={order.status === 'refunded' ? 'Payment refunded' : 'Payment not completed'} intro={order.message ?? "Your payment didn't go through and no tickets were issued. Your basket is still saved."} />
   )}
   <section class="section" style="border-bottom: 0">
     <div class="container layout">

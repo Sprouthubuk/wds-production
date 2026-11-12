@@ -20,6 +20,9 @@ use RuntimeException;
  *  - parseWebhook(): verify the signature FIRST (throw on mismatch), then map the provider status
  *    to PaymentResult::PAID / FAILED / PENDING and include the amount so we can check it matches.
  *  - fetchStatus(): optional poll used if the customer returns before the webhook arrives.
+ *  - Card type (credit card cap): PaymentResult::$cardType must be 'credit', 'debit', 'prepaid' or 'unknown'
+ *    (see cardType() below). Without it the £250/month credit card cap can't be enforced.
+ *  - refund(): full refund of a paid order, used when a credit card payment would breach the cap.
  */
 class CashflowsGateway implements PaymentGateway
 {
@@ -40,5 +43,22 @@ class CashflowsGateway implements PaymentGateway
     public function fetchStatus(Order $order): ?PaymentResult
     {
         return null;
+    }
+
+    /**
+     * TODO(cashflows): map Cashflows' card-type field from the payment/webhook payload to our card type.
+     * Use their funding-type field (credit / debit / prepaid), not the scheme (Visa / Mastercard). Anything
+     * missing or unrecognised must come back as 'unknown', never as 'debit'.
+     */
+    public static function cardType(array $payment): string
+    {
+        return 'unknown'; // TODO(cashflows): e.g. CreditCardCap::normalise($payment['<their card type field>'] ?? null) ?? 'unknown'
+    }
+
+    public function refund(Order $order, string $reason): bool
+    {
+        // TODO(cashflows): call their refund endpoint for $order->provider_reference, full amount. Until then
+        // a refused payment shows in Admin as "refund needed" and staff refund it by hand.
+        return false;
     }
 }
