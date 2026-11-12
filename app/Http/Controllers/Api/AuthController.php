@@ -46,6 +46,8 @@ class AuthController extends Controller
             'role' => 'customer',
         ]);
 
+        \Illuminate\Support\Facades\Mail::to($email)->queue(new \App\Mail\VerifyEmail($user));
+
         // Link any guest orders/tickets bought with this email before the account existed.
         \App\Models\Order::whereNull('user_id')->where('email', $email)->update(['user_id' => $user->id]);
         \App\Models\Ticket::whereNull('user_id')->where('email', $email)->update(['user_id' => $user->id]);
@@ -90,6 +92,10 @@ class AuthController extends Controller
             ['email' => TicketAllocator::normaliseEmail($data['email']), 'password' => $data['password'], 'password_confirmation' => $request->input('password_confirmation'), 'token' => $data['token']],
             function (User $user, string $password) {
                 $user->forceFill(['password' => $password])->save();
+                // The link came to this inbox, so the email address is confirmed too.
+                if (! $user->hasVerifiedEmail()) {
+                    $user->markEmailAsVerified();
+                }
                 $user->tokens()->delete(); // sign out everywhere
             },
         );

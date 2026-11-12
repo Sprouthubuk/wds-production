@@ -75,7 +75,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <h2>Tickets</h2>
       {locked ? <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published: the draw is locked in. Title, ticket price, total tickets, maximum per person and dates can't change.</p> : null}
       <div class="form-grid">
-        <div class="field"><label for="price">Ticket price £</label><input id="price" name="ticketPrice" type="number" step="0.01" min="0.1" required value={v.ticketPrice} disabled={locked} /></div>
+        <div class="field"><label for="price">Ticket price £</label><input id="price" name="ticketPrice" type="number" step="0.01" min="0" required value={v.ticketPrice} disabled={locked} /><span class="hint">0 = a free competition: "Enter free", one online entry per verified account, no bundles.</span></div>
         <div class="field"><label for="total">Total tickets</label><input id="total" name="totalTickets" type="number" min="1" required value={v.totalTickets} disabled={locked} /></div>
         <div class="field"><label for="max">Max per person</label><input id="max" name="maxPerPerson" type="number" min="1" required value={v.maxPerPerson} disabled={locked} /><span class="hint">Includes free postal entries.</span></div>
       </div>

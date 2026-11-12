@@ -54,7 +54,7 @@ const ch = drawChannels(settings);
           {order.status === 'paid' ? <a href="/account" class="btn">View my tickets</a> : <a href="/basket" class="btn">Back to basket</a>}
           <a href="/competitions" class="btn btn--outline">Enter another competition</a>
         </div>
-        {order.status === 'paid' ? <p class="small muted">Total paid {money(order.total)}.</p> : null}
+        {order.status === 'paid' ? <p class="small muted">{order.total === 0 ? 'Free entry: nothing to pay.' : `Total paid ${money(order.total)}.`}</p> : null}
       </div>
       <div class="watch">
         <span class="label">Watch the draw</span>

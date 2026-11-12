@@ -26,6 +26,13 @@ const config = JSON.stringify({
   bundles: c.bundles, maxPerPerson: c.maxPerPerson, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
 });
 ---
+{c.ticketPrice === 0 ? (
+  <div class={`entry entry--${variant}`}>
+    <div class="odds-strip"><div><span>Entry</span><b class="num">Free</b></div><div><span>Odds per entry</span><b class="num">{odds(c.totalTickets)}</b></div></div>
+    <a href={`/competitions/${c.slug}`} class="btn btn--block btn--lg">Enter free</a>
+    <span class="foot">One free entry per account · or free by post</span>
+  </div>
+) : (
 <div class={`entry entry--${variant}`} data-entry-panel data-config={config}>
   <div class="odds-strip">
     <div><span>Odds per ticket</span><b class="num">{odds(c.totalTickets)}</b></div>
@@ -132,6 +139,7 @@ const config = JSON.stringify({
     <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>{drawChannels(settings).drawnLive}</span></div>
   )}
 </div>
+)}
 
 <style>
   .entry { display: flex; flex-direction: column; gap: 18px; }

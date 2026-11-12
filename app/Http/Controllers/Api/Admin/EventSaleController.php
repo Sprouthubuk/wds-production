@@ -19,7 +19,7 @@ class EventSaleController extends Controller
     public function competitions()
     {
         // Live sold/remaining: the stand polls this. Payment buttons come from EventPaymentMethod.
-        return CompetitionResource::collection(Competition::where('status', 'live')->where('event_sales_enabled', true)->orderBy('draw_at')->get())
+        return CompetitionResource::collection(Competition::where('status', 'live')->where('event_sales_enabled', true)->where('ticket_price_pence', '>', 0)->orderBy('draw_at')->get())
             ->additional(['paymentMethods' => EventPaymentMethod::forStand()])
             ->response()->header('Cache-Control', 'no-store');
     }

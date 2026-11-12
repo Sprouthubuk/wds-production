@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\EmailVerificationController;
+use App\Http\Controllers\Api\FreeEntryController;
 use App\Http\Controllers\Api\EngagementController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\PaymentController;
@@ -30,6 +32,9 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/contact', [EngagementController::class, 'contact']);
 });
 
+// The "Confirm your email" link (signed; lands on the website's account page)
+Route::get('/auth/verify-email/{user}/{hash}', [EmailVerificationController::class, 'verify'])->name('auth.verify-email')->middleware(['signed', 'throttle:20,1']);
+
 // Checkout (guest or signed in) and order confirmation
 Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:20,1');
 Route::get('/orders/{reference}', [CheckoutController::class, 'show']);
@@ -49,6 +54,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/break', [MeController::class, 'takeBreak']);
     Route::post('/me/self-exclude', [MeController::class, 'selfExclude']);
     Route::post('/me/verification', [MeController::class, 'verification']);
+    Route::post('/me/verify-email', [EmailVerificationController::class, 'resend'])->middleware('throttle:3,10');
+    // A free competition (£0): one online entry per verified account. No basket, no payment.
+    Route::post('/competitions/{competition}/free-entry', [FreeEntryController::class, 'store'])->middleware('throttle:10,1');
 });
 
 // Staff (event sales + postal logging)

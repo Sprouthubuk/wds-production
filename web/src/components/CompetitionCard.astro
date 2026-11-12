@@ -20,9 +20,9 @@ const drawDate = c.drawAt ? new Date(c.drawAt).toLocaleDateString('en-GB', { day
     <div class="row-between"><strong><span class="num" data-count-to={`${pct}%`}>{pct}%</span> sold</strong><span class="chip chip--solid">{statusLabel(c.ticketsSold, c.totalTickets)}</span></div>
     <div class="progress"><span style={`width:${pct}%`}></span></div>
     <div class="row-between small muted"><span>{left.toLocaleString('en-GB')} left</span><span>{odds(c.totalTickets)} odds</span></div>
-    <div class="row-between prices"><span><strong>{money(c.ticketPrice)}</strong> online</span><span><strong>Free</strong> by post</span></div>
+    <div class="row-between prices">{c.ticketPrice === 0 ? <span><strong>Free</strong> to enter</span> : <span><strong>{money(c.ticketPrice)}</strong> online</span>}<span><strong>Free</strong> by post</span></div>
     <div class="btn-pair">
-      <a href={href} class="btn">Enter online</a>
+      <a href={href} class="btn">{c.ticketPrice === 0 ? 'Enter free' : 'Enter online'}</a>
       <a href="/free-postal-entry" class="btn">Enter by post</a>
     </div>
   </div>

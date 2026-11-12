@@ -16,7 +16,7 @@ const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/accou
         <p class="alert alert--error" data-error role="alert" hidden></p>
         <button class="btn btn--block" type="submit">Sign in</button>
       </form>
-      <form class="box" data-auth="register" novalidate>
+      <form class="box" id="register" data-auth="register" novalidate>
         <h2 class="display display--s">Create an account</h2>
         <div class="form-grid">
           <div class="field"><label for="r-fn">First name</label><input id="r-fn" name="firstName" required autocomplete="given-name" /></div>
