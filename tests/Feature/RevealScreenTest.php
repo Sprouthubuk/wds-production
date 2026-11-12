@@ -27,7 +27,7 @@ class RevealScreenTest extends TestCase
         $this->fakeVerity();
         $admin = User::factory()->create(['role' => 'admin']);
         Carbon::setTestNow('2026-10-20 12:00:00');
-        $c = $this->publishedCompetition(['draw_method' => 'external', 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00', 'postal_closes_at' => '2026-10-28 20:00:00']);
+        $c = $this->publishedCompetition(['draw_method' => 'external', 'draw_tool_name' => 'random.org', 'draw_tool_url' => 'https://www.random.org/integers/', 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00', 'postal_closes_at' => '2026-10-28 20:00:00']);
         $ref = $this->postJson('/api/checkout', [
             'customer' => ['email' => 'a@example.com', 'name' => 'Alex Smith', 'phone' => '0', 'dateOfBirth' => '1990-05-05'],
             'items' => [['competitionId' => $c->id, 'qty' => 3]], 'ageConfirmed' => true, 'termsAccepted' => true,

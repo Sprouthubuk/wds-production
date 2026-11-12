@@ -39,6 +39,8 @@ class DrawController extends Controller
                 'roundLate' => (bool) $vc->beacon_late,
                 'commitment' => $vc->commitment,
                 'method' => $c->draw_method ?? 'verity',
+                'drawTool' => $vc->externalTool(),
+                'seal' => \Sprouthub\Verity\Services\DrawService::closeRecord($vc)?->payload['external_seal'] ?? null,
                 'drawNow' => (bool) (\Sprouthub\Verity\Services\DrawService::closeRecord($vc)?->payload['draw_now'] ?? false),
                 'draw' => $draw ? [
                     'id' => $draw->id,
@@ -123,7 +125,19 @@ class DrawController extends Controller
         return response()->json(['message' => 'Entries closed and sealed. Download the entry list and draw.', 'status' => $c->status]);
     }
 
-    /** Method B: the winning ticket number drawn on the livestream, and the livestream link. */
+    /** Method B: name or change the random number tool, until entries close (then it's sealed with the list). */
+    public function drawTool(Request $request, Competition $competition, VerityDrawEngine $verity)
+    {
+        $d = $request->validate([
+            'name' => ['required', 'string', 'max:80', 'not_regex:/[|\x00-\x1f]/'],
+            'url' => ['required', 'url:https', 'max:300', 'not_regex:/[\s|]/'],
+        ]);
+        $verity->setDrawTool($competition, $d['name'], $d['url'], $request->user());
+
+        return response()->json(['message' => 'Random number tool saved. It\'s sealed with the entry list when entries close.']);
+    }
+
+    /** Method B: the winning ticket number drawn on the livestream, and the livestream link (both required). */
     public function externalResult(Request $request, Competition $competition, VerityDrawEngine $verity)
     {
         $d = $request->validate([

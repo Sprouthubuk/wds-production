@@ -97,6 +97,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::post('/competitions/{competition}/close-entries', [Admin\DrawController::class, 'closeEntries']);
     Route::post('/competitions/{competition}/external-result', [Admin\DrawController::class, 'externalResult']);
     Route::get('/competitions/{competition}/reveal', [Admin\DrawController::class, 'reveal']);
+    Route::post('/competitions/{competition}/draw-tool', [Admin\DrawController::class, 'drawTool']);
 
     Route::get('/winners', [Admin\WinnerController::class, 'index']);
     Route::post('/winners', [Admin\WinnerController::class, 'store']);
