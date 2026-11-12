@@ -2,17 +2,23 @@
 /**
  * Pre-launch hero: the home page while no competition is live, and the "Launching soon" page for a
  * draft's slug. Only the teaser (first image, title, draw date), a countdown to the live draw and
- * the "Get first access" sign-up. No prices, ticket counts or entry buttons.
+ * the "Get first access" sign-up. The countdown targets the entries-open date while it's ahead
+ * ("Entries open in"), otherwise the live draw ("Live draw in"). No prices, ticket counts or entry buttons.
  */
 import type { CompetitionTeaser } from '../lib/types';
 import { countdownParts } from '../lib/countdown';
+import { launchCountdown } from '../lib/prelaunch';
 import SignupForm from './SignupForm.astro';
 interface Props { teaser: CompetitionTeaser; chip?: string }
 const { teaser, chip = 'Coming soon' } = Astro.props;
 const drawLabel = teaser.drawAt
   ? new Date(teaser.drawAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' }).replace(' at ', ', ')
   : null;
-const cd = teaser.drawAt ? countdownParts(teaser.drawAt) : null;
+const target = launchCountdown(teaser);
+const cd = target ? countdownParts(target.at) : null;
+const opensLabel = target?.label === 'Entries open in'
+  ? new Date(target.at).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' }).replace(' at ', ', ')
+  : null;
 ---
 <section class="launch">
   {teaser.image ? <img src={teaser.image.src} alt={teaser.image.alt} class="launch-img" fetchpriority="high" decoding="async" /> : null}
@@ -22,12 +28,16 @@ const cd = teaser.drawAt ? countdownParts(teaser.drawAt) : null;
       <span class="chip chip--line launch-chip"><span class="dot"></span>{chip}</span>
       <h1 class="display display--xl launch-title">{teaser.title}</h1>
       {drawLabel ? <p class="lead launch-lead">Live draw {drawLabel}</p> : null}
-      {cd ? (
-        <div class="cd" data-countdown={teaser.drawAt} role="timer" aria-label={`Countdown to the live draw, ${drawLabel}`}>
+      {opensLabel ? <p class="lead launch-lead launch-opens">Entries open {opensLabel}</p> : null}
+      {cd && target ? (
+        <div class="cd-wrap">
+        <span class="cd-label" id="launch-cd-label">{target.label}</span>
+        <div class="cd" data-countdown={target.at} role="timer" aria-label={`${target.aria}, ${opensLabel ?? drawLabel}`}>
           <div><b data-unit="d">{cd.d}</b><span>Days</span></div>
           <div><b data-unit="h">{cd.h}</b><span>Hours</span></div>
           <div><b data-unit="m">{cd.m}</b><span>Mins</span></div>
           <div><b data-unit="s">{cd.s}</b><span>Secs</span></div>
+        </div>
         </div>
       ) : null}
     </div>
@@ -53,6 +63,9 @@ const cd = teaser.drawAt ? countdownParts(teaser.drawAt) : null;
   .launch-chip { align-self: flex-start; background: rgba(0,0,0,.5); border-color: rgba(255,255,255,.4); }
   .launch-title { overflow-wrap: break-word; margin: 0; }
   .launch-lead { color: #d6d6d6; margin: 0; }
+  .launch-opens { margin-top: -14px; }
+  .cd-wrap { display: flex; flex-direction: column; gap: 10px; }
+  .cd-label { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #fff; }
   .cd { display: grid; grid-template-columns: repeat(4, minmax(0, 92px)); gap: 8px; }
   .cd > div { border: 1px solid rgba(255,255,255,.35); background: rgba(0,0,0,.5); padding: 14px 6px 10px; display: flex; flex-direction: column; align-items: center; gap: 6px; }
   .cd b { font-size: 34px; line-height: 1; font-variant-numeric: tabular-nums; }

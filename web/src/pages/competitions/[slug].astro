@@ -6,9 +6,10 @@ import EntryPanel from '../../components/EntryPanel.astro';
 import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
 import { money, percentSold, priceFor } from '../../lib/pricing';
 import { countdownParts } from '../../lib/countdown';
+import { prelaunchState } from '../../lib/prelaunch';
 
 const { slug } = Astro.params;
-const [c, settings] = await Promise.all([getCompetition(slug!), getSettings()]);
+const [c, settings, pre] = await Promise.all([getCompetition(slug!), getSettings(), prelaunchState(Astro.locals)]);
 if (!c) {
   const teaser = await getUpcomingBySlug(slug!);
   if (teaser) return Astro.rewrite(`/launching-soon/${encodeURIComponent(slug!)}`);
@@ -95,7 +96,9 @@ const jsonLd = {
   <div class="sticky-bar" slot="after">
     <div class="container">
       <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · {percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
-      <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>Enter · from {money(c.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>
+      {pre.on
+        ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
+        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>Enter · from {money(c.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>}
     </div>
   </div>
 </Layout>

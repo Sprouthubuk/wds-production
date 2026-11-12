@@ -1,6 +1,8 @@
 ---
-interface Props { active?: string }
-const { active = 'none' } = Astro.props;
+interface Props { active?: string; prelaunch?: boolean; firstAccessHref?: string }
+const { active = 'none', prelaunch = false, firstAccessHref = '/#notify' } = Astro.props;
+// Nothing live yet: the entry button becomes "Get first access" and jumps to the sign-up form.
+const cta = prelaunch ? { href: firstAccessHref, label: 'Get first access' } : { href: '/competitions', label: 'Enter now' };
 const nav = [
   { key: 'competitions', label: 'Competitions', href: '/competitions' },
   { key: 'winners', label: 'Winners', href: '/winners' },
@@ -27,7 +29,7 @@ const nav = [
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M5 8h14l-1.2 12H6.2z"></path><path d="M9 8V6a3 3 0 0 1 6 0v2"></path></svg>
         <span class="count" data-basket-count hidden>0</span>
       </a>
-      <a href="/competitions" class="btn enter">Enter now</a>
+      <a href={cta.href} class="btn enter">{cta.label}</a>
       <button class="icon menu" aria-label="Open menu" aria-controls="mobile-menu" aria-expanded="false" data-menu>
         <span class="burger" aria-hidden="true"><i></i><i></i></span>
       </button>
@@ -42,7 +44,7 @@ const nav = [
     ))}
   </nav>
   <div class="mm-foot" style={`--i:${nav.length}`}>
-    <a href="/competitions" class="btn btn--block btn--lg">Enter now</a>
+    <a href={cta.href} class="btn btn--block btn--lg">{cta.label}</a>
     <div class="mm-links"><a href="/account">My account</a><a href="/live-draws">Live draws</a><a href="/how-it-works">How it works</a><a href="/contact">Contact</a></div>
   </div>
 </div>
