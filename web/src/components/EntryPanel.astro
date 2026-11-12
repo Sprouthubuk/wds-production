@@ -6,7 +6,7 @@
  */
 import { drawChannels } from '../lib/channels';
 import type { Competition, SiteSettings } from '../lib/types';
-import { postalDeadlineSentence } from '../lib/postal';
+import { postalDeadlineSentence, seasonalPostNote } from '../lib/postal';
 import { money, odds, percentSold, priceFor, savingFor, statusLabel } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
 
@@ -74,6 +74,7 @@ const config = JSON.stringify({
                 <span class="p-label">{o.qty === 1 ? '1 ticket' : variant === 'hero' ? `${o.qty} for` : `${o.qty} tickets`}</span>
                 <span class="p-price">{money(o.price)}</span>
                 <span class="p-save">{save > 0.004 ? `Save ${money(save)}` : 'Single'}</span>
+                {variant === 'full' ? <span class="p-odds">{odds(c.totalTickets, o.qty)} chance</span> : null}
               </button>
             );
           })}
@@ -120,6 +121,7 @@ const config = JSON.stringify({
       <address>{settings.postalEntryAddress.map((l, i) => <>{l}{i < settings.postalEntryAddress.length - 1 ? <br /> : null}</>)}</address>
       <ul><li>Competition: {c.title}</li><li>Full name, address and date of birth</li><li>Phone number and email address</li></ul>
       <span class="small muted-2">{postalSentence} One entry per envelope. Same draw, same odds.</span>
+      {seasonalPostNote(c) ? <span class="small"><strong>{seasonalPostNote(c)}</strong></span> : null}
       <a href="/free-postal-entry" class="btn btn--block btn--lg">Full postal entry guide</a>
     </div>
   ) : null}
@@ -165,6 +167,7 @@ const config = JSON.stringify({
   .p-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .p-price { font-size: 24px; font-weight: 700; line-height: 1.05; }
   .p-save { font-size: 11px; font-weight: 700; }
+  .p-odds { font-size: 11px; opacity: .7; }
   .entry--hero .packs button { min-height: 70px; }
   .entry--hero .p-price { font-size: 18px; }
   .own { display: flex; flex-direction: column; gap: 12px; }

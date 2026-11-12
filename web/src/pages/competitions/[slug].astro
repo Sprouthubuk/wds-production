@@ -1,6 +1,6 @@
 ---
 import { drawChannels } from '../../lib/channels';
-import { POSTAL_HOURS_BEFORE_CLOSE, postalBy, postalDeadlineSentence } from '../../lib/postal';
+import { POSTAL_HOURS_BEFORE_CLOSE, postalBy, postalDeadlineSentence, seasonalPostNote } from '../../lib/postal';
 import Layout from '../../layouts/Layout.astro';
 import EntryPanel from '../../components/EntryPanel.astro';
 import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
@@ -20,11 +20,14 @@ const drawDate = new Date(c.drawAt);
 const drawLabel = drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const postalLabel = postalBy(c);
 const postalSentence = postalDeadlineSentence(c);
+const postNote = seasonalPostNote(c);
+const drawRule = 'The draw goes ahead on the stated date and time however many tickets have sold. Closing dates are not extended.';
 const closesLabel = c.closesAt ? new Date(c.closesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'When sold out or before the draw';
 const faqs = [
   { q: 'When is the draw?', a: `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}. ${ch.youtube && ch.instagram ? `Watch it live on our socials: Instagram @${ch.instagram.handle} or YouTube.` : `Watch it live on ${ch.where}.`}` },
   { q: 'Can I enter for free?', a: `Yes. Post a postcard or letter with your details to the free entry address. ${postalSentence} Postal entries have exactly the same chance of winning.` },
   { q: 'How do I get my ticket numbers?', a: 'Ticket numbers are issued in order. Online entries get theirs by email straight after payment and can see them in their account. Postal entries are emailed once logged.' },
+  { q: 'What if not every ticket sells?', a: drawRule },
   { q: 'What happens if I win?', a: 'We contact you straight after the draw, verify your ID and arrange handover. Winners must be 18 or over.' },
 ];
 const jsonLd = {
@@ -74,6 +77,7 @@ const jsonLd = {
           <div><span class="label">Watch on</span><b>{ch.instagram ? `Instagram @${ch.instagram.handle}` : 'YouTube'}{ch.instagram && ch.youtube ? <> · <a href={ch.youtube.url}>YouTube</a></> : null}</b></div>
           <div><span class="label">Ticket numbers</span><b>Issued in order</b></div>
         </div>
+        <p class="small muted" style="margin: 0">{drawRule}</p>
       </section>
 
       <section class="stack block faq" data-reveal>
@@ -89,6 +93,14 @@ const jsonLd = {
         <h1 class="display panel-title">{c.title}</h1>
       </div>
       <div class="prices"><div><span class="label">Online</span><b>{money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
+      {postalLabel ? (
+        <div class="postal-deadline">
+          <span class="label">Free postal entries must be received by</span>
+          <b>{postalLabel} <span class="small">(UK time)</span></b>
+          {postNote ? <span class="small">{postNote}</span> : null}
+          <a href="/free-postal-entry" class="small">How to enter by post →</a>
+        </div>
+      ) : null}
       <EntryPanel competition={c} settings={settings} />
     </aside>
   </div>
@@ -116,6 +128,9 @@ const jsonLd = {
   .prices > div { padding: 14px 0; display: flex; flex-direction: column; gap: 4px; }
   .prices > div + div { padding-left: 20px; border-left: 1px solid var(--line-2); }
   .prices b { font-size: 30px; }
+  .postal-deadline { border: 1px solid #fff; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .postal-deadline b { font-size: 18px; line-height: 1.3; }
+  .postal-deadline a { color: inherit; }
   .gallery { display: flex; flex-direction: column; gap: 10px; }
   .main-img { position: relative; overflow: hidden; touch-action: pan-y; animation: fade 1s ease both; }
   .main-img img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: opacity .35s ease, transform 1.2s var(--ease); }
