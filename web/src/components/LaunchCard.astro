@@ -8,6 +8,9 @@ import type { CompetitionTeaser } from '../lib/types';
 import SignupForm from './SignupForm.astro';
 interface Props { teaser: CompetitionTeaser; id: string }
 const { teaser, id } = Astro.props;
+const opens = teaser.opensAt && Date.parse(teaser.opensAt) > Date.now()
+  ? new Date(teaser.opensAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' })
+  : null;
 const drawLabel = teaser.drawAt ? new Date(teaser.drawAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' }) : null;
 ---
 <article class="card lc">
@@ -17,6 +20,7 @@ const drawLabel = teaser.drawAt ? new Date(teaser.drawAt).toLocaleDateString('en
   </a>
   <div class="card__body lc-body">
     <h3 class="h3"><a href={`/competitions/${teaser.slug}`}>{teaser.title}</a></h3>
+    {opens ? <p class="small muted">Entries open {opens}</p> : null}
     {drawLabel ? <p class="small muted">Live draw {drawLabel}</p> : null}
     <p class="small">Entries open soon. Sign up and we'll email you first.</p>
     <SignupForm id={id} />
