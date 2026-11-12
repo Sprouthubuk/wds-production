@@ -27,7 +27,10 @@ use Sprouthub\Verity\Models\Winner as VerityWinner;
  */
 class VerityDrawEngine
 {
-    /** Verity's entry sources: online and event sales are both paid; postal entries are free, equal chances. */
+    /**
+     * Verity's entry sources: online and event sales are both paid; postal entries are free, equal chances.
+     * An online entry to a free competition (£0) is recorded as "free".
+     */
     public const SOURCE_FOR_CHANNEL = ['online' => 'paid', 'event' => 'paid', 'postal' => 'postal'];
 
     /**
@@ -112,6 +115,9 @@ class VerityDrawEngine
     public function addEntries(Competition $competition, Entrant $entrant, int $qty, array $owner): EntryGroup
     {
         $source = self::SOURCE_FOR_CHANNEL[$owner['channel']] ?? throw new EntryException("Unknown channel {$owner['channel']}.");
+        if ($source === 'paid' && $competition->isFree()) {
+            $source = 'free';
+        }
         $options = array_filter([
             'source' => $source,
             'host_ref' => self::hostRef($owner),

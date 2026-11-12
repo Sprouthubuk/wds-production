@@ -8,6 +8,7 @@ const routes: Record<string, string> = {
   break: '/me/break',
   'self-exclude': '/me/self-exclude',
   'id-upload': '/me/verification',
+  'verify-email': '/me/verify-email',
 };
 
 export const POST: APIRoute = async ({ params, request, cookies }) => {

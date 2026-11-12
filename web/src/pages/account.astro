@@ -36,6 +36,14 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
       <a href="/competitions" class="btn">Enter a competition</a>
     </div>
   </section>
+  {Astro.url.searchParams.get('email') === 'verified' ? <div class="container"><p class="alert" style="margin-top: 24px" role="status">Thanks, your email is confirmed. You can enter free competitions now.</p></div> : null}
+  {Astro.url.searchParams.get('email') === 'link-invalid' ? <div class="container"><p class="alert" style="margin-top: 24px" role="status">That link is for an email address this account no longer uses. Ask for a new link below.</p></div> : null}
+  {!me.emailVerified ? (
+    <div class="container"><div class="alert" style="margin-top: 24px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between" data-verify-email>
+      <span>Please confirm your email address ({me.email}). You need it confirmed to enter free competitions.</span>
+      <button type="button" class="btn btn--outline" data-verify-resend>Send the link again</button>
+    </div></div>
+  ) : null}
   {usingSampleData ? <div class="container"><p class="alert" style="margin-top: 24px">Preview mode: this account page is showing sample data until the API is connected.</p></div> : null}
   {me.selfExcludedUntil ? <div class="container"><p class="alert" style="margin-top: 24px">Your account is self-excluded until {fmtDate(me.selfExcludedUntil)}. You can't enter competitions until then.</p></div> : null}
 
@@ -170,6 +178,14 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
 </style>
 
 <script>
+  // "Send the link again" (confirm your email).
+  document.querySelector<HTMLButtonElement>('[data-verify-resend]')?.addEventListener('click', async (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    btn.disabled = true;
+    const res = await fetch('/api/account/verify-email', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: '{}' }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
+    btn.replaceWith(Object.assign(document.createElement('span'), { className: 'small', textContent: data.message ?? 'Please try again in a few minutes.' }));
+  });
   const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-tab]'));
   const panes = Array.from(document.querySelectorAll<HTMLElement>('[data-pane]'));
   const show = (key: string) => {

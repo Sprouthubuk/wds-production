@@ -119,7 +119,12 @@ class CompetitionController extends Controller
             'images' => ['array'], 'images.*.src' => ['required', 'string'], 'images.*.alt' => ['nullable', 'string', 'max:200'],
             'description' => ['array'], 'description.*' => ['string', 'max:3000'],
             'specs' => ['array'], 'specs.*.label' => ['required', 'string', 'max:60'], 'specs.*.value' => ['required', 'string', 'max:120'],
-            'ticketPrice' => [$existing ? 'sometimes' : 'required', 'numeric', 'min:0.1', 'max:1000'],
+            // 0 = a free competition ("Enter free", one online entry per verified account, no bundles).
+            'ticketPrice' => [$existing ? 'sometimes' : 'required', 'numeric', 'max:1000', function ($attr, $value, $fail) {
+                if ((float) $value !== 0.0 && (float) $value < 0.1) {
+                    $fail('The ticket price is 0 (free) or at least £0.10.');
+                }
+            }],
             'bundles' => ['array'], 'bundles.*.qty' => ['required', 'integer', 'min:2'], 'bundles.*.price' => ['required', 'numeric', 'min:0.1'],
             'totalTickets' => [$existing ? 'sometimes' : 'required', 'integer', 'min:1', 'max:1000000'],
             'maxPerPerson' => [$existing ? 'sometimes' : 'required', 'integer', 'min:1'],
@@ -153,6 +158,11 @@ class CompetitionController extends Controller
         if (array_key_exists('bundles', $d)) {
             $out['bundles'] = collect($d['bundles'])->map(fn ($b) => ['qty' => (int) $b['qty'], 'price_pence' => Money::pence($b['price'])])->sortBy('qty')->values()->all();
         }
+        $price = $out['ticket_price_pence'] ?? $existing?->ticket_price_pence;
+        if ($price !== null && (int) $price === 0 && ! empty($out['bundles'] ?? $existing?->bundles)) {
+            throw \Illuminate\Validation\ValidationException::withMessages(['bundles' => 'A free competition has no bundles.']);
+        }
+
         if (! $existing || array_key_exists('slug', $d)) {
             $out['slug'] = $d['slug'] ?? Str::slug($d['title'] ?? $existing?->title);
         }

@@ -69,6 +69,31 @@ final class ClientDrafts
                 'event_sales_enabled' => true,
                 'sort_order' => 2,
             ],
+            'bespoke-built-bedside-engine-table' => [
+                'title' => 'Bespoke Built Bedside Engine Table',
+                'strapline' => 'A one-off bedside table built around an engine. Free to enter.',
+                'category' => 'merch',
+                'status' => 'draft',
+                'images' => [['src' => self::PLACEHOLDER_IMAGE, 'alt' => 'Bespoke built bedside engine table: photos coming soon']],
+                'description' => [
+                    'A bespoke bedside table built around an engine, made by WDS Originals.',
+                    'Free to enter: one entry per verified account online, or enter free by post.',
+                ],
+                'specs' => [['label' => 'Entry', 'value' => 'Free']],
+                'ticket_price_pence' => 0,
+                'bundles' => [],
+                // Not confirmed by the client yet: the number of entries and the per-person maximum.
+                'total_tickets' => 1000,
+                'max_per_person' => 1,
+                'cash_alternative_pence' => null,
+                'opens_at' => null,
+                'closes_at' => null,
+                'postal_closes_at' => null,
+                'draw_at' => null,
+                'postal_entry_enabled' => true,
+                'event_sales_enabled' => false,
+                'sort_order' => 3,
+            ],
         ];
     }
 }

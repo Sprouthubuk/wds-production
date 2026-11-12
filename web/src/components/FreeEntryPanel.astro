@@ -1,0 +1,133 @@
+---
+/**
+ * The entry panel for a free competition (ticket price £0): no bundles, basket or payment. One online
+ * entry per signed-in account with a confirmed email; the free postal route is there as usual.
+ * States: preview · not signed in · email not confirmed · already entered · can enter.
+ */
+import type { Competition } from '../lib/types';
+import type { Me } from '../lib/session';
+import { odds, percentSold } from '../lib/pricing';
+import { countdownParts } from '../lib/countdown';
+import { postalDeadlineSentence } from '../lib/postal';
+
+interface Props { competition: Competition; me: Me | null; entered: string[] | null }
+const { competition: c, me, entered } = Astro.props;
+const left = Math.max(0, c.totalTickets - c.ticketsSold);
+const pct = percentSold(c.ticketsSold, c.totalTickets);
+const cd = c.drawAt ? countdownParts(c.drawAt) : null;
+const here = `/competitions/${c.slug}`;
+---
+<div class="free" data-free-entry data-id={c.id}>
+  <div class="odds-strip">
+    <div><span>Entry</span><b class="num">Free</b></div>
+    <div><span>Odds per entry</span><b class="num">{odds(c.totalTickets)}</b></div>
+  </div>
+  <div class="sold">
+    <div class="progress" role="progressbar" aria-label="Entries taken" aria-valuemin="0" aria-valuemax="100" aria-valuenow={pct}><span style={`width:${pct}%`}></span></div>
+    <div class="sold-foot num small"><span><strong>{c.ticketsSold.toLocaleString('en-GB')}</strong> entered</span><span><strong>{left.toLocaleString('en-GB')}</strong> places left</span></div>
+  </div>
+  {cd && c.drawAt ? (
+    <div class="countdown" data-countdown={c.drawAt}>
+      <div><b data-unit="d">{cd.d}</b><small>Days</small></div>
+      <div><b data-unit="h">{cd.h}</b><small>Hrs</small></div>
+      <div><b data-unit="m">{cd.m}</b><small>Mins</small></div>
+      <div><b data-unit="s">{cd.s}</b><small>Secs</small></div>
+    </div>
+  ) : null}
+
+  {c.preview ? (
+    <button type="button" class="btn btn--block btn--lg" disabled>Preview: entries disabled</button>
+  ) : left === 0 ? (
+    <p class="alert">All places have gone. Free postal entries already received are included in the draw.</p>
+  ) : entered && entered.length ? (
+    <div class="state">
+      <strong>You're in. Good luck!</strong>
+      <span class="small muted">Your ticket number: <span class="mono">#{entered.join(', #')}</span>. It's also in <a href="/account">your account</a>.</span>
+    </div>
+  ) : !me ? (
+    <div class="state">
+      <strong>Sign in to enter free</strong>
+      <span class="small muted">One free entry per account. You'll need to confirm your email address.</span>
+      <div class="btn-pair">
+        <a class="btn" href={`/sign-in?next=${encodeURIComponent(here)}`}>Sign in</a>
+        <a class="btn btn--outline" href={`/sign-in?next=${encodeURIComponent(here)}#register`}>Create an account</a>
+      </div>
+    </div>
+  ) : !me.emailVerified ? (
+    <div class="state">
+      <strong>Confirm your email to enter</strong>
+      <span class="small muted">We emailed a link to {me.email}. Open it, then come back to this page.</span>
+      <button type="button" class="btn btn--outline" data-resend>Send the link again</button>
+      <p class="small" data-resend-msg role="status" hidden></p>
+    </div>
+  ) : (
+    <form class="stack" style="gap: 12px" data-free-form novalidate>
+      <label class="check small"><input type="checkbox" name="ageConfirmed" required /> I'm 18 or over and live in the UK</label>
+      <label class="check small"><input type="checkbox" name="termsAccepted" required /> I accept the <a href="/terms" target="_blank">terms &amp; conditions</a></label>
+      <label class="check small"><input type="checkbox" name="marketingOptIn" /> Email me about new competitions and live draws (optional)</label>
+      <button type="submit" class="btn btn--block btn--lg">Enter free</button>
+      <p class="small" data-free-msg role="alert" hidden></p>
+      <span class="small muted">One entry per account. Entering as {me.email}.</span>
+    </form>
+  )}
+
+  <div class="post small muted">Or enter free by post: <a href="/free-postal-entry">how to enter by post</a>. {postalDeadlineSentence(c)}</div>
+</div>
+
+<style>
+  .free { display: flex; flex-direction: column; gap: 18px; }
+  .odds-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #fff; color: #000; }
+  .odds-strip > div { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+  .odds-strip > div + div { border-left: 1px solid #000; }
+  .odds-strip span { font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; }
+  .odds-strip b { font-size: 28px; line-height: 1; letter-spacing: -0.02em; }
+  .sold { display: flex; flex-direction: column; gap: 8px; }
+  .sold-foot { display: flex; justify-content: space-between; }
+  .countdown { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .countdown > div { border: 1px solid var(--line-2); padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .countdown b { font-size: 24px; line-height: 1; }
+  .countdown small { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); }
+  .state { border: 1px solid var(--line-2); padding: 18px; display: flex; flex-direction: column; gap: 10px; }
+  .check { display: flex; gap: 10px; align-items: flex-start; line-height: 1.5; }
+  .check input { margin-top: 3px; width: 18px; height: 18px; flex: none; accent-color: #fff; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .post { border-top: 1px solid var(--line-2); padding-top: 14px; line-height: 1.6; }
+  [data-free-msg]:not([hidden]) { border-left: 2px solid #fff; padding-left: 10px; margin: 0; }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-free-entry]').forEach((panel) => {
+    const id = panel.dataset.id;
+    const form = panel.querySelector<HTMLFormElement>('[data-free-form]');
+    const msg = panel.querySelector<HTMLElement>('[data-free-msg]');
+    form?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const f = new FormData(form);
+      const show = (text: string) => { if (msg) { msg.textContent = text; msg.hidden = false; } };
+      if (!f.get('ageConfirmed') || !f.get('termsAccepted')) return show('Please confirm you are 18 or over and live in the UK, and accept the terms.');
+      const btn = form.querySelector<HTMLButtonElement>('button[type=submit]')!;
+      btn.disabled = true; btn.textContent = 'Entering…';
+      try {
+        const res = await fetch(`/api/free-entry/${id}`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+          body: JSON.stringify({ ageConfirmed: true, termsAccepted: true, marketingOptIn: Boolean(f.get('marketingOptIn')) }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.redirectUrl) { window.location.href = data.redirectUrl; return; }
+        show(data.message ?? 'Something went wrong. Please try again.');
+      } catch {
+        show('We couldn\'t reach the server. Please try again.');
+      }
+      btn.disabled = false; btn.textContent = 'Enter free';
+    });
+
+    const resend = panel.querySelector<HTMLButtonElement>('[data-resend]');
+    const resendMsg = panel.querySelector<HTMLElement>('[data-resend-msg]');
+    resend?.addEventListener('click', async () => {
+      resend.disabled = true;
+      const res = await fetch('/api/account/verify-email', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: '{}' }).catch(() => null);
+      const data = res ? await res.json().catch(() => ({})) : {};
+      if (resendMsg) { resendMsg.textContent = data.message ?? 'Please try again in a few minutes.'; resendMsg.hidden = false; }
+    });
+  });
+</script>

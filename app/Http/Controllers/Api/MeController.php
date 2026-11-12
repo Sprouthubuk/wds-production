@@ -42,7 +42,14 @@ class MeController extends Controller
         if (array_key_exists('address', $data)) $user->address = $data['address'];
         if (array_key_exists('marketingOptIn', $data)) $user->marketing_opt_in = $data['marketingOptIn'];
         $user->name = trim($user->first_name.' '.$user->last_name);
+        $emailChanged = $user->isDirty('email');
+        if ($emailChanged) {
+            $user->email_verified_at = null;   // the new address has to be confirmed
+        }
         $user->save();
+        if ($emailChanged) {
+            \Illuminate\Support\Facades\Mail::to($user->email)->queue(new \App\Mail\VerifyEmail($user));
+        }
 
         return response()->json(['message' => 'Details saved.', 'data' => new MeResource($user)]);
     }

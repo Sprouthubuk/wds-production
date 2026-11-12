@@ -183,7 +183,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
       <div class="container">
         <img src={featured.images[1]?.src.replace('.jpg', '-720.jpg') ?? ''} alt="" width="64" height="48" class="sb-img" />
         <div class="stack sb-text"><strong>{featured.title}</strong><span class="small muted num">Live draw in <span data-countdown={featured.drawAt} data-countdown-text>{countdownParts(featured.drawAt).text}</span> · {percentSold(featured.ticketsSold, featured.totalTickets)}% sold</span></div>
-        <div class="btn-pair sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">Enter · {money(featured.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>
+        <div class="btn-pair sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">{featured.ticketPrice === 0 ? 'Enter free' : <>Enter · {money(featured.ticketPrice)}</>}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>
       </div>
     </div>
   ) : null}

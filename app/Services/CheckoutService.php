@@ -69,6 +69,9 @@ class CheckoutService
                 if (! $c->isOpen()) {
                     throw new EntryException("{$c->title} is closed for entries.");
                 }
+                if ($c->isFree()) {
+                    throw new EntryException("{$c->title} is free to enter: use Enter free on its page.");
+                }
                 if ($channel === 'event' && ! $c->event_sales_enabled) {
                     throw new EntryException("{$c->title} isn't available for event sales.");
                 }

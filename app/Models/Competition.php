@@ -21,6 +21,12 @@ class Competition extends Model
     /** Verity seals the entries; the winner is drawn on the livestream with our own RNG and recorded. */
     public const DRAW_EXTERNAL = 'external';
 
+    /** A free competition (ticket price £0): "Enter free", one online entry per verified account, no payment. */
+    public function isFree(): bool
+    {
+        return (int) $this->ticket_price_pence === 0;
+    }
+
     public function drawsExternally(): bool
     {
         return ($this->draw_method ?? self::DRAW_VERITY) === self::DRAW_EXTERNAL;

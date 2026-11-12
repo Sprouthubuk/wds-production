@@ -3,6 +3,9 @@ import { drawChannels } from '../../lib/channels';
 import { POSTAL_HOURS_BEFORE_CLOSE, postalBy, postalDeadlineSentence, seasonalPostNote } from '../../lib/postal';
 import Layout from '../../layouts/Layout.astro';
 import EntryPanel from '../../components/EntryPanel.astro';
+import FreeEntryPanel from '../../components/FreeEntryPanel.astro';
+import { api } from '../../lib/api';
+import { currentUser, getToken } from '../../lib/session';
 import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
 import { money, percentSold, priceFor } from '../../lib/pricing';
 import { countdownParts } from '../../lib/countdown';
@@ -16,6 +19,13 @@ if (!c) {
   return Astro.rewrite('/404');
 }
 const ch = drawChannels(settings);
+// A free competition (£0): one online entry per verified account, no basket. The panel depends on who's looking.
+const free = c.ticketPrice === 0;
+const me = free ? await currentUser(Astro.cookies) : null;
+const entered = free && me
+  ? await api<{ data: { slug: string; online: string[] }[] }>('/me/entries', { token: getToken(Astro.cookies) })
+    .then((r) => r.data.find((e) => e.slug === c.slug)?.online ?? null).catch(() => null)
+  : null;
 const drawDate = c.drawAt ? new Date(c.drawAt) : null;
 const drawLabel = drawDate ? drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'To be confirmed';
 const postalLabel = postalBy(c);
@@ -35,7 +45,7 @@ const jsonLd = {
   description: c.strapline, offers: { '@type': 'Offer', priceCurrency: 'GBP', price: c.ticketPrice.toFixed(2), availability: c.ticketsSold < c.totalTickets ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut' },
 };
 ---
-<Layout title={c.title} description={`Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
+<Layout title={c.title} description={free ? `Win the ${c.title}. Free to enter online or by post. ${ch.drawnLive}.` : `Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="container crumbs"><a href="/">Home</a> / <a href="/competitions">Competitions</a> / <span>{c.title}</span></div>
 
@@ -92,7 +102,7 @@ const jsonLd = {
         <span class="eyebrow">Win this {c.category === 'cars' ? 'car' : 'prize'}</span>
         <h1 class="display panel-title">{c.title}</h1>
       </div>
-      <div class="prices"><div><span class="label">Online</span><b>{money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
+      <div class="prices"><div><span class="label">Online</span><b>{free ? 'Free' : money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
       {postalLabel ? (
         <div class="postal-deadline">
           <span class="label">Free postal entries must be received by</span>
@@ -101,7 +111,7 @@ const jsonLd = {
           <a href="/free-postal-entry" class="small">How to enter by post →</a>
         </div>
       ) : null}
-      <EntryPanel competition={c} settings={settings} />
+      {free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} />}
     </aside>
   </div>
 
@@ -110,7 +120,7 @@ const jsonLd = {
       <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">{c.drawAt ? <>Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · </> : null}{percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
       {pre.on
         ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
-        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>Enter · from {money(c.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>}
+        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>}
     </div>
   </div>
 </Layout>
