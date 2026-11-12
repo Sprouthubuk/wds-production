@@ -2,7 +2,7 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, localInput, when } from '../../lib/admin';
 import type { Competition } from '../../lib/types';
-import { ukDateTime } from '../../lib/postal';
+import { postalBy } from '../../lib/postal';
 interface Row { id: number; competition: string; name: string; email: string; receivedOn: string; receivedAt: string; status: string; reason: string | null; ticket: string | null }
 const [page, comps] = await Promise.all([
   adminGet<{ data: Row[] }>(Astro.cookies, '/postal'),
@@ -10,11 +10,7 @@ const [page, comps] = await Promise.all([
 ]);
 const nowLocal = localInput(new Date().toISOString());
 // "Tuesday 22 December 2026, 6:00pm": the competition's actual postal close (its own, or 48 hours before close).
-const deadline = (c: Competition) => {
-  if (!c.postalClosesAt) return '';
-  const [time, date] = ukDateTime(c.postalClosesAt).split(' on ');
-  return `${date}, ${time}`;
-};
+const deadline = (c: Competition) => postalBy(c) ?? '';
 const hint = (c?: Competition) => (c && deadline(c) ? `UK time. Must be on or before the postal deadline (${deadline(c)}).` : 'UK time. Must be on or before the postal deadline.');
 ---
 <AdminLayout title="Postal entries" active="postal" staffOk>

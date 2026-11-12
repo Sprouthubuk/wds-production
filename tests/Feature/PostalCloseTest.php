@@ -55,7 +55,7 @@ class PostalCloseTest extends TestCase
         $this->assertNull($c->postal_closes_at);
         $this->assertSame('2026-12-22 18:00:00', $c->postalClosesAt()->toDateTimeString());
         $this->assertSame(
-            'Postal entries must be received at least 48 hours before close: by 6:00pm on Tuesday 22 December 2026 (UK time).',
+            'Postal entries must be received at least 48 hours before close: by Tuesday 22 December 2026, 6:00pm (UK time).',
             $c->postalDeadlineSentence(),
         );
     }
@@ -65,7 +65,7 @@ class PostalCloseTest extends TestCase
         $c = $this->competition(['postal_closes_at' => '2026-12-20 09:00:00']);
 
         $this->assertSame('2026-12-20 09:00:00', $c->postalClosesAt()->toDateTimeString());
-        $this->assertSame('Postal entries must be received by 9:00am on Sunday 20 December 2026 (UK time).', $c->postalDeadlineSentence());
+        $this->assertSame('Postal entries must be received by Sunday 20 December 2026, 9:00am (UK time).', $c->postalDeadlineSentence());
     }
 
     public function test_received_47h59m_before_close_is_rejected(): void
@@ -118,7 +118,7 @@ class PostalCloseTest extends TestCase
 
         $html = (new PostalEntryLogged($in))->render();
         $this->assertStringContainsString('#'.$in->ticket->display(100), $html);
-        $this->assertStringContainsString('at least 48 hours before close: by 6:00pm on Tuesday 22 December 2026', $html);
+        $this->assertStringContainsString('at least 48 hours before close: by Tuesday 22 December 2026, 6:00pm', $html);
         $this->assertStringContainsString('company no. 13330886', $html);
 
         $rejected = new PostalEntryLogged($out);

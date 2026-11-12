@@ -169,15 +169,21 @@ class Competition extends Model
     /**
      * The postal deadline in words, with the exact UK date and time, for emails (the website builds
      * the same sentence in web/src/lib/postal.ts):
-     * "Postal entries must be received at least 48 hours before close: by 6:00pm on Tuesday 22 December 2026 (UK time)."
+     * "Postal entries must be received at least 48 hours before close: by Tuesday 22 December 2026, 7:00pm (UK time)."
      */
+    /** A moment as the site shows deadlines, in UK time: "Tuesday 22 December 2026, 7:00pm" (web: ukDateTime()). */
+    public static function ukDeadline(\DateTimeInterface $at): string
+    {
+        return \Illuminate\Support\Carbon::instance($at)->copy()->timezone('Europe/London')->format('l j F Y, g:ia');
+    }
+
     public function postalDeadlineSentence(): ?string
     {
         $by = $this->postalClosesAt();
         if (! $by) {
             return null;
         }
-        $when = $by->copy()->timezone('Europe/London')->format('g:ia').' on '.$by->copy()->timezone('Europe/London')->format('l j F Y');
+        $when = self::ukDeadline($by);
 
         return $this->postal_closes_at
             ? "Postal entries must be received by {$when} (UK time)."
