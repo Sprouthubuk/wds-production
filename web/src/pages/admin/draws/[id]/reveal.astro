@@ -137,7 +137,7 @@ Astro.response.headers.set('Cache-Control', 'no-store');
     $('[data-title]').textContent = s.competition.title;
     $('[data-entries]').textContent = s.entries.toLocaleString('en-GB');
     $('[data-foot-method]').textContent = s.method === 'external'
-      ? 'External draw on this livestream · entries sealed by Verity'
+      ? ((s as any).externalKind === 'physical' ? 'Drawn by hand from numbered tokens on this livestream · entries sealed by Verity' : 'External draw on this livestream · entries sealed by Verity')
       : 'Verity draw on drand, the public randomness beacon';
 
     const drawn = !!s.ticket;

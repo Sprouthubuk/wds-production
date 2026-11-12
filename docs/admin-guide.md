@@ -36,13 +36,15 @@ Under **Tickets**:
 
 - **Ticket price £**: the price of one ticket.
 - **Total tickets**: the most that can ever be sold. This includes free postal entries.
-- **Max per person**: the most tickets one person can hold, across all routes.
+- **Max per person** (optional): the most tickets one person can hold, across all routes. Leave it empty for no
+  limit (the BMW and the coilovers have none). When it's empty, the site doesn't mention a maximum.
 - **Bundles**: press **+ Add bundle** for each deal, e.g. 3 for £40 or 10 for £125. The site shows each bundle's
   saving and its odds, worked out from the total tickets (e.g. "1 in 250 chance" for 3 tickets out of 750).
 
 **A free competition:** set the ticket price to **0**. The button then says "Enter free" and each verified
-account can enter once online, plus free postal entry. Free competitions can't have bundles and aren't sold at
-events.
+account can enter online, up to the max per person (usually 1). Free competitions have **no postal route**:
+the site hides the postal link and copy for them, and postal entries for them are rejected. They can't have bundles
+and aren't sold at events.
 
 ## 3. Dates
 
@@ -117,33 +119,59 @@ The usual maximum per person applies, and every sale appears under **Event sales
 
 ## 8. Running a live draw
 
-Every published competition has a card on **Draws**, with its method. There are two methods, and you choose one
-before publishing (**How it's drawn**).
+Every published competition has a card on **Draws**, with its method. There are three methods. You choose one
+before publishing, under **How it's drawn**, and it can't change afterwards. The three December competitions
+(the engine table, the coilovers and the BMW) are all **physical draws**.
 
-On either method:
+Whichever method you use:
 
 - Open the **reveal screen** for the stream with **Open reveal screen ↗**. It shows the entry count, the
   countdown, and then the winning ticket. Use **Rehearse** to practise with made-up data.
 - **No button can change a result.** If a winner forfeits (for example, they can't be reached or don't pass the
-  checks), the system draws a replacement on a new public draw. The original winner stays on the record.
+  checks), the system draws a replacement. The original winner stays on the record.
 
 ### Method A: Verity draw (automatic)
 
 - At the closing time, the system **seals the list of entries** and timestamps it, so no entry can be added or
   removed.
 - The winner is then picked from a public random number (drand) that nobody, including us, can know in advance.
-  It happens on its own, a short time after the close. Leave the reveal screen up on the stream: it counts down,
+  This happens on its own, a short time after the close. Leave the reveal screen up on the stream: it counts down,
   then shows **Reveal the winner**. Press it (or the Space bar) when you're ready.
 - **Close & draw now** closes entries immediately and draws on the next public number about a minute later. Only
   use it if you mean to close early, live on the stream.
 
-### Method B: external draw (random number generator on the stream)
+### Method B: random number generator on the stream
 
-1. Before publishing, set the **Random number tool** you'll use and **Its link**.
-2. On the stream, press **Close entries**. This seals the entry list.
-3. Use that tool, on camera, to pick a number from 1 to the number of entries.
+1. Before publishing, set the **Random number tool** you'll use and **Its link**. The link is required.
+2. On the stream, press **Close entries**. This seals the entry list, together with the tool.
+3. Use that tool on camera to pick a ticket from the sealed list. **Download the sealed entry list** shows every
+   ticket on it.
 4. Enter the **Winning ticket number** and the **Livestream link**, and press **Record result**. The system checks
    the ticket is on the sealed list. It doesn't pick it for you.
+
+### Method C: physical draw (numbered tokens)
+
+This method needs no link. You'll need an **independent witness**: someone not connected to WDS who watches the draw
+from start to finish.
+
+1. Entries close at the closing time, or press **Close entries** on the stream. This seals the entry list.
+2. On the competition's card on **Draws**, open the **Chip sheet**. It shows:
+   - every valid ticket number: online, postal and event entries, without refunded or withdrawn ones;
+   - how many there are;
+   - the sealed fingerprint.
+
+   Press **Print / save as PDF**, or **Download CSV**.
+3. Make or check one numbered token for every number on the sheet. With the witness, count the tokens. The total
+   must match the sheet exactly. Then sign the bottom of the sheet.
+4. On the live stream, with the witness watching, mix the tokens and draw one by hand. Show it to the camera.
+5. Enter the **Winning ticket number** and the **Livestream link**, and press **Record result**. The system checks
+   the ticket is on the sealed list.
+
+The certificate and the /verify page say: "Drawn by hand from numbered tokens on a live stream, supervised by an
+independent witness. Verity verified the sealed entry list and that the winning ticket was on it."
+
+On Christmas Eve all three close at 19:00 and are drawn live from 19:30, in this order: **engine table, then coilovers,
+then BMW**. Print all three chip sheets as soon as entries close.
 
 ## 9. Publishing the result
 
@@ -163,6 +191,6 @@ they've agreed.
 - [ ] Prize details, photos (main photo first), highlights, cash alternative if any.
 - [ ] Price, total tickets, max per person, bundles.
 - [ ] Opens / Closes / Live draw. Postal deadline (leave empty for 48 hours before close).
-- [ ] Draw method (and the tool, for an external draw).
+- [ ] Draw method (and the tool and its link, for a random number generator draw).
 - [ ] Preview link checked.
 - [ ] **Publish and lock the draw**. Remember: permanent.

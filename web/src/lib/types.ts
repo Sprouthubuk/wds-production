@@ -71,6 +71,7 @@ export interface DrawResult {
   /** The draw reference (e.g. WDS-7KQ2MX) and method (A: verity, B: external) of a published draw. */
   reference?: string | null;
   method?: 'verity' | 'external';
+  externalKind?: 'rng' | 'physical' | null;
 }
 
 /** A competition that isn't live yet: only what the public may see (never prices or ticket counts). */
