@@ -10,6 +10,7 @@ import { getCompetitions, getSettings, getUpcoming, getWinners } from '../lib/ap
 import { money, odds, percentSold } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
 import { drawChannels } from '../lib/channels';
+import { launchCountdown } from '../lib/prelaunch';
 
 const [competitions, settings, winners, upcoming] = await Promise.all([getCompetitions(), getSettings(), getWinners(), getUpcoming()]);
 const ch = drawChannels(settings);
@@ -24,6 +25,7 @@ const ticker = prelaunch
   : featured
   ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every competition', ch.drawnLive, '18+ UK only']
   : ['Free postal entry on every competition', ch.drawnLive, '18+ UK only'];
+const launchCd = prelaunch ? launchCountdown(prelaunch) : null;
 const specs = featured?.specs ?? [];
 const spec = (label: string) => specs.find((s) => s.label.toLowerCase() === label.toLowerCase())?.value;
 const drawTime = featured ? new Date(featured.drawAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '';
@@ -168,7 +170,15 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
     </div>
   </section>
 
-  {featured ? (
+  {prelaunch ? (
+    <div class="sticky-bar" slot="after">
+      <div class="container">
+        {prelaunch.image ? <img src={prelaunch.image.src} alt="" width="64" height="48" class="sb-img" /> : null}
+        <div class="stack sb-text"><strong>{prelaunch.title}</strong>{launchCd ? <span class="small muted num">{launchCd.label} <span data-countdown={launchCd.at} data-countdown-text>{countdownParts(launchCd.at).text}</span></span> : <span class="small muted">Coming soon</span>}</div>
+        <div class="sb-btns"><a href="#first-access" class="btn">Get first access</a></div>
+      </div>
+    </div>
+  ) : featured ? (
     <div class="sticky-bar" slot="after">
       <div class="container">
         <img src={featured.images[1]?.src.replace('.jpg', '-720.jpg') ?? ''} alt="" width="64" height="48" class="sb-img" />

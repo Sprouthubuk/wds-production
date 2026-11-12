@@ -75,6 +75,8 @@ export interface CompetitionTeaser {
   slug: string;
   title: string;
   image: { src: string; alt: string } | null;
+  /** When entries open (optional); the pre-launch countdown targets it while it's still ahead. */
+  opensAt?: string | null;
   drawAt: string | null;
 }
 
