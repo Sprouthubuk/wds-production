@@ -24,12 +24,18 @@ const published = draws.filter((d) => d.id && d.verifyUrl); // newest first, as 
 const upcoming = draws.filter((d) => !d.id).sort((a, b) => a.drawAt.localeCompare(b.drawAt));
 const nextDrawAt = upcoming[0]?.drawAt ?? (await prelaunchState(Astro.locals)).upcoming?.drawAt ?? null;
 const day = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }) : null);
-const description = 'Check any WDS Competitions draw yourself: the entries were sealed before the draw, the randomness is public, and every step re-runs in your browser.';
+const description = 'Check any WDS Competitions draw yourself: entries are sealed before every draw, Verity draws use public randomness, and external draws are proven to come from the sealed entry list.';
 ---
 <Layout title="Verify a draw" description={description}>
-  <PageHero eyebrow="Verify a draw" title="Check any draw yourself" intro="Every entry is sealed and fingerprinted before the draw. The winner comes from public randomness that nobody, including us, can predict or choose. Anyone can re-check it: each draw's page re-runs every step in your own browser." />
+  <PageHero eyebrow="Verify a draw" title="Check any draw yourself">
+    <div class="hero-lines">
+      <p class="lead">Entries are sealed and fingerprinted before every draw, and anyone can re-check each draw in their own browser.</p>
+      <p class="lead">Verity draws use public randomness that nobody, including us, can predict or choose.</p>
+      <p class="lead">External draws are made live on a linked livestream, and Verity proves the winning ticket was on the sealed list.</p>
+    </div>
+  </PageHero>
   <section class="section">
-    <div class="container stack" style="gap: 40px; max-width: 960px">
+    <div class="container"><div class="stack" style="gap: 40px; max-width: 960px">
       <form class="lookup stack" method="get" action="/verify" role="search" aria-labelledby="lookup-title" data-reveal>
         <h2 id="lookup-title" class="display display--s" style="margin: 0">Look up a draw</h2>
         <div class="lookup-row">
@@ -65,11 +71,13 @@ const description = 'Check any WDS Competitions draw yourself: the entries were 
         )}
         <p class="small muted" style="margin: 0"><strong>A · Verity draw:</strong> the winner is computed from a public drand round committed when entries closed, and anyone can re-run it. <strong>B · External draw:</strong> Verity sealed the entry list and checks the winning ticket was on it; the pick itself was made on the linked livestream.</p>
       </div>
-    </div>
+    </div></div>
   </section>
 </Layout>
 
 <style>
+  .hero-lines { display: flex; flex-direction: column; gap: 8px; }
+  .hero-lines .lead { margin: 0; }
   .lookup { border: 1px solid var(--line-2); padding: 28px; gap: 14px; }
   .lookup-row { display: flex; gap: 12px; align-items: flex-end; }
   .lookup-row .btn { min-width: 140px; }
