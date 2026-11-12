@@ -3,7 +3,7 @@
       <tr><td style="font-size:40px;font-weight:700;padding:8px 0 16px">You've won, {{ $first }}.</td></tr>
       <tr><td style="padding-bottom:16px"><span style="display:inline-block;background:#fff;color:#000;font-family:Menlo,Consolas,monospace;font-size:22px;font-weight:700;padding:8px 14px">#{{ $ticket }}</span></td></tr>
       <tr><td style="font-size:16px;line-height:1.6;color:#d0d0d0;padding-bottom:20px">
-        Your ticket was drawn as the winner of <strong style="color:#fff">{{ $winner->prize ?: $winner->competition->title }}</strong>. Here's what happens next:<br>
+        Your ticket was drawn as the winner of <strong style="color:#fff">{{ $winner->prize ?: $winner->competition->title }}</strong>@if ($cashAlternative) (or {{ $cashAlternative }} cash alternative)@endif. Here's what happens next:<br>
         1. We'll call and email you to arrange the handover.<br>
         2. Upload photo ID in your account so we can confirm you're 18 or over. The prize is handed over once it's approved.<br>
         3. Collect your prize, or we'll arrange delivery where that's offered.
