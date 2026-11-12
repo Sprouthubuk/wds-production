@@ -13,7 +13,7 @@ import { usingSampleData } from '../../../../lib/api';
 import { sampleCompetitions } from '../../../../data/sample';
 
 const admin = await currentAdmin(Astro.cookies);
-if (!admin) return Astro.redirect('/admin/sign-in');
+if (!admin) return Astro.redirect(`/sign-in?next=${encodeURIComponent(Astro.url.pathname)}`); // normally handled by src/middleware.ts
 const id = Number(Astro.params.id);
 const rehearse = Astro.url.searchParams.has('rehearse');
 

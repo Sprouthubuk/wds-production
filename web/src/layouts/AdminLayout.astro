@@ -2,11 +2,13 @@
 import '../styles/global.css';
 import { currentAdmin } from '../lib/admin';
 import { usingSampleData } from '../lib/api';
+import { signInUrl } from '../lib/auth-gate';
 
 interface Props { title: string; active: string; staffOk?: boolean }
 const { title, active, staffOk = false } = Astro.props;
-const admin = await currentAdmin(Astro.cookies);
-if (!admin) return Astro.redirect('/admin/sign-in');
+// Signed in by src/middleware.ts (which redirects to /sign-in?next=… otherwise).
+const admin = Astro.locals.admin ?? (await currentAdmin(Astro.cookies));
+if (!admin) return Astro.redirect(signInUrl(Astro.url.pathname + Astro.url.search));
 if (!admin.isAdmin && !staffOk) return Astro.redirect('/admin/event-sales');
 
 const nav = [

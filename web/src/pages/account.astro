@@ -9,7 +9,7 @@ import { countdownParts } from '../lib/countdown';
 interface Entry { competition: string; slug: string; image: string; drawAt: string; totalTickets: number; status: string; online: string[]; postal: string[]; won: boolean }
 interface OrderRow { reference: string; createdAt: string; competition: string; tickets: number; total: number; status: string; key: string }
 
-const me = await currentUser(Astro.cookies);
+const me = Astro.locals.user ?? (await currentUser(Astro.cookies)); // signed in by src/middleware.ts
 if (!me) return Astro.redirect('/sign-in?next=/account');
 let entries: Entry[] = [];
 let orders: OrderRow[] = [];

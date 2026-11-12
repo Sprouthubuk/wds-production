@@ -5,7 +5,7 @@ import { sampleAdmin } from '../data/sample-admin';
 
 export interface AdminUser extends Me { isStaff: boolean }
 
-/** The signed-in staff member, or null (→ redirect to /admin/sign-in). */
+/** The signed-in staff member, or null (src/middleware.ts redirects to /sign-in?next=… first). */
 export async function currentAdmin(cookies: AstroCookies): Promise<AdminUser | null> {
   if (usingSampleData) return { ...sampleMe, firstName: 'Jason', lastName: 'Wood', isAdmin: true, isStaff: true };
   const token = getAdminToken(cookies);
