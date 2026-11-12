@@ -15,6 +15,8 @@ class WinnerController extends Controller
         return Winner::with('competition:id,title', 'user:id,email,phone', 'draw:id,status')->latest()->get()->map(fn (Winner $w) => $w->toArray() + [
             'forfeit_label' => Winner::forfeitLabel($w->forfeit_category),
             'can_forfeit' => $w->verity_winner_id !== null && ! $w->isForfeited(),
+            'claim_by' => $w->claimBy()?->toIso8601String(),
+            'contact_overdue' => $w->contactOverdue(),
         ]);
     }
 
@@ -45,7 +47,8 @@ class WinnerController extends Controller
 
     public function store(Request $request)
     {
-        $winner = Winner::create($this->validated($request));
+        // Added by hand (a past winner): already dealt with, so no contact reminder.
+        $winner = Winner::create($this->validated($request) + ['contacted_at' => now()]);
 
         return response()->json($winner, 201);
     }
@@ -65,7 +68,18 @@ class WinnerController extends Controller
                 abort(422, 'A forfeited winner cannot be shown on the site as a winner.');
             }
         }
+        if (isset($data['handover']) && $data['handover'] !== 'not_started' && ! $winner->contacted_at) {
+            $data['contacted_at'] = now();
+        }
         $winner->update($data);
+
+        return response()->json($winner);
+    }
+
+    /** "Winner contacted": records when, so the 48-hour reminder stops. */
+    public function contacted(Winner $winner)
+    {
+        $winner->update(['contacted_at' => $winner->contacted_at ?? now(), 'handover' => $winner->handover === 'not_started' ? 'contacted' : $winner->handover]);
 
         return response()->json($winner);
     }

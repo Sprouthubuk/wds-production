@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\EntryException;
+use App\Exceptions\LimitReachedException;
 use App\Mail\TicketsIssued;
 use App\Models\Competition;
 use App\Models\CreditTransaction;
@@ -32,6 +33,7 @@ class CheckoutService
         private ResponsiblePlay $responsiblePlay,
         private PaymentGateway $gateway,
         private CreditCardCap $creditCap,
+        private HarmMonitor $harm,
     ) {}
 
     /**
@@ -55,100 +57,109 @@ class CheckoutService
         }
 
         $email = TicketAllocator::normaliseEmail($customer['email']);
+        // A guest checking out with an account's email gets that account's checks: a self-excluded, closed,
+        // suspended or paused customer can't get round them by not signing in, and their limits still apply.
+        $account = $user ?? User::where('email', $email)->first();
 
-        $order = DB::transaction(function () use ($items, $customer, $email, $user, $input, $channel, $staff, $paymentMethod) {
-            $competitions = Competition::whereIn('id', $items->pluck('competitionId'))->lockForUpdate()->get()->keyBy('id');
+        try {
+            $order = DB::transaction(function () use ($items, $customer, $email, $user, $account, $input, $channel, $staff, $paymentMethod) {
+                $competitions = Competition::whereIn('id', $items->pluck('competitionId'))->lockForUpdate()->get()->keyBy('id');
 
-            $subtotal = 0;
-            $total = 0;
-            $lines = [];
-            foreach ($items as $item) {
-                $c = $competitions->get($item['competitionId']) ?? throw new EntryException('A competition in your basket no longer exists.');
-                // A draft (even one seen through a preview link) is never enterable, and never reaches Verity.
-                if (! $c->isPublished() || $c->status === 'draft') {
-                    throw new EntryException("{$c->title} isn't open for entries yet.");
+                $subtotal = 0;
+                $total = 0;
+                $lines = [];
+                foreach ($items as $item) {
+                    $c = $competitions->get($item['competitionId']) ?? throw new EntryException('A competition in your basket no longer exists.');
+                    // A draft (even one seen through a preview link) is never enterable, and never reaches Verity.
+                    if (! $c->isPublished() || $c->status === 'draft') {
+                        throw new EntryException("{$c->title} isn't open for entries yet.");
+                    }
+                    if (! $c->isOpen()) {
+                        throw new EntryException("{$c->title} is closed for entries.");
+                    }
+                    if ($c->isFree()) {
+                        throw new EntryException("{$c->title} is free to enter: use Enter free on its page.");
+                    }
+                    if ($channel === 'event' && ! $c->event_sales_enabled) {
+                        throw new EntryException("{$c->title} isn't available for event sales.");
+                    }
+                    $qty = $item['qty'];
+                    $available = $c->available();
+                    if ($qty > $available) {
+                        throw new EntryException($available > 0 ? "Only {$available} tickets left for {$c->title}." : "{$c->title} is sold out.");
+                    }
+                    $held = $this->allocator->heldBy($c, $email);
+                    if ($c->max_per_person !== null && $held + $qty > $c->max_per_person) {
+                        $left = max(0, $c->max_per_person - $held);
+                        throw new EntryException("The maximum is {$c->max_per_person} tickets per person for {$c->title}. You can add {$left} more.");
+                    }
+                    $lineTotal = $this->pricing->forCompetition($c, $qty);
+                    $subtotal += $qty * $c->ticket_price_pence;
+                    $total += $lineTotal;
+                    $lines[] = ['competition_id' => $c->id, 'qty' => $qty, 'unit_price_pence' => $c->ticket_price_pence, 'line_total_pence' => $lineTotal];
                 }
-                if (! $c->isOpen()) {
-                    throw new EntryException("{$c->title} is closed for entries.");
-                }
-                if ($c->isFree()) {
-                    throw new EntryException("{$c->title} is free to enter: use Enter free on its page.");
-                }
-                if ($channel === 'event' && ! $c->event_sales_enabled) {
-                    throw new EntryException("{$c->title} isn't available for event sales.");
-                }
-                $qty = $item['qty'];
-                $available = $c->available();
-                if ($qty > $available) {
-                    throw new EntryException($available > 0 ? "Only {$available} tickets left for {$c->title}." : "{$c->title} is sold out.");
-                }
-                $held = $this->allocator->heldBy($c, $email);
-                if ($c->max_per_person !== null && $held + $qty > $c->max_per_person) {
-                    $left = max(0, $c->max_per_person - $held);
-                    throw new EntryException("The maximum is {$c->max_per_person} tickets per person for {$c->title}. You can add {$left} more.");
-                }
-                $lineTotal = $this->pricing->forCompetition($c, $qty);
-                $subtotal += $qty * $c->ticket_price_pence;
-                $total += $lineTotal;
-                $lines[] = ['competition_id' => $c->id, 'qty' => $qty, 'unit_price_pence' => $c->ticket_price_pence, 'line_total_pence' => $lineTotal];
-            }
-            $bundleSaving = $subtotal - $total;
+                $bundleSaving = $subtotal - $total;
 
-            // Discount code
-            $discount = 0;
-            $code = null;
-            if (! empty($input['discountCode'])) {
-                $code = DiscountCode::where('code', strtoupper(trim($input['discountCode'])))->lockForUpdate()->first();
-                if (! $code || ! $code->isUsable()) {
-                    throw new EntryException('That discount code isn\'t valid.');
+                // Discount code
+                $discount = 0;
+                $code = null;
+                if (! empty($input['discountCode'])) {
+                    $code = DiscountCode::where('code', strtoupper(trim($input['discountCode'])))->lockForUpdate()->first();
+                    if (! $code || ! $code->isUsable()) {
+                        throw new EntryException('That discount code isn\'t valid.');
+                    }
+                    $base = $code->competition_id
+                        ? collect($lines)->where('competition_id', $code->competition_id)->sum('line_total_pence')
+                        : $total;
+                    if ($base === 0) {
+                        throw new EntryException('That discount code doesn\'t apply to your basket.');
+                    }
+                    $discount = $code->type === 'percent' ? intdiv($base * min(100, $code->value), 100) : min($base, $code->value);
+                    $total -= $discount;
                 }
-                $base = $code->competition_id
-                    ? collect($lines)->where('competition_id', $code->competition_id)->sum('line_total_pence')
-                    : $total;
-                if ($base === 0) {
-                    throw new EntryException('That discount code doesn\'t apply to your basket.');
+
+                // Site credit (online, signed-in customers)
+                $credit = 0;
+                if ($user && ! empty($input['useCredit'])) {
+                    $credit = min($total, $user->creditBalancePence());
+                    $total -= $credit;
                 }
-                $discount = $code->type === 'percent' ? intdiv($base * min(100, $code->value), 100) : min($base, $code->value);
-                $total -= $discount;
-            }
 
-            // Site credit (online, signed-in customers)
-            $credit = 0;
-            if ($user && ! empty($input['useCredit'])) {
-                $credit = min($total, $user->creditBalancePence());
-                $total -= $credit;
-            }
+                if ($account) {
+                    $this->responsiblePlay->assertCanSpend($account, $total + $credit);
+                }
 
-            if ($user && $channel === 'online') {
-                $this->responsiblePlay->assertCanSpend($user, $total + $credit);
-            }
+                $order = Order::create([
+                    'reference' => self::newReference(),
+                    'access_key' => Str::random(40),
+                    'user_id' => $user?->id,
+                    'entrant_id' => Entrant::forEmail($email)->id,
+                    'email' => $email,
+                    'name' => trim($customer['name']),
+                    'phone' => $customer['phone'] ?? null,
+                    'date_of_birth' => $customer['dateOfBirth'],
+                    'channel' => $channel,
+                    'status' => 'pending',
+                    'subtotal_pence' => $subtotal,
+                    'bundle_saving_pence' => $bundleSaving,
+                    'discount_pence' => $discount,
+                    'credit_used_pence' => $credit,
+                    'total_pence' => $total,
+                    'discount_code_id' => $code?->id,
+                    'payment_method' => $paymentMethod,
+                    'staff_user_id' => $staff?->id,
+                    'marketing_opt_in' => (bool) ($input['marketingOptIn'] ?? false),
+                    'reserved_until' => now()->addMinutes(config('raffle.reservation_minutes')),
+                ]);
+                $order->lines()->createMany($lines);
 
-            $order = Order::create([
-                'reference' => self::newReference(),
-                'access_key' => Str::random(40),
-                'user_id' => $user?->id,
-                'entrant_id' => Entrant::forEmail($email)->id,
-                'email' => $email,
-                'name' => trim($customer['name']),
-                'phone' => $customer['phone'] ?? null,
-                'date_of_birth' => $customer['dateOfBirth'],
-                'channel' => $channel,
-                'status' => 'pending',
-                'subtotal_pence' => $subtotal,
-                'bundle_saving_pence' => $bundleSaving,
-                'discount_pence' => $discount,
-                'credit_used_pence' => $credit,
-                'total_pence' => $total,
-                'discount_code_id' => $code?->id,
-                'payment_method' => $paymentMethod,
-                'staff_user_id' => $staff?->id,
-                'marketing_opt_in' => (bool) ($input['marketingOptIn'] ?? false),
-                'reserved_until' => now()->addMinutes(config('raffle.reservation_minutes')),
-            ]);
-            $order->lines()->createMany($lines);
-
-            return $order;
-        });
+                return $order;
+            });
+        } catch (LimitReachedException $e) {
+            // Recorded after the rollback, for harm monitoring.
+            $this->harm->record($account, $email, 'limit_hit', ['period' => $e->period]);
+            throw $e;
+        }
 
         // Event sales (cash / card reader) and fully-covered orders complete immediately.
         if ($channel === 'event' || $order->total_pence === 0) {
@@ -198,7 +209,7 @@ class CheckoutService
 
                     return $order->fresh();
                 }
-                $this->markPaid($order, $result->method ?? 'card', $result->providerReference, $cardType);
+                $this->markPaid($order, $result->method ?? 'card', $result->providerReference, $cardType, $result->cardRef);
             } catch (EntryException $e) {
                 Log::critical('Paid order could not be fulfilled — REFUND REQUIRED', ['order' => $order->reference, 'reason' => $e->getMessage()]);
                 // paid_at + cancelled = money taken, no tickets → shows in Admin as "refund needed".
@@ -237,9 +248,9 @@ class CheckoutService
     }
 
     /** Allocate sequential tickets for every line, take credit, bump code usage, email the customer. */
-    public function markPaid(Order $order, string $method, ?string $providerReference, ?string $cardType = null): void
+    public function markPaid(Order $order, string $method, ?string $providerReference, ?string $cardType = null, ?string $cardRef = null): void
     {
-        DB::transaction(function () use ($order, $method, $providerReference, $cardType) {
+        DB::transaction(function () use ($order, $method, $providerReference, $cardType, $cardRef) {
             $order = Order::whereKey($order->id)->lockForUpdate()->first();
             if (! in_array($order->status, ['pending', 'cancelled'], true)) {
                 return;
@@ -274,6 +285,7 @@ class CheckoutService
                 'status' => 'paid',
                 'payment_method' => $method,
                 'card_type' => $cardType,
+                'card_ref' => $cardRef,
                 'provider_reference' => $providerReference ?? $order->provider_reference,
                 'paid_at' => now(),
             ]);
@@ -281,6 +293,7 @@ class CheckoutService
 
         $order->refresh();
         if ($order->status === 'paid') {
+            $this->harm->cardUsed($order);
             Mail::to($order->email)->queue(new TicketsIssued($order));
         }
     }

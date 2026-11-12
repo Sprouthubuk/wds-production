@@ -137,7 +137,7 @@ class ReportService
         // Never market to anyone self-excluded or suspended, and an account's own "no" beats an older
         // guest-order or newsletter "yes" for the same email.
         $excluded = User::whereIn('email', $out->keys())
-            ->where(fn ($q) => $q->where('self_excluded_until', '>', now())->orWhereNotNull('suspended_at')->orWhere('marketing_opt_in', false))
+            ->where(fn ($q) => $q->where('self_excluded_until', '>', now())->orWhereNotNull('suspended_at')->orWhereNotNull('closed_at')->orWhere('marketing_opt_in', false))
             ->pluck('email')->flip();
 
         return $out->reject(fn ($r, $email) => isset($excluded[$email]))->values();

@@ -30,6 +30,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
             <div class="field"><label for="b-dob">Date of birth</label><input id="b-dob" name="dob" type="date" required autocomplete="bday" /><span class="hint">You must be 18 or over to enter.</span></div>
             <label class="check" for="b-age"><input id="b-age" name="age" type="checkbox" required />I'm 18 or over and live in the UK.</label>
             <label class="check" for="b-terms"><input id="b-terms" name="terms" type="checkbox" required /><span>I agree to the <a href="/terms">terms</a>. I know I can <a href="/free-postal-entry">enter free by post</a> instead.</span></label>
+            <p class="small muted" style="margin:0">Play responsibly: set a spend limit, take a break or self-exclude in your account. <a href="/responsible-play">Responsible play and support</a></p>
             <label class="check" for="b-mk"><input id="b-mk" name="marketing" type="checkbox" />Email me about new competitions and live draws (optional).</label>
             {!me ? <label class="check" for="b-acc"><input id="b-acc" name="createAccount" type="checkbox" />Create an account so I can see my tickets any time (we'll email you a link to set a password).</label> : null}
           </div>

@@ -1,0 +1,48 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp, when } from '../../lib/admin';
+interface Flag { id: number; email: string; name: string | null; userId: number | null; reason: string; summary: string; status: string; notes: string | null;
+  monthlyLimit: number | null; accountState: string | null; recent: { type: string; at: string }[]; createdAt: string; actionedAt: string | null }
+const status = Astro.url.searchParams.get('status') ?? 'open';
+const flags = (await adminGet<{ data: Flag[] }>(Astro.cookies, `/harm-flags?status=${encodeURIComponent(status)}`)).data;
+const field = 'background:#000;border:1px solid var(--line-2);padding:6px';
+---
+<AdminLayout title="Responsible play" active="responsible-play">
+  <p class="small muted" style="margin:0 0 14px">Customers are flagged automatically when they hit a spend limit 3 times in 30 days, use 3 different cards in 30 days,
+    or take a break, self-exclude or close their account. Review each one: add a note, contact them, lower their monthly limit (applies at once) or block the account.</p>
+  <nav class="filters row" style="gap:8px">
+    {[['open', 'To review'], ['actioned', 'Actioned'], ['all', 'All']].map(([v, l]) => <a class={`btn ${status === v ? '' : 'btn--outline'}`} href={`?status=${v}`}>{l}</a>)}
+  </nav>
+  <section class="panel">
+    {flags.length ? <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Customer</th><th>Why</th><th>Status</th><th>Notes</th><th>Actions</th></tr></thead>
+      <tbody>{flags.map((f) => (
+        <tr>
+          <td><strong>{f.name ?? 'Guest'}</strong><div class="small muted">{f.email}</div>
+            <div class="small muted">Monthly limit: {f.monthlyLimit === null ? 'none' : gbp(f.monthlyLimit)}{f.accountState ? ` · ${f.accountState}` : ''}</div></td>
+          <td><strong>{f.reason}</strong><div class="small">{f.summary}</div><div class="small muted">Flagged {when(f.createdAt)}</div>
+            {f.recent.length ? <div class="small muted">Recent: {f.recent.map((e) => e.type.replace('_', ' ')).join(', ')}</div> : null}</td>
+          <td><span class="pill">{f.status.replace('_', ' ')}</span></td>
+          <td class="small" style="white-space:pre-line;max-width:320px">{f.notes ?? '—'}</td>
+          <td>
+            <div class="stack" style="gap:8px;min-width:260px">
+              <form class="row" style="gap:6px" data-admin-form={`/api/admin/harm-flags/${f.id}`} data-reload>
+                <select name="action" style={field} aria-label="Action">
+                  <option value="note">Add note</option><option value="contact">Contacted them</option><option value="close">Reviewed, close</option>
+                </select>
+                <input name="note" placeholder="Note" required style={`${field};flex:1`} />
+                <button class="btn btn--outline" type="submit">Save</button>
+              </form>
+              {f.userId ? <form class="row" style="gap:6px" data-admin-form={`/api/admin/harm-flags/${f.id}`} data-confirm="Lower this customer's monthly limit now?" data-reload>
+                <input type="hidden" name="action" value="lower_limit" />
+                <input name="monthlyLimit" data-type="number" type="number" min="0" step="1" placeholder="£ a month" required style={`${field};width:110px`} />
+                <button class="btn btn--outline" type="submit">Lower limit</button>
+              </form> : null}
+              {f.userId && f.accountState !== 'suspended' ? <button class="adm-link" data-admin-action={`/api/admin/harm-flags/${f.id}`} data-body='{"action":"block"}' data-confirm="Block this account? They'll be signed out and can't enter until reinstated in Customers." data-reload>Block account</button> : null}
+            </div>
+          </td>
+        </tr>
+      ))}</tbody>
+    </table></div> : <p class="muted">Nothing here.</p>}
+  </section>
+</AdminLayout>

@@ -120,20 +120,27 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
             {(['daily', 'weekly', 'monthly'] as const).map((p) => (
               <div class="field"><label for={`l-${p}`}>{p[0].toUpperCase() + p.slice(1)} spend limit</label>
                 <select id={`l-${p}`} name={p}>
-                  {[null, 10, 25, 50, 100, 250, 500].map((v) => <option value={v ?? ''} selected={(me.limits[p] ?? null) === v}>{v ? `£${v}` : 'No limit'}</option>)}
+                  {[null, 0, 10, 25, 50, 100, 250, 500].map((v) => <option value={v ?? ''} selected={(me.limits[p] ?? null) === v}>{v === null ? 'No limit' : v === 0 ? '£0 (no paid entries)' : `£${v}`}</option>)}
                 </select>
               </div>
             ))}
           </div>
-          <span class="small muted">Lowering a limit applies straight away. Raising one takes effect after 24 hours.</span>
+          <span class="small muted">Lowering a limit (including to £0) applies straight away. Raising or removing one takes effect after 72 hours.</span>
           <div><button class="btn" type="submit">Save limits</button></div>
           <p class="alert" data-msg role="status" hidden></p>
         </form>
         <div class="stack sub"><h3 class="h3">Take a break</h3>{me.breakUntil ? <p class="body">You're on a break until {fmtDate(me.breakUntil)}.</p> : null}
           <form class="row" style="gap: 8px" data-account-form="break">{[['1', '24 hours'], ['7', '7 days'], ['30', '30 days']].map(([d, l]) => <button class="btn btn--outline" type="submit" name="days" value={d}>{l}</button>)}<p class="alert" data-msg role="status" hidden style="flex-basis: 100%"></p></form>
         </div>
-        <div class="stack sub"><h3 class="h3">Self-exclude</h3><p class="body">Close your account for 6 months or more. This can't be undone early.</p>
+        <div class="stack sub"><h3 class="h3">Self-exclude</h3><p class="body">Stop all entries and all marketing for 6 months or more. It can't be shortened or undone early.</p>
           <form class="row" style="gap: 8px" data-account-form="self-exclude" data-confirm="Self-exclude now? You won't be able to enter any competition until the period ends.">{[['6', '6 months'], ['12', '1 year'], ['60', '5 years']].map(([m, l]) => <button class="btn btn--outline" type="submit" name="months" value={m}>{l}</button>)}<p class="alert" data-msg role="status" hidden style="flex-basis: 100%"></p></form>
+        </div>
+        <div class="stack sub"><h3 class="h3">Close my account</h3><p class="body">Close your account permanently. You won't be able to sign in or enter, and we'll stop all marketing. Tickets you already hold stay in their draws.</p>
+          <form class="stack" style="gap: 10px" data-account-form="close" data-confirm="Close your account permanently? This can't be undone online.">
+            <label class="check" for="close-ok"><input id="close-ok" name="confirm" type="checkbox" required />I understand this is permanent.</label>
+            <div><button class="btn btn--outline" type="submit">Close my account</button></div>
+            <p class="alert" data-msg role="status" hidden></p>
+          </form>
         </div>
       </section>
     </div>
@@ -212,7 +219,8 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
     } else {
       const body: Record<string, unknown> = Object.fromEntries(fd.entries());
       if (action === 'details') body.marketingOptIn = fd.get('marketingOptIn') === 'on';
-      if (action === 'limits') for (const k of ['daily', 'weekly', 'monthly']) body[k] = body[k] ? Number(body[k]) : null;
+      if (action === 'limits') for (const k of ['daily', 'weekly', 'monthly']) body[k] = body[k] === '' || body[k] == null ? null : Number(body[k]);
+      if (action === 'close') body.confirm = fd.get('confirm') === 'on';
       init = { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) };
     }
     const res = await fetch(`/api/account/${action}`, init);
@@ -222,6 +230,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
       msg.hidden = false;
     }
     if (res.ok && (action === 'break' || action === 'self-exclude')) setTimeout(() => location.reload(), 1200);
+    if (res.ok && action === 'close') setTimeout(() => { location.href = '/'; }, 2500);
   }));
 </script>
 

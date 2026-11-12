@@ -3,7 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, gbp, when, day } from '../../lib/admin';
 
 interface Dash {
-  revenueToday: number; ordersToday: number; revenueTotal: number; customers: number; postalThisWeek: number; idToReview: number; refundsNeeded: number;
+  revenueToday: number; ordersToday: number; revenueTotal: number; customers: number; postalThisWeek: number; idToReview: number; refundsNeeded: number; harmFlagsOpen: number; winnersToContact: number;
   daily: { day: string; revenue: number; orders: number }[];
   live: { id: number; title: string; sold: number; total: number; drawAt: string; revenue: number }[];
   recentOrders: { reference: string; name: string; tickets: number; total: number; status: string; channel: string; createdAt: string }[];
@@ -19,6 +19,8 @@ const max = Math.max(1, ...d.daily.map((x) => x.revenue));
     <div class="kpi"><span class="label">Customers</span><b>{d.customers}</b></div>
     <div class="kpi"><span class="label">Postal entries this week</span><b>{d.postalThisWeek}</b><a class="small" href="/admin/postal">Log entries →</a></div>
     <div class="kpi"><span class="label">ID to review</span><b>{d.idToReview}</b><a class="small" href="/admin/customers#verifications">Review →</a></div>
+    {d.harmFlagsOpen > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Responsible play to review</span><b>{d.harmFlagsOpen}</b><a class="small" href="/admin/responsible-play">Review →</a></div> : null}
+    {d.winnersToContact > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Winners to contact (48h)</span><b>{d.winnersToContact}</b><a class="small" href="/admin/winners">Winners →</a></div> : null}
     {d.refundsNeeded > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Refunds needed</span><b>{d.refundsNeeded}</b><a class="small" href="/admin/orders?status=cancelled">See orders →</a></div> : null}
   </div>
 

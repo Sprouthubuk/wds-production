@@ -15,3 +15,5 @@ Verity::schedule(app(Scheduler::class));
 // verity:check has no alert of its own: email VERITY_ALERT_EMAILS once a day if any row is FAIL
 // (one email per new problem, a reminder every 24 hours while it lasts, an all-clear when fixed).
 Schedule::command('wds:verity-check-alert')->dailyAt('07:00')->timezone('Europe/London');
+// Responsible Play Policy: remind admins about winners not contacted within 48 hours of the draw.
+Schedule::command('wds:winner-contact-reminders')->hourly()->withoutOverlapping();

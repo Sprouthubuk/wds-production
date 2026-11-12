@@ -7,8 +7,8 @@ return [
     // Minimum entrant age.
     'minimum_age' => 18,
 
-    // Hours before a responsible-play limit INCREASE takes effect (decreases are immediate).
-    'limit_increase_delay_hours' => 24,
+    // Hours before a responsible-play limit INCREASE takes effect (decreases are immediate). Policy: 72 hours.
+    'limit_increase_delay_hours' => 72,
 
     // DCMS Voluntary Code: credit card spending per customer per calendar month (UK), across all competitions.
     'credit_card_monthly_cap_pence' => 25000,

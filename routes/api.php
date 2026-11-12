@@ -53,6 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/limits', [MeController::class, 'limits']);
     Route::post('/me/break', [MeController::class, 'takeBreak']);
     Route::post('/me/self-exclude', [MeController::class, 'selfExclude']);
+    Route::post('/me/close', [MeController::class, 'close']);
     Route::post('/me/verification', [MeController::class, 'verification']);
     Route::post('/me/verify-email', [EmailVerificationController::class, 'resend'])->middleware('throttle:3,10');
     // A free competition (£0): one online entry per verified account. No basket, no payment.
@@ -93,6 +94,8 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/customers/{user}', [Admin\CustomerController::class, 'show']);
     Route::post('/customers/{user}/credit', [Admin\CustomerController::class, 'addCredit']);
     Route::post('/customers/{user}/suspend', [Admin\CustomerController::class, 'setSuspended']);
+    Route::get('/harm-flags', [Admin\HarmFlagController::class, 'index']);
+    Route::post('/harm-flags/{flag}', [Admin\HarmFlagController::class, 'act']);
     Route::post('/customers/{user}/role', [Admin\CustomerController::class, 'setRole']);
     Route::get('/verifications', [Admin\CustomerController::class, 'verifications']);
     Route::get('/verifications/{verification}/{which}', [Admin\CustomerController::class, 'verificationFile']);
@@ -115,6 +118,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     // Permanent and public (Verity's audit chain). There is no separate redraw route: a redraw is chosen
     // at the forfeit and committed to a future drand round there and then (protocol R2).
     Route::post('/winners/{winner}/forfeit', [Admin\WinnerController::class, 'forfeit']);
+    Route::post('/winners/{winner}/contacted', [Admin\WinnerController::class, 'contacted']);
     Route::post('/winners/{winner}/image', [Admin\WinnerController::class, 'uploadImage']);
 
     Route::get('/promotions', [Admin\PromotionController::class, 'index']);

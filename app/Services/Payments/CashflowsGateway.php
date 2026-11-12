@@ -22,6 +22,8 @@ use RuntimeException;
  *  - fetchStatus(): optional poll used if the customer returns before the webhook arrives.
  *  - Card type (credit card cap): PaymentResult::$cardType must be 'credit', 'debit', 'prepaid' or 'unknown'
  *    (see cardType() below). Without it the £250/month credit card cap can't be enforced.
+ *  - Card reference (harm monitoring): PaymentResult::$cardRef = their card token / fingerprint, so frequent
+ *    payment-method changes can be flagged. TODO(cashflows): map it; never store the card number.
  *  - refund(): full refund of a paid order, used when a credit card payment would breach the cap.
  */
 class CashflowsGateway implements PaymentGateway

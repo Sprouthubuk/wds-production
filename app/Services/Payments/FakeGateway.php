@@ -37,6 +37,7 @@ class FakeGateway implements PaymentGateway
             'card',
             // Testing: choose the card type the "provider" reports (credit / debit / prepaid / unknown).
             (string) $request->input('card_type', 'debit'),
+            $request->input('card_ref'),
         );
     }
 
