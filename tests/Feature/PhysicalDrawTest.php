@@ -88,7 +88,10 @@ class PhysicalDrawTest extends TestCase
         $this->assertSame(['external', 'physical'], [$row['method'], $row['externalKind']]);
 
         // Drawn by hand: a ticket that isn't on the sealed list is refused.
-        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 4, 'livestreamUrl' => 'https://www.youtube.com/live/abc'])->assertStatus(422);
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 4, 'livestreamUrl' => 'https://www.youtube.com/live/abc'])
+            ->assertStatus(422)->assertJsonPath('message', 'Ticket #0004 is not on the sealed entry list.');
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 151, 'livestreamUrl' => 'https://www.youtube.com/live/abc'])
+            ->assertStatus(422)->assertJsonPath('errors.ticket.0', 'Ticket #0151 is not on the sealed entry list.');
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/external-result", ['ticket' => 6, 'livestreamUrl' => 'https://www.youtube.com/live/abc'])->assertOk();
         $this->actingAs($this->admin)->postJson("/api/admin/draws/{$draw->id}/publish")->assertOk();
 
