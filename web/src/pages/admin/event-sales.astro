@@ -55,7 +55,7 @@ const [comps, sum] = await Promise.all([
       const result = form.querySelector<HTMLElement>('[data-result]')!;
       const cur = () => comps.find((c) => String(c.id) === sel.value)!;
       const render = () => {
-        const c = cur(); qty.max = String(Math.min(c.left, c.max));
+        const c = cur(); qty.max = String(Math.min(c.left, c.max ?? c.left));
         const n = Math.max(1, Number(qty.value) || 1);
         total.textContent = `£${priceFor(n, c.price, c.bundles).toFixed(2)}`;
       };

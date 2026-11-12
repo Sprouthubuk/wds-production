@@ -77,7 +77,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
 </style>
 
 <script>
-  import { readBasket, setQty } from '../lib/basket';
+  import { lineCap, readBasket, setQty } from '../lib/basket';
   import { money, priceFor, savingFor } from '../lib/pricing';
 
   const root = document.querySelector<HTMLElement>('[data-basket]')!;
@@ -116,7 +116,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
       div.querySelector<HTMLElement>('[data-o]')!.textContent = l.qty ? `${l.qty} ticket${l.qty === 1 ? '' : 's'}` : '';
       div.querySelectorAll<HTMLButtonElement>('[data-d]').forEach((b) => b.addEventListener('click', () => { setQty(l.competitionId, l.qty + Number(b.dataset.d)); render(); }));
       div.querySelector<HTMLButtonElement>('[data-remove]')!.addEventListener('click', () => { setQty(l.competitionId, 0); render(); });
-      if (l.qty >= l.maxPerPerson) div.querySelector<HTMLButtonElement>('[data-d="1"]')!.disabled = true;
+      if (l.qty >= lineCap(l)) div.querySelector<HTMLButtonElement>('[data-d="1"]')!.disabled = true;
       linesEl.appendChild(div);
     }
     totalsEl.innerHTML = `

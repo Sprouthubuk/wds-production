@@ -68,7 +68,7 @@ class VerityDrawEngine
                     'title' => $locked->title,
                     'max_tickets' => (int) $locked->total_tickets,
                     'ticket_price_pence' => (int) $locked->ticket_price_pence,
-                    'max_per_person' => (int) $locked->max_per_person,
+                    'max_per_person' => $locked->max_per_person === null ? null : (int) $locked->max_per_person, // null = no cap
                     'closes_at' => $locked->closes_at,
                     'opens_at' => $locked->opens_at,
                     'ticket_allocation' => 'sequential', // 1, 2, 3 … across online, postal and event (no instant wins)
