@@ -41,9 +41,12 @@ class FakeGateway implements PaymentGateway
         );
     }
 
-    public function refund(Order $order, string $reason): bool
+    /** Refunds always succeed (set raffle.payments.fake_refund_fails to test a refusal). */
+    public function refund(Order $order, int $amountPence, string $refundNumber, string $reason): RefundResult
     {
-        return true;
+        return config('raffle.payments.fake_refund_fails')
+            ? RefundResult::failed('GenericRejectionOfRefund', CashflowsGateway::REFUND_ERRORS['GenericRejectionOfRefund'])
+            : new RefundResult(true, 'fake_refund_'.$refundNumber);
     }
 
     public function fetchStatus(Order $order): ?PaymentResult

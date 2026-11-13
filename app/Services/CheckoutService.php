@@ -34,6 +34,7 @@ class CheckoutService
         private PaymentGateway $gateway,
         private CreditCardCap $creditCap,
         private HarmMonitor $harm,
+        private RefundService $refunds,
     ) {}
 
     /**
@@ -169,8 +170,20 @@ class CheckoutService
             return ['order' => $order->fresh(), 'redirectUrl' => $this->orderUrl($order)];
         }
 
-        $hosted = $this->gateway->createHostedPayment($order, $this->orderUrl($order));
-        $order->update(['payment_provider' => $this->gateway->name(), 'provider_reference' => $hosted->providerReference]);
+        $order->update(['payment_provider' => $this->gateway->name()]);
+        try {
+            $hosted = $this->gateway->createHostedPayment($order, $this->orderUrl($order));
+        } catch (\Throwable $e) {
+            // Nothing was taken: release the reservation at once so the tickets go back on sale.
+            Log::error('Could not start the hosted payment', ['order' => $order->reference, 'error' => $e->getMessage()]);
+            $order->update(['status' => 'cancelled', 'reserved_until' => null]);
+            throw new EntryException("We couldn't open the payment page just now. No money has been taken. Please try again in a minute.");
+        }
+        $order->update([
+            'provider_reference' => $hosted->providerReference,
+            'payment_job_reference' => $this->gateway->name() === 'cashflows' ? $hosted->providerReference : null,
+            'payment_reference' => $hosted->paymentReference,
+        ]);
 
         return ['order' => $order, 'redirectUrl' => $hosted->redirectUrl];
     }
@@ -183,16 +196,22 @@ class CheckoutService
 
             return null;
         }
-        // Idempotent: paid/failed/refunded orders are final. A 'cancelled' order is one whose
-        // reservation expired while the customer was still paying — if the money arrives we still
-        // try to honour it, and flag a refund if the tickets have gone in the meantime.
-        if (! in_array($order->status, ['pending', 'cancelled'], true)) {
+        // Idempotent: paid and refunded orders are final, and anything but Paid only moves a pending order.
+        // A cancelled or failed order is one whose reservation ended (expired, cancelled, a declined attempt)
+        // while the customer could still pay: if the money arrives we still try to honour it, and refund it
+        // automatically if the tickets have gone or the competition has closed in the meantime.
+        if (! in_array($order->status, ['pending', 'cancelled', 'failed'], true)) {
             return $order;
         }
-        if ($order->status === 'cancelled' && $result->status !== PaymentResult::PAID) {
+        if ($order->status !== 'pending' && $result->status !== PaymentResult::PAID) {
             return $order;
         }
         if ($result->status === PaymentResult::PAID) {
+            // A payment job can hold more than one payment (a declined attempt, then a good one): refunds and
+            // status checks follow the one that was paid.
+            if ($result->paymentReference && $result->paymentReference !== $order->payment_reference) {
+                $order->update(['payment_reference' => $result->paymentReference]);
+            }
             if ($result->amountPence !== null && $result->amountPence !== $order->total_pence) {
                 Log::error('Payment amount mismatch', ['order' => $order->reference, 'paid' => $result->amountPence, 'expected' => $order->total_pence]);
                 $order->update(['status' => 'failed']);
@@ -201,50 +220,70 @@ class CheckoutService
             }
             $cardType = CreditCardCap::normalise($result->cardType);
             // Credit card cap: checked once the provider confirms the card type, before any tickets are allocated.
-            // One customer at a time, so two credit card payments landing together can't both slip under it.
+            // One customer at a time, so two credit card payments landing together can't both slip under it,
+            // and the same payment reported twice at once (a notification and the order page) is handled once.
             $lock = Cache::lock('credit-card-cap:'.strtolower($order->email), 30);
             try {
                 $lock->block(10);
+                $order->refresh();
+                if (! in_array($order->status, ['pending', 'cancelled', 'failed'], true) || ($order->paid_at && $order->status !== 'pending')) {
+                    return $order;
+                }
                 if ($refusal = $this->creditCap->refusal($order, $cardType)) {
                     $this->refuseAndRefund($order, $result, $cardType, $refusal);
 
                     return $order->fresh();
                 }
                 $this->markPaid($order, $result->method ?? 'card', $result->providerReference, $cardType, $result->cardRef);
+                if ($result->cardTypeSource !== null) {
+                    $order->update(['card_type_source' => $result->cardTypeSource]);
+                }
             } catch (EntryException $e) {
-                Log::critical('Paid order could not be fulfilled — REFUND REQUIRED', ['order' => $order->reference, 'reason' => $e->getMessage()]);
-                // paid_at + cancelled = money taken, no tickets → shows in Admin as "refund needed".
-                $order->update(['status' => 'cancelled', 'paid_at' => now(), 'payment_method' => $result->method ?? 'card', 'card_type' => $cardType, 'reserved_until' => null, 'provider_reference' => $result->providerReference ?? $order->provider_reference]);
+                // Too late (the competition closed, or its tickets went while the reservation was over): the money
+                // goes straight back, and the order page says why.
+                Log::warning('Paid order could not be fulfilled: refunding', ['order' => $order->reference, 'reason' => $e->getMessage()]);
+                $this->refuseAndRefund($order, $result, $cardType, "Your payment arrived after your tickets' reservation had ended and they could no longer be issued ({$e->getMessage()}). We've refunded your payment in full and no tickets were issued.");
             } finally {
                 $lock->release();
             }
         } elseif ($result->status === PaymentResult::FAILED) {
-            $order->update(['status' => 'failed', 'reserved_until' => null]);
+            $order->update(['status' => 'failed', 'reserved_until' => null,
+                'status_note' => "Your payment didn't go through: it was declined, or there was a problem at the payment provider. No money was taken and no tickets were issued. Your basket is still saved, so you can try again."]);
+        } elseif ($result->status === PaymentResult::CANCELLED) {
+            $expired = strcasecmp((string) $result->gatewayStatus, 'Expired') === 0;
+            $order->update(['status' => 'cancelled', 'reserved_until' => null,
+                'status_note' => $expired
+                    ? 'The payment page expired before payment was made, so your tickets were released. No money was taken. Your basket is still saved.'
+                    : 'You cancelled the payment, so your tickets were released. No money was taken. Your basket is still saved.']);
         }
 
         return $order->fresh();
     }
 
-    /** The payment can't be accepted (credit card cap): refund it in full, allocate nothing, explain on the order page. */
+    /**
+     * The payment can't be accepted (credit card cap, or it came too late): refund it in full through the gateway,
+     * allocate nothing, explain on the order page. If the refund fails the order shows in Admin as "refund needed".
+     */
     private function refuseAndRefund(Order $order, PaymentResult $result, ?string $cardType, string $message): void
     {
         $order->update([
             'paid_at' => now(), 'payment_method' => $result->method ?? 'card', 'card_type' => $cardType, 'reserved_until' => null,
+            'card_type_source' => $result->cardTypeSource, 'card_ref' => $result->cardRef,
             'provider_reference' => $result->providerReference ?? $order->provider_reference, 'status_note' => $message,
+            // cancelled + paid_at = money taken, no tickets ("refund needed") until the refund goes through.
+            'status' => 'cancelled',
         ]);
         $refunded = false;
         try {
-            $refunded = $this->gateway->refund($order, $message);
+            $refunded = $this->refunds->refund($order, (int) $order->total_pence, $message, null, true)->status === 'completed';
         } catch (\Throwable $e) {
             Log::error('Automatic refund failed', ['order' => $order->reference, 'error' => $e->getMessage()]);
         }
         if ($refunded) {
             $order->update(['status' => 'refunded']);
-            Log::notice('Credit card payment refused and refunded', ['order' => $order->reference]);
+            Log::notice('Payment refused and refunded', ['order' => $order->reference]);
         } else {
-            // paid_at + cancelled = money taken, no tickets → Admin shows "refund needed".
-            $order->update(['status' => 'cancelled']);
-            Log::critical('Credit card payment refused — REFUND REQUIRED', ['order' => $order->reference]);
+            Log::critical('Payment refused, automatic refund failed: REFUND REQUIRED', ['order' => $order->reference]);
         }
     }
 
@@ -253,7 +292,7 @@ class CheckoutService
     {
         DB::transaction(function () use ($order, $method, $providerReference, $cardType, $cardRef) {
             $order = Order::whereKey($order->id)->lockForUpdate()->first();
-            if (! in_array($order->status, ['pending', 'cancelled'], true)) {
+            if (! in_array($order->status, ['pending', 'cancelled', 'failed'], true)) {
                 return;
             }
             // The order's own reservation must not count against itself while we allocate.
@@ -289,6 +328,7 @@ class CheckoutService
                 'card_ref' => $cardRef,
                 'provider_reference' => $providerReference ?? $order->provider_reference,
                 'paid_at' => now(),
+                'status_note' => null,
             ]);
         });
 

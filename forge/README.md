@@ -65,7 +65,8 @@ Deploy the website **after** the first deploy has built `web/dist`, then start t
 - `https://wds-competitions-api.on-forge.com/api/competitions` → JSON with the BMW
 - `https://wds-competitions.on-forge.com` → site; buy tickets → fake payment → "You're in"
 - `/admin` → sign in with the seeded admin
-- Payment webhook URL (when live): `https://<api>/api/payments/webhook`
+- Cashflows (card payments): setup, Portal URLs, test matrix and go-live in `docs/cashflows-testing.md`.
+  Notification URL: `https://<api>/api/payments/cashflows/notify?token=<CASHFLOWS_WEBHOOK_TOKEN>`
 
 ## 4. Database: MySQL 8.4
 
@@ -203,11 +204,12 @@ MAIL_FROM_ADDRESS=competitions@wdsoriginals.com
 MAIL_FROM_NAME="WDS Competitions"
 
 RAFFLE_RESERVATION_MINUTES=15
-PAYMENT_DRIVER=fake                      # cashflows once the gateway is finished
+PAYMENT_DRIVER=fake                      # cashflows after the go-live checklist in docs/cashflows-testing.md
 CASHFLOWS_CONFIGURATION_ID=
 CASHFLOWS_API_KEY=
-CASHFLOWS_BASE_URL=
-CASHFLOWS_WEBHOOK_SECRET=
+CASHFLOWS_BASE_URL=https://gateway.cashflows.com
+CASHFLOWS_WEBHOOK_TOKEN=<a new random value; also in the Portal's Notification URL>
+CASHFLOWS_UNKNOWN_CARD_AS_CREDIT=true    # until card type detection is confirmed
 
 VERITY_BEACON=drand
 VERITY_SEED_KEY=<from verity:seal-seeds --new-key, section 5>
@@ -247,7 +249,7 @@ staging site (its own server or database), and only read-only checks here.
 
 **7. Switch over and remove the old server**
 - [ ] Point the domains (DNS) at the new server and issue the certificates.
-- [ ] Update the payment provider's webhook URL to `https://<api-domain>/api/payments/webhook`.
+- [ ] Update the Cashflows Portal's return and Notification URLs to the new domains (`docs/cashflows-testing.md`).
 - [ ] After a day with no traffic on the old server: Forge → old server → Delete. Its PostgreSQL data is test data only.
 - [ ] Remove the `pgsql` connection from `config/database.php` in a later PR.
 
@@ -382,7 +384,7 @@ DB_USERNAME=<staging database user>
 DB_PASSWORD=<its password>
 SESSION_DOMAIN=<staging-website-domain>
 SANCTUM_STATEFUL_DOMAINS=<staging-website-domain>
-PAYMENT_DRIVER=fake                         # never a live payment account on staging
+PAYMENT_DRIVER=fake                         # or cashflows with the INTEGRATION account (docs/cashflows-testing.md); never live credentials, except an owner-approved £1 smoke test
 VERITY_BEACON=drand                         # real drand rounds, so staging draws are verifiable
 VERITY_SEED_KEY=<a new key: php8.5 artisan verity:seal-seeds --new-key on the staging site>
 VERITY_OWNER_PEPPER=<a new value: php -r "echo bin2hex(random_bytes(32)), PHP_EOL;">

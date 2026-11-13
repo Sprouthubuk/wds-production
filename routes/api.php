@@ -41,6 +41,8 @@ Route::get('/orders/{reference}', [CheckoutController::class, 'show']);
 
 // Payments
 Route::post('/payments/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
+// Cashflows notifications: ?token=CASHFLOWS_WEBHOOK_TOKEN, then the status is always re-queried from Cashflows.
+Route::post('/payments/cashflows/notify', [PaymentController::class, 'cashflows'])->name('payments.cashflows')->middleware('throttle:120,1');
 Route::get('/payments/fake', [PaymentController::class, 'fake'])->name('payments.fake'); // signature checked in the controller
 
 // Signed-in customer
@@ -90,6 +92,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/orders', [Admin\OrderController::class, 'index']);
     Route::get('/orders/{order}', [Admin\OrderController::class, 'show']);
     Route::post('/orders/{order}/refunded', [Admin\OrderController::class, 'markRefunded']);
+    Route::post('/orders/{order}/refund', [Admin\OrderController::class, 'refund']);
 
     Route::get('/customers', [Admin\CustomerController::class, 'index']);
     Route::get('/customers/{user}', [Admin\CustomerController::class, 'show']);
