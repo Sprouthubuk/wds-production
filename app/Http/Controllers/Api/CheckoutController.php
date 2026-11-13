@@ -10,6 +10,8 @@ use App\Services\Payments\PaymentGateway;
 use App\Models\User;
 use App\Services\TicketAllocator;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 
@@ -54,19 +56,34 @@ class CheckoutController extends Controller
         return response()->json(['reference' => $result['order']->reference, 'redirectUrl' => $result['redirectUrl']]);
     }
 
-    /** Order confirmation: visible with the order's access key, or to the signed-in owner. */
+    /**
+     * Order confirmation: visible with the order's access key, to the signed-in owner, or with the payment job
+     * reference the payment page sends the customer back with (?paymentjobref=).
+     *
+     * While the order is pending, each view re-asks the payment provider (at most every few seconds per order):
+     * the return from the payment page itself proves nothing, so this is what moves the order on if the
+     * notification hasn't arrived yet.
+     */
     public function show(Request $request, string $reference, PaymentGateway $gateway, CheckoutService $checkout)
     {
         $order = Order::where('reference', $reference)->firstOrFail();
         $user = auth('sanctum')->user();
+        $job = (string) $request->query('paymentjobref');
         $allowed = hash_equals($order->access_key, (string) $request->query('key'))
-            || ($user && $order->user_id === $user->id);
+            || ($user && $order->user_id === $user->id)
+            || ($job !== '' && $order->payment_job_reference && hash_equals($order->payment_job_reference, $job));
         abort_unless($allowed, 404);
 
-        if ($order->status === 'pending' && ($status = $gateway->fetchStatus($order))) {
-            $order = $checkout->handlePaymentResult($status) ?? $order;
+        if ($order->status === 'pending' && Cache::add("order-status-poll:{$order->id}", 1, 3)) {
+            try {
+                if ($status = $gateway->fetchStatus($order)) {
+                    $order = $checkout->handlePaymentResult($status) ?? $order;
+                }
+            } catch (\Throwable $e) {
+                Log::warning('Order page status check failed', ['order' => $order->reference, 'error' => $e->getMessage()]);
+            }
         }
 
-        return new OrderResource($order);
+        return new OrderResource($order->fresh());
     }
 }

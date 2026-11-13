@@ -9,6 +9,7 @@ use App\Services\CheckoutService;
 use App\Services\Payments\FakeGateway;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentResult;
+use App\Services\Payments\RefundResult;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -96,7 +97,7 @@ class CreditCardCapTest extends TestCase
     public function test_when_the_refund_cant_be_automatic_it_shows_as_refund_needed(): void
     {
         $this->app->bind(PaymentGateway::class, fn () => new class extends FakeGateway {
-            public function refund(Order $order, string $reason): bool { return false; }
+            public function refund(Order $order, int $amountPence, string $refundNumber, string $reason): RefundResult { return RefundResult::failed(null, 'no'); }
         });
         $c = $this->comp();
         $refused = $this->pay($this->order($c, 26), 'credit');

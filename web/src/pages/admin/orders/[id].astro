@@ -1,0 +1,108 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { adminGet, gbp, when } from '../../../lib/admin';
+import { ticket } from '../../../lib/ticket';
+
+interface HistoryRow { at: string; kind: string; status: string | null; summary: string | null; payload: unknown }
+interface RefundRow { number: string; amount: number; status: string; reason: string; automatic: boolean; by: string | null; reference: string | null; errorCode: string | null; error: string | null; at: string }
+interface Payment {
+  id: number; status: string; provider: string | null; method: string | null; channel: string;
+  paymentJobReference: string | null; paymentReference: string | null; paidAt: string | null; reservedUntil: string | null;
+  cardType: string | null; cardTypeSource: string | null; countsAsCredit: boolean;
+  total: number; refunded: number; refundable: number; refundNeeded: boolean;
+  history: HistoryRow[]; refunds: RefundRow[];
+}
+interface OrderView { reference: string; status: string; message: string | null; total: number; createdAt: string; lines: { competition: string; qty: number; ticketNumbers: string[] }[] }
+interface Detail { data: OrderView; customer: { name: string; email: string; phone: string | null }; payment: Payment }
+
+const { id } = Astro.params;
+const d = await adminGet<Detail>(Astro.cookies, `/orders/${encodeURIComponent(id!)}`).catch(() => null);
+if (!d || !d.payment) return Astro.rewrite('/404');
+const { data: o, customer, payment: p } = d;
+
+const sourceText: Record<string, string> = { gateway: 'from the payment (Cashflows)', bin: 'from the card BIN lookup' };
+const cardText = !p.cardType ? '—'
+  : p.cardType === 'unknown' ? `Unknown${p.countsAsCredit ? ': counted as credit towards the £250 cap (CASHFLOWS_UNKNOWN_CARD_AS_CREDIT)' : ''}`
+  : `${p.cardType[0].toUpperCase()}${p.cardType.slice(1)}${p.cardTypeSource ? `, ${sourceText[p.cardTypeSource] ?? p.cardTypeSource}` : ''}`;
+const canRefund = p.refundable > 0;
+const pretty = (v: unknown) => JSON.stringify(v, null, 2);
+---
+<AdminLayout title={`Order ${o.reference}`} active="orders">
+  <p class="small"><a href="/admin/orders">← Orders</a></p>
+
+  <section class="panel">
+    <h2>Order</h2>
+    <dl class="facts">
+      <div><dt>Status</dt><dd><span class={`pill pill--${o.status}`}>{o.status}</span>{p.refundNeeded ? <span class="pill pill--failed" style="margin-left:6px">refund needed</span> : null}</dd></div>
+      <div><dt>Customer</dt><dd>{customer.name}<div class="small muted">{customer.email}{customer.phone ? ` · ${customer.phone}` : ''}</div></dd></div>
+      <div><dt>Total</dt><dd>{gbp(o.total)}</dd></div>
+      <div><dt>Created</dt><dd>{when(o.createdAt)}</dd></div>
+    </dl>
+    {o.message ? <p class="small muted" style="margin:12px 0 0">Shown to the customer: “{o.message}”</p> : null}
+    <div class="stack" style="gap:8px;margin-top:14px">
+      {o.lines.map((l) => <div class="small"><strong>{l.competition}</strong> · {l.qty} ticket{l.qty === 1 ? '' : 's'}{l.ticketNumbers.length ? `: ${l.ticketNumbers.map(ticket).join(', ')}` : ''}</div>)}
+    </div>
+  </section>
+
+  <section class="panel" data-payment-panel>
+    <h2>Payment</h2>
+    <dl class="facts">
+      <div><dt>Provider</dt><dd>{p.provider ?? (p.channel === 'event' ? 'Event sale' : '—')}{p.method ? <span class="small muted"> · {p.method}</span> : null}</dd></div>
+      <div><dt>Payment job</dt><dd class="mono">{p.paymentJobReference ?? '—'}</dd></div>
+      <div><dt>Payment</dt><dd class="mono">{p.paymentReference ?? '—'}</dd></div>
+      <div><dt>Paid</dt><dd>{when(p.paidAt)}</dd></div>
+      <div><dt>Card type</dt><dd>{cardText}</dd></div>
+      <div><dt>Refunded</dt><dd>{gbp(p.refunded)} of {gbp(p.total)}{canRefund ? <span class="small muted"> · {gbp(p.refundable)} refundable</span> : null}</dd></div>
+    </dl>
+
+    {canRefund ? (
+      <form class="stack refund" style="gap:12px" data-admin-form={`/api/admin/orders/${p.id}/refund`} data-reload
+        data-confirm={`Refund through ${p.provider === 'cashflows' ? 'Cashflows' : 'the payment provider'}? Money goes back to the customer's card.`}>
+        <h3 class="small" style="margin:0;text-transform:uppercase;letter-spacing:.08em">Refund</h3>
+        <div class="form-grid">
+          <div class="field"><label for="ra">Amount (£)</label><input id="ra" name="amount" type="number" data-type="number" step="0.01" min="0.01" max={p.refundable} placeholder={`${p.refundable.toFixed(2)} (all that's left)`} /><span class="hint">Leave empty to refund everything left ({gbp(p.refundable)}). Less than that is a partial refund: the order stays paid and its tickets stay in the draw.</span></div>
+          <div class="field"><label for="rr">Reason (kept on the refund)</label><input id="rr" name="reason" required minlength="3" maxlength="300" placeholder="e.g. Customer asked by email" /></div>
+        </div>
+        {o.status === 'paid' ? <label class="small row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" name="void_tickets" style="margin-top:2px" /> Take the tickets out of the draw (full refund only, while the competition is open)</label> : null}
+        <div><button class="btn" type="submit">Refund</button></div>
+      </form>
+    ) : null}
+
+    {p.refunds.length ? (
+      <div class="tbl-wrap" style="margin-top:18px"><table class="tbl">
+        <thead><tr><th>Refund</th><th>Amount</th><th>Status</th><th>Reason</th><th>By</th><th>When</th></tr></thead>
+        <tbody>{p.refunds.map((r) => (
+          <tr>
+            <td class="mono small">{r.number}{r.reference ? <div class="muted">{r.reference}</div> : null}</td>
+            <td>{gbp(r.amount)}</td>
+            <td><span class={`pill pill--${r.status === 'completed' ? 'paid' : r.status === 'failed' ? 'failed' : ''}`}>{r.status}</span>{r.error ? <div class="small muted" style="max-width:320px">{r.errorCode ? `${r.errorCode}: ` : ''}{r.error}</div> : null}</td>
+            <td class="small">{r.reason}</td>
+            <td class="small">{r.automatic ? 'Automatic' : r.by ?? '—'}</td>
+            <td class="small muted">{when(r.at)}</td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+    ) : null}
+
+    <h3 class="small" style="margin:20px 0 8px;text-transform:uppercase;letter-spacing:.08em">History</h3>
+    {p.history.length ? (
+      <ol class="history">{p.history.map((h) => (
+        <li>
+          <div class="small"><span class="muted">{when(h.at)}</span> · <strong>{h.kind}</strong>{h.status ? ` · ${h.status}` : ''}{h.summary ? ` · ${h.summary}` : ''}</div>
+          {h.payload ? <details><summary class="adm-link small">Raw (redacted)</summary><pre>{pretty(h.payload)}</pre></details> : null}
+        </li>
+      ))}</ol>
+    ) : <p class="small muted">No calls to the payment provider for this order.</p>}
+  </section>
+</AdminLayout>
+
+<style>
+  .facts { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px 24px; margin: 0; }
+  .facts dt { font-size: 12px; font-weight: 700; color: var(--muted-2); margin-bottom: 4px; }
+  .facts dd { margin: 0; overflow-wrap: anywhere; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
+  .refund { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
+  .history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .history li { border-left: 2px solid var(--line-2); padding-left: 12px; }
+  pre { margin: 8px 0 0; padding: 12px; background: #000; border: 1px solid var(--line); overflow-x: auto; max-height: 360px; font-size: 12px; white-space: pre; }
+</style>

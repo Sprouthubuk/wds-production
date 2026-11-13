@@ -212,8 +212,10 @@ class VerityDrawFlowTest extends TestCase
 
         app(CheckoutService::class)->handlePaymentResult(new PaymentResult($order, 'paid'));
         $o = Order::where('reference', $order)->firstOrFail();
-        $this->assertSame('cancelled', $o->status);   // money taken, no tickets: shown as "refund needed"
+        $this->assertSame('refunded', $o->status);   // money taken, no tickets: refunded automatically
         $this->assertNotNull($o->paid_at);
+        $this->assertSame($o->total_pence, $o->refunded_pence);
+        $this->assertStringContainsString("We've refunded your payment in full", $o->status_note);
         $this->assertSame(0, Ticket::where('order_line_id', $o->lines()->first()->id)->count());
         $this->assertSame(1, EntryGroup::count());       // only the order fulfilled before the close
         $this->assertSame(1, Ticket::count());

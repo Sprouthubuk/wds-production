@@ -6,9 +6,9 @@ use App\Models\Order;
 use Illuminate\Http\Request;
 
 /**
- * Hosted checkout. The customer never enters card details on our site:
- * we create a payment session, redirect to the provider, and the provider tells us
- * the outcome via a signed webhook. Tickets are only allocated on that webhook.
+ * Hosted checkout. The customer never enters card details on our site: we create a payment session, redirect
+ * to the provider, and only the provider's own answer (a status query, prompted by a notification or by the
+ * order page polling) moves the order on. Tickets are only allocated once the provider says Paid.
  */
 interface PaymentGateway
 {
@@ -17,12 +17,12 @@ interface PaymentGateway
     /** Create a hosted payment for the order and return the URL to redirect the customer to. */
     public function createHostedPayment(Order $order, string $returnUrl): HostedPayment;
 
-    /** Verify and parse a webhook. Must throw if the signature is invalid. */
+    /** Verify and parse a webhook (FakeGateway). Must throw if it can't be trusted. */
     public function parseWebhook(Request $request): PaymentResult;
 
-    /** Ask the provider for the latest status (used when the customer lands back before the webhook). */
+    /** Ask the provider for the latest status (the order page polls this while the order is pending). */
     public function fetchStatus(Order $order): ?PaymentResult;
 
-    /** Refund a paid order in full. Return false if it couldn't be done automatically (staff then refund by hand). */
-    public function refund(Order $order, string $reason): bool;
+    /** Refund part or all of a paid order. Never throws for a refusal: the result says why. */
+    public function refund(Order $order, int $amountPence, string $refundNumber, string $reason): RefundResult;
 }

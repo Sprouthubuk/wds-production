@@ -17,13 +17,18 @@ interface OrderView {
 
 const { reference } = Astro.params;
 const key = Astro.url.searchParams.get('key') ?? '';
+// Back from the payment page: Cashflows adds its payment job reference, which also opens the order. The return
+// itself proves nothing; while the order is pending the API asks Cashflows on every load (this page reloads).
+const job = Astro.url.searchParams.get('paymentjobref') ?? '';
+const result = Astro.url.searchParams.get('result') ?? Astro.url.searchParams.get('status') ?? '';
 const settings = await getSettings();
 let order: OrderView | null = null;
 if (usingSampleData) {
   order = { reference: reference!, status: 'paid', total: 40, lines: [{ competition: 'BMW E46 330Ci Clubsport', slug: 'bmw-e46-330ci-clubsport', qty: 3, drawAt: '2026-12-24T20:00:00Z', ticketNumbers: ['0466', '0467', '0468'] }] };
 } else {
   try {
-    order = (await api<{ data: OrderView }>(`/orders/${encodeURIComponent(reference!)}?key=${encodeURIComponent(key)}`, { token: getToken(Astro.cookies) })).data;
+    const q = new URLSearchParams({ key, ...(job ? { paymentjobref: job } : {}) });
+    order = (await api<{ data: OrderView }>(`/orders/${encodeURIComponent(reference!)}?${q}`, { token: getToken(Astro.cookies) })).data;
   } catch (e) {
     if (!(e instanceof ApiError && (e.status === 404 || e.status === 403))) throw e;
   }
@@ -37,7 +42,9 @@ const ch = drawChannels(settings);
   {order.status === 'paid' ? (
     <PageHero eyebrow={`Order ${order.reference}`} title="You're in" intro="Thanks for entering. Your ticket numbers are below and we've emailed them to you." />
   ) : waiting ? (
-    <PageHero eyebrow={`Order ${order.reference}`} title="Confirming payment" intro="We're waiting for confirmation from the payment provider. This page will update automatically." />
+    <PageHero eyebrow={`Order ${order.reference}`} title="Confirming your payment…" intro={result === 'cancelled'
+      ? "Checking with the payment provider that the payment was cancelled. This page will update automatically."
+      : "We're waiting for confirmation from the payment provider. This page will update automatically: please don't pay again."} />
   ) : (
     <PageHero eyebrow={`Order ${order.reference}`} title={order.status === 'refunded' ? 'Payment refunded' : 'Payment not completed'} intro={order.message ?? "Your payment didn't go through and no tickets were issued. Your basket is still saved."} />
   )}
