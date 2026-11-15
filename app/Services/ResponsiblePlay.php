@@ -29,11 +29,13 @@ class ResponsiblePlay
             throw new EntryException('You are on a break until '.$user->break_until->format('j M Y, H:i').'.');
         }
 
-        $now = CarbonImmutable::now();
+        // Days, weeks (from Monday) and months are UK ones, as with the site-wide cap: the app runs in UTC, and a UTC
+        // day would let a customer spend a second day's limit between midnight and 1am in summer.
+        $now = CarbonImmutable::now('Europe/London');
         foreach ([
-            'daily' => [$user->limit_daily_pence, $now->startOfDay()],
-            'weekly' => [$user->limit_weekly_pence, $now->startOfWeek()],
-            'monthly' => [$user->limit_monthly_pence, $now->startOfMonth()],
+            'daily' => [$user->limit_daily_pence, $now->startOfDay()->utc()],
+            'weekly' => [$user->limit_weekly_pence, $now->startOfWeek()->utc()],
+            'monthly' => [$user->limit_monthly_pence, $now->startOfMonth()->utc()],
         ] as $label => [$limit, $from]) {
             if ($limit === null) {
                 continue;
