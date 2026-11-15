@@ -40,7 +40,8 @@ export const sampleCompetitions: Competition[] = [
     ],
     opensAt: null,
     closesAt: null,
-    drawAt: '2026-12-24T20:00:00Z',
+    postalClosesAt: null,
+    drawAt: '2026-12-24T19:30:00Z',
     cashAlternative: null,
     buildVideoUrl: 'https://youtube.com/@wdsoriginals',
   },
@@ -51,8 +52,8 @@ export const sampleWinners: Winner[] = [
 ];
 
 export const sampleDraws: DrawResult[] = [
-  { competition: 'BMW E46 330Ci Clubsport', drawAt: '2026-12-24T20:00:00Z', winningTicket: null, winner: null, certificateUrl: null },
-  { competition: 'Alpina D3 Coupé', drawAt: '', winningTicket: null, winner: 'Mark Robinson', certificateUrl: null },
+  { id: null, verifyUrl: null, competition: 'BMW E46 330Ci Clubsport', drawAt: '2026-12-24T19:30:00Z', winningTicket: null, winner: null, certificateUrl: null },
+  { id: null, verifyUrl: null, competition: 'Alpina D3 Coupé', drawAt: '', winningTicket: null, winner: 'Mark Robinson', certificateUrl: null },
 ];
 
 export const sampleSettings: SiteSettings = {
