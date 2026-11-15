@@ -40,6 +40,15 @@ test('a guest buys the 3-ticket bundle, pays on the (fake) payment page and sees
   expect(errors).toEqual([]);
 });
 
+test('on a 375px phone the enter and free postal buttons each fit on one line', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/competitions/e2e-bmw');
+  for (const sel of ['[data-entry-panel] .enter-row [data-enter]', '[data-entry-panel] .enter-row [data-postal-link]']) {
+    const lines = await page.locator(sel).first().evaluate((el) => { const r = document.createRange(); r.selectNodeContents(el); const tops = [...r.getClientRects()].map((x) => x.top).sort((a, b) => a - b); return tops.filter((t, i) => i === 0 || t - tops[i - 1] > 6).length; });
+    expect(lines, sel).toBe(1);
+  }
+});
+
 test('checkout refuses an under-18 date of birth', async ({ page }) => {
   await page.goto('/competitions/e2e-bmw');
   await page.locator('[data-entry-panel] [data-enter]').first().click();
