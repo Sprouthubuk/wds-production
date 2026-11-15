@@ -165,7 +165,8 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
   .stat.light .label { color: #333; }
   .three { grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); }
   .sub { gap: 12px; border-top: 1px solid var(--line-2); padding-top: 22px; }
-  .table-wrap { overflow-x: auto; border: 1px solid var(--line-2); }
+  /* position: the visually hidden header label is absolute, and must stay inside this scroll box, not widen the page. */
+  .table-wrap { position: relative; overflow-x: auto; border: 1px solid var(--line-2); }
   table { width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; }
   th { text-align: left; padding: 14px 16px; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); border-bottom: 1px solid var(--line-2); }
   td { padding: 16px; border-bottom: 1px solid var(--line); }
