@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Services\CheckoutService;
 use App\Services\Payments\CashflowsGateway;
+use App\Services\Payments\FakeGateway;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentLog;
 use App\Services\Payments\PaymentResult;
@@ -16,9 +17,15 @@ use Throwable;
 
 class PaymentController extends Controller
 {
+    /**
+     * The generic webhook. Only the fake driver accepts one (Cashflows uses /payments/cashflows/notify), and the
+     * fake "provider" trusts what it's told, so, like the fake payment page, it only exists off production and
+     * with PAYMENT_DRIVER=fake. Otherwise anyone could POST {"order": "<reference>"} and have an order marked paid.
+     */
     public function webhook(Request $request, PaymentGateway $gateway, CheckoutService $checkout)
     {
-        $result = $gateway->parseWebhook($request); // throws on bad signature
+        abort_unless($gateway instanceof FakeGateway && config('raffle.payments.driver') === 'fake' && ! app()->isProduction(), 404);
+        $result = $gateway->parseWebhook($request);
         $checkout->handlePaymentResult($result);
 
         return response()->json(['ok' => true]);
