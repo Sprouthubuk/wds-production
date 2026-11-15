@@ -339,7 +339,9 @@ php8.5 artisan schedule:list | grep verity   # the six Verity entries plus wds:v
 Every API deploy also runs `verity:check` after `migrate` (`forge/api-deploy.sh`): the output is in Forge's
 deploy log and `storage/logs/verity-check-deploy.log`, and it never stops a deploy. Verity runs `verity:check`
 hourly but doesn't alert on it, so `wds:verity-check-alert` emails `VERITY_ALERT_EMAILS` daily while any row
-is FAIL (with a reminder every 24 hours and an all-clear when fixed).
+is FAIL (with a reminder every 24 hours and an all-clear when fixed). The hourly run's output is appended to
+`storage/logs/verity-check-schedule.log`. If the scheduler log says `verity:check` "failed with exit code 1",
+look there: outside `APP_ENV=production` a FAIL row exits 0, so on staging a failure means an exception.
 
 **Go-live checks** (from the package's INTEGRATION.md)
 - [ ] `APP_ENV=production`, `APP_DEBUG=false`, `VERITY_BEACON=drand` (the site refuses to serve otherwise).

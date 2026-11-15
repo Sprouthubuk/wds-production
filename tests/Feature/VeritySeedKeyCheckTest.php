@@ -86,6 +86,26 @@ class VeritySeedKeyCheckTest extends TestCase
         $this->assertTrue(collect(json_decode(Artisan::output(), true)['checks'])->firstWhere('key', 'seed_key_format')['ok']);
     }
 
+    public function test_the_hourly_scheduled_verity_check_keeps_its_output_and_only_fails_in_production(): void
+    {
+        $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+            ->filter(fn ($e) => preg_match('/\bverity:check\b/', (string) $e->command));
+        $this->assertCount(1, $events);
+        $event = $events->first();
+        $this->assertSame('45 * * * *', $event->expression);
+        $this->assertSame(storage_path('logs/verity-check-schedule.log'), $event->output);
+        $this->assertTrue($event->shouldAppendOutput);
+
+        // Exit rules: a FAIL row only fails the run in production (or with --strict). On staging
+        // (APP_ENV=staging) a scheduled "failed with exit code 1" is therefore an exception, now in that log.
+        config(['verity.seed_key' => $this->keys()['no_prefix']]);
+        $this->app['env'] = 'staging';
+        $this->assertSame(0, Artisan::call('verity:check'));
+        $this->app['env'] = 'production';
+        $this->assertSame(1, Artisan::call('verity:check'));
+        $this->app['env'] = 'testing';
+    }
+
     public function test_publish_is_refused_with_a_clear_message_instead_of_crashing(): void
     {
         $this->fakeVerity();
