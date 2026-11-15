@@ -1,4 +1,5 @@
 ---
+import { thumb } from '../lib/images';
 import { ticket } from '../lib/ticket';
 import { odds } from '../lib/pricing';
 interface Props { e: { competition: string; slug: string; image: string; drawAt: string; totalTickets: number; status: string; online: string[]; postal: string[]; won: boolean } }
@@ -7,7 +8,7 @@ const total = e.online.length + e.postal.length;
 const draw = new Date(e.drawAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' });
 ---
 <article class="entry">
-  <img src={e.image.replace('.jpg', '-720.jpg')} alt="" loading="lazy" />
+  <img src={thumb(e.image)} alt="" loading="lazy" />
   <div class="body">
     <div class="top"><strong>{e.competition}</strong><span class="chip chip--solid">{e.won ? 'Winner' : e.status === 'live' ? `Live · draw ${draw}` : 'Drawn'}</span></div>
     <span class="small muted">{total} ticket{total === 1 ? '' : 's'} · your odds {odds(e.totalTickets, total || 1)}</span>
