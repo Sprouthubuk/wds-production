@@ -79,6 +79,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
 
 <script>
   import { lineCap, readBasket, setQty } from '../lib/basket';
+  import { thumb } from '../lib/images';
   import { money, priceFor, savingFor } from '../lib/pricing';
 
   const root = document.querySelector<HTMLElement>('[data-basket]')!;
@@ -110,7 +111,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
       const div = document.createElement('div');
       div.className = 'line';
       div.innerHTML = `
-        <img src="${esc(l.image.replace('.jpg', '-720.jpg'))}" alt="" />
+        <img src="${esc(thumb(l.image))}" alt="" />
         <div class="info"><strong>${esc(l.title)}</strong><span class="small muted">${money(l.ticketPrice)} each · <span data-o></span></span><button type="button" class="remove" data-remove>Remove</button></div>
         <div class="step"><button type="button" aria-label="One fewer ticket" data-d="-1">−</button><span aria-live="polite">${l.qty}</span><button type="button" aria-label="One more ticket" data-d="1">+</button></div>
         <div class="price"><b>${money(lineTotal)}</b>${lineSave > 0 ? `<span class="small">Bundle saving ${money(lineSave)}</span>` : ''}</div>`;

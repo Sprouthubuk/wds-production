@@ -1,4 +1,5 @@
 ---
+import { thumb } from '../../lib/images';
 import { drawChannels } from '../../lib/channels';
 import { POSTAL_HOURS_BEFORE_CLOSE, hasPostalRoute, postalBy, postalDeadlineSentence, seasonalPostNote } from '../../lib/postal';
 import Layout from '../../layouts/Layout.astro';
@@ -72,7 +73,7 @@ const jsonLd = {
         </div>
         <div class="thumbs">
           {c.images.map((im, i) => (
-            <button type="button" data-thumb={i} data-src={im.src} data-alt={im.alt} aria-label={`Show photo ${i + 1}: ${im.alt}`} aria-pressed={i === 0 ? 'true' : 'false'}><img src={im.src.replace('.jpg', '-720.jpg')} alt="" loading="lazy" /></button>
+            <button type="button" data-thumb={i} data-src={im.src} data-alt={im.alt} aria-label={`Show photo ${i + 1}: ${im.alt}`} aria-pressed={i === 0 ? 'true' : 'false'}><img src={thumb(im.src)} alt="" loading="lazy" /></button>
           ))}
         </div>
       </div>
