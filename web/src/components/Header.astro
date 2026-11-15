@@ -51,7 +51,7 @@ const nav = [
 
 <style>
   .announce { background: #fff; color: #000; text-align: center; padding: 10px 16px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .announce a { color: #000; text-underline-offset: 3px; }
+  .announce a { color: #000; text-underline-offset: 3px; display: inline-block; padding: 6px 0; margin: -6px 0; } /* a 24px+ tap target; nothing moves */
   .site-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--line); background: #000; transition: background-color .4s, transform .5s var(--ease), border-color .4s; }
   .site-header.is-scrolled { background: rgba(0,0,0,.78); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
   .site-header.is-hidden { transform: translateY(-100%); }

@@ -46,7 +46,7 @@ const { settings } = Astro.props;
   .socials { gap: 4px; margin-left: -12px; }
   .socials a { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; }
   nav { flex: 0 1 180px; display: flex; flex-direction: column; gap: 12px; font-size: 14px; }
-  nav a { text-decoration: none; }
+  nav a { text-decoration: none; padding: 4px 0; margin: -4px 0; } /* a 24px+ tap target; nothing moves */
   nav a { transition: color .3s; color: var(--muted-2); }
   nav a:hover { color: #fff; }
   .socials a { transition: opacity .3s; }
