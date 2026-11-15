@@ -207,14 +207,26 @@ class CheckoutService
             return $order;
         }
         if ($result->status === PaymentResult::PAID) {
+            if ($order->paid_at && $order->status !== 'pending') {
+                return $order;   // already taken and refused (refund needed / refunded): a repeat notification changes nothing
+            }
             // A payment job can hold more than one payment (a declined attempt, then a good one): refunds and
             // status checks follow the one that was paid.
             if ($result->paymentReference && $result->paymentReference !== $order->payment_reference) {
                 $order->update(['payment_reference' => $result->paymentReference]);
             }
             if ($result->amountPence !== null && $result->amountPence !== $order->total_pence) {
-                Log::error('Payment amount mismatch', ['order' => $order->reference, 'paid' => $result->amountPence, 'expected' => $order->total_pence]);
-                $order->update(['status' => 'failed']);
+                // Money was taken, but not the amount we asked for: issue nothing, and show the order in Admin as
+                // "refund needed" (cancelled + paid_at) so it can be refunded, rather than a plain failed order that
+                // looks as if nothing was paid. No automatic refund: the amount taken is the thing in doubt.
+                Log::critical('Payment amount mismatch: REFUND REQUIRED', ['order' => $order->reference, 'paid' => $result->amountPence, 'expected' => $order->total_pence]);
+                $order->update([
+                    'status' => 'cancelled', 'paid_at' => now(), 'reserved_until' => null,
+                    'payment_method' => $result->method ?? 'card',
+                    'provider_reference' => $result->providerReference ?? $order->provider_reference,
+                    'status_note' => sprintf('We received a payment of £%s, which does not match your order total of £%s, so no tickets were issued. We will refund your payment; contact us if you have any questions.',
+                        number_format($result->amountPence / 100, 2), number_format($order->total_pence / 100, 2)),
+                ]);
 
                 return $order;
             }
