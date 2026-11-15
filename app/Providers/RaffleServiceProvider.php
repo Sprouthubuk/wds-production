@@ -29,7 +29,9 @@ class RaffleServiceProvider extends ServiceProvider
     {
         $this->app->bind(PaymentGateway::class, fn () => match (config('raffle.payments.driver')) {
             'cashflows' => new CashflowsGateway(config('raffle.payments.cashflows'), $this->app->make(\App\Services\Payments\BinLookup::class)),
-            default => new FakeGateway(),
+            'fake', null, '' => new FakeGateway(),
+            // A typo (PAYMENT_DRIVER=cashflow) used to fall back to the fake gateway without a word.
+            default => throw new \RuntimeException('Unknown PAYMENT_DRIVER "'.config('raffle.payments.driver').'": use cashflows (or fake, off production).'),
         });
         // No BIN service yet: swap in a real one here when chosen (see docs/cashflows-testing.md).
         $this->app->bindIf(\App\Services\Payments\BinLookup::class, \App\Services\Payments\NullBinLookup::class);
