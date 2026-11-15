@@ -87,7 +87,7 @@ class WinnerController extends Controller
     public function uploadImage(Request $request, Winner $winner)
     {
         $request->validate(['image' => ['required', 'image', 'max:8192']]);
-        $winner->update(['image' => asset('storage/'.$request->file('image')->store('winners', 'public'))]);
+        $winner->update(['image' => asset('storage/'.\App\Support\UploadedPhoto::store($request->file('image'), 'winners'))]);
 
         return response()->json($winner);
     }
