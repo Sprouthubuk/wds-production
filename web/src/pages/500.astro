@@ -1,0 +1,14 @@
+---
+/**
+ * Shown when a page can't be built, usually because the API is down or erroring. Never shows the error itself
+ * (no stack traces, no internal URLs). Layout falls back to built-in settings when the API is unreachable.
+ */
+import Layout from '../layouts/Layout.astro';
+import PageHero from '../components/PageHero.astro';
+---
+<Layout title="Something went wrong">
+  <PageHero eyebrow="500" title="Something went wrong" intro="We couldn't load this page just now. Please try again in a minute. If you were paying, your order is safe: check your email or your account for your tickets." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container row" style="gap: 12px"><a href="/" class="btn">Back to home</a><a href="/contact" class="btn btn--outline">Contact us</a></div>
+  </section>
+</Layout>
