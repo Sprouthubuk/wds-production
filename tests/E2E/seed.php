@@ -36,10 +36,11 @@ foreach ($guards as $what => $ok) {
 Artisan::call('migrate:fresh', ['--force' => true]);
 
 $password = (string) getenv('E2E_PASSWORD');
-$user = fn (string $email, string $role, array $extra = []) => User::create($extra + [
+// forceFill: email_verified_at isn't mass-assignable (verified accounts, so free entry works).
+$user = fn (string $email, string $role, array $extra = []) => tap((new User)->forceFill($extra + [
     'name' => ucfirst(strtok($email, '@')).' Tester', 'first_name' => ucfirst(strtok($email, '@')), 'last_name' => 'Tester',
     'email' => $email, 'password' => $password, 'role' => $role, 'date_of_birth' => '1990-01-01', 'email_verified_at' => now(),
-]);
+]))->save();
 $user('admin@e2e.test', 'admin');
 $user('staff@e2e.test', 'staff');
 $user('alice@e2e.test', 'customer');
