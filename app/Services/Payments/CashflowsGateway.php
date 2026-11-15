@@ -145,6 +145,39 @@ class CashflowsGateway implements PaymentGateway
         return $result;
     }
 
+    /**
+     * The payment references in a payment job (GET /api/gateway/payment-jobs/{job}), oldest first. A job can hold
+     * several payments (a declined attempt, then a good one). Null if the job can't be read (404 or an error):
+     * callers then fall back to the payment reference they already have.
+     *
+     * @return list<string>|null
+     */
+    public function jobPaymentReferences(Order $order, string $jobReference, string $why = 'Status check'): ?array
+    {
+        try {
+            $res = $this->send('GET', '/api/gateway/payment-jobs/'.rawurlencode($jobReference));
+        } catch (ConnectionException $e) {
+            PaymentLog::record($order, 'error', null, "{$why}: payment job could not be read (Cashflows unreachable)");
+
+            return null;
+        }
+        $json = $res->json() ?? [];
+        if (! $res->successful()) {
+            PaymentLog::record($order, 'error', null, "{$why}: payment job HTTP {$res->status()}", ['httpStatus' => $res->status(), 'response' => $json ?: $res->body()]);
+
+            return null;
+        }
+        $payments = data_get($json, 'data.order.payments') ?? data_get($json, 'data.payments') ?? data_get($json, 'order.payments') ?? [];
+        $refs = [];
+        foreach (is_array($payments) ? $payments : [] as $p) {
+            if (is_array($p) && is_string($p['reference'] ?? null) && $p['reference'] !== '') {
+                $refs[] = $p['reference'];
+            }
+        }
+
+        return array_values(array_unique($refs));
+    }
+
     public function resultFromPayment(string $orderReference, array $payment, ?string $paymentReference = null): PaymentResult
     {
         $raw = (string) ($payment['status'] ?? $payment['paymentStatus'] ?? data_get($payment, 'order.paymentStatus') ?? '');

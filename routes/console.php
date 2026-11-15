@@ -6,6 +6,8 @@ use Sprouthub\Verity\Facades\Verity;
 
 // Release capacity held by abandoned checkouts.
 Schedule::command('orders:expire')->everyMinute()->withoutOverlapping();
+// Cashflows: re-query orders still waiting on a payment, in case a notification was missed (CashflowsReconciler).
+Schedule::command('payments:reconcile')->everyFiveMinutes()->withoutOverlapping();
 
 // The Verity draw engine: verity:process-due every minute (close at the closing time, draw once the
 // committed drand round is out, run scheduled redraws, alert on a stuck draw), plus the hourly chain

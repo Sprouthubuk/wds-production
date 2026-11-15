@@ -7,6 +7,7 @@ namespace App\Services\Payments;
  * or hashes. Card numbers are cut to the first 6 and last 4 digits (as the gateway's TruncatedCardNumber already
  * is). Cashflows nests its acquirer details as a JSON string (cashFlowsAcquiringDetails): that is redacted too.
  * References (long digit strings such as payment job references) are kept, so only card-number fields are masked.
+ * token= and key= values in any URL (the notification token, the order view key) are redacted too.
  */
 class PaymentRedactor
 {
@@ -38,11 +39,27 @@ class PaymentRedactor
                 return json_encode(self::redact($decoded), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             }
         }
+        $value = self::redactQueryValues($value);
         if ($key !== null && preg_match(self::CARD_KEYS, $key)) {
             return self::maskCardNumber($value);
         }
 
         return $value;
+    }
+
+    /**
+     * URLs inside payloads carry secrets in their query strings: the notification token (webhookUrl …?token=…)
+     * and the order view key (returnUrl… …?key=…). "…?token=abc&x=1" → "…?token=[redacted]&x=1", also when
+     * URL-encoded (%3Ftoken%3D…).
+     */
+    public static function redactQueryValues(string $value): string
+    {
+        if (stripos($value, 'token') === false && stripos($value, 'key') === false) {
+            return $value;
+        }
+        $value = preg_replace('/([?&;](?:token|key)=)(?!\[redacted\])[^&#\s"\'<>]*/i', '$1[redacted]', $value) ?? '[redacted]';
+
+        return preg_replace('/((?:%3F|%26|%3B)(?:token|key)%3D)(?!%5Bredacted%5D)(?:(?!%26|%23)[^&#\s"\'<>])*/i', '$1%5Bredacted%5D', $value) ?? '[redacted]';
     }
 
     /** "4000000000000002" → "400000******0002"; an already-masked number is left as it is. */
