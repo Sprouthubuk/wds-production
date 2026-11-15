@@ -66,6 +66,21 @@ class PaymentWebhookLockdownTest extends TestCase
         $this->assertSame('pending', $order->fresh()->status);
     }
 
+    public function test_a_mistyped_payment_driver_is_an_error_not_a_silent_fake_gateway(): void
+    {
+        config(['raffle.payments.driver' => 'cashflow']);
+        try {
+            app(\App\Services\Payments\PaymentGateway::class);
+            $this->fail('An unknown driver must not fall back to the fake gateway.');
+        } catch (\RuntimeException $e) {
+            $this->assertStringContainsString('Unknown PAYMENT_DRIVER "cashflow"', $e->getMessage());
+        }
+        config(['raffle.payments.driver' => 'cashflows']);
+        $this->assertInstanceOf(\App\Services\Payments\CashflowsGateway::class, app(\App\Services\Payments\PaymentGateway::class));
+        config(['raffle.payments.driver' => 'fake']);
+        $this->assertInstanceOf(\App\Services\Payments\FakeGateway::class, app(\App\Services\Payments\PaymentGateway::class));
+    }
+
     public function test_off_production_with_the_fake_driver_it_still_works_for_testing(): void
     {
         $order = $this->order();
