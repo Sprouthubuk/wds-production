@@ -6,11 +6,12 @@ was changed.
 
 ## Top 5 things to know
 
-1. **Three draft PRs need your decision (money and compliance).** Each has a regression test and is explained
+1. **Four draft PRs need your decision (money and compliance).** Each has a regression test and is explained
    below:
    - **#72:** site credit could be spent twice.
    - **#69:** a payment for the wrong amount was taken but left unrefundable.
    - **#71:** self-excluded or closed accounts could still enter by post.
+   - **#77:** a one-use discount code could be used by several checkouts at once.
 2. **Security hole closed (#61).** Production runs `PAYMENT_DRIVER=fake` until Cashflows goes live. Until now,
    anyone could `POST /api/payments/webhook {"order":"WDS-…"}` and have their own order marked paid. That endpoint
    now only exists off production with the fake driver. #68 also makes a mistyped driver an error instead of a
@@ -31,7 +32,7 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 
 | | Baseline (main @ 6be81a3) | Now (main @ 364a55a) |
 |---|---|---|
-| PHP tests | 186 (184 passed, 2 skipped) | 198 (196 passed, 2 skipped), plus 3 more in the draft PRs |
+| PHP tests | 186 (184 passed, 2 skipped) | 198 (196 passed, 2 skipped), plus 4 more in the draft PRs |
 | Web tests (node) | 19/19 | 23/23 |
 | Website build | OK | OK, plus `astro check` (strict): 0 errors |
 | Larastan | not installed | level 5, 227 pre-existing findings in a baseline, 0 new |
@@ -73,14 +74,14 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
   together (two tabs) each used the same £20, leaving the balance at −£20 once both were paid. Now credit on
   another unpaid order is held back. Not covered: a payment that arrives late for an expired order whose credit
   was reused in the meantime. The PR suggests an option.
+- **#77, discount code usage limits.** `times_used` only goes up when an order is paid, so a code limited to one use
+  could go on several checkouts at once, and all of them could be paid. Unpaid, unexpired orders holding the code
+  now count towards the limit.
 
 ## Bugs found but not fixed
 
 - **Waiting on your decision: max per person and limits are per email address.** A guest can use
   `name+1@gmail.com` to get round them. Unchanged, as asked.
-- **Low: discount code usage limits can be exceeded.** `times_used` only goes up when an order is paid, so a code
-  limited to 1 use can be used by several checkouts at once. Suggested fix: count pending, unexpired orders with the
-  code, as #72 does for credit.
 - **Low: postal date with no time.** A date-only "received" value via the API counts from midnight UTC, which is
   01:00 in summer. Admin always sends a date and time, so this doesn't affect normal use.
 - **Low: account tab strip on phones.** The selected tab, for example "Responsible play", can be scrolled out of
@@ -123,7 +124,7 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 2. **Instagram:** is the competitions account `@wds_competitions` or `@wds_originals`?
 3. Bundle prices show whole pounds ("£40") but single tickets show pence ("£14.95"). Is that intended?
 4. When will the legal pages' final text and "last updated" date be ready?
-5. Draft PRs #69, #71 and #72: see above.
+5. Draft PRs #69, #71, #72 and #77: see above.
 
 ## Decisions made
 
@@ -131,12 +132,12 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 - The end-to-end suite isn't in CI, because it needs PHP plus Chrome on one runner. Run it locally.
 - Larastan runs at level 5 with a baseline.
 - The fake webhook is locked rather than deleted: local development and tests use it.
-- Money and compliance fixes (#69, #71, #72) are drafts. Bug fixes that are clearly correct and only tighten a
+- Money and compliance fixes (#69, #71, #72, #77) are drafts. Bug fixes that are clearly correct and only tighten a
   rule (#70) were merged.
 
 ## Next session starts here
 
-**State:** main @ 364a55a is green. Open PRs: #25 (leave alone) and drafts #69, #71 and #72 (waiting for Jason).
+**State:** main @ 364a55a is green. Open PRs: #25 (leave alone) and drafts #69, #71, #72 and #77 (waiting for Jason).
 The working tree is clean, and no local servers are running.
 
 **Phase 7 coverage so far:**
@@ -152,11 +153,11 @@ The working tree is clean, and no local servers are running.
 | Mobile customer pages | All covered by end-to-end tests at 5 widths. |
 
 **Still to do:**
-1. Discount code usage limit under concurrency: fix as a draft, the same pattern as #72.
-2. Scroll the active account tab into view on phones.
-3. Look into the axe `.roll` contrast hit.
-4. If Jason approves #72, extend it to cover a late payment after the credit was reused.
-5. Once Jason decides, merge or adjust #69, #71 and #72 (update each branch with main first).
+1. Scroll the active account tab into view on phones.
+2. Look into the axe `.roll` contrast hit.
+3. If Jason approves #72 and #77, extend them to cover a late payment for an expired order.
+4. Once Jason decides, merge or adjust #69, #71, #72 and #77 (update each branch with main first). #72 and #77
+   both edit `CheckoutService::start`; merge one, then update the other.
 
 **How to run:**
 - PHP: `php artisan test` (PowerShell).
