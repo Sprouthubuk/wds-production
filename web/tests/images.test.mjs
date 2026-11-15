@@ -55,3 +55,10 @@ test('pages use uploaded photos as they are, and never render an empty src', asy
   }
   assert.ok((await (await fetch(base + '/competitions')).text()).includes(UPLOADED));
 });
+
+test('thumb() uses the 720px copy of an Admin upload stored with one, and nothing else', () => {
+  assert.equal(thumb('https://api.example.com/storage/competitions/Ab12-full.jpg'), 'https://api.example.com/storage/competitions/Ab12-720.jpg');
+  assert.equal(thumb('/storage/winners/Ab12-full.PNG'), '/storage/winners/Ab12-720.jpg');
+  assert.equal(thumb('/storage/competitions/Ab12.jpg'), '/storage/competitions/Ab12.jpg');
+  assert.equal(thumb('https://example.com/elsewhere/a-full.jpg'), 'https://example.com/elsewhere/a-full.jpg');
+});

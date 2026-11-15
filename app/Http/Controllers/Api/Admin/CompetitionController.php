@@ -134,7 +134,7 @@ class CompetitionController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate(['image' => ['required', 'image', 'max:8192']]);
-        $path = $request->file('image')->store('competitions', 'public');
+        $path = \App\Support\UploadedPhoto::store($request->file('image'), 'competitions');
 
         return response()->json(['src' => asset('storage/'.$path)]);
     }
