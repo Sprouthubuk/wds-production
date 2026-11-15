@@ -1,0 +1,1063 @@
+parameters:
+	ignoreErrors:
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$n\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/ResetTestData.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Order\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Console/Commands/ResetTestData.php
+
+		-
+			message: '#^Offset ''note'' on array\{key\: string, label\: string, ok\: false, level\: ''FAIL'', note\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Console/Commands/VerityCheckAlert.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Console/Commands/WinnerContactReminders.php
+
+		-
+			message: '#^Cannot call method timezone\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Console/Commands/WinnerContactReminders.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>title" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Console/Commands/WinnerContactReminders.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Relations\\HasMany\:\:active\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/CompetitionController.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Api/Admin/CompetitionController.php
+
+		-
+			message: '#^Cannot call method getTimestamp\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/Admin/CompetitionController.php
+
+		-
+			message: '#^Offset ''src'' on string in empty\(\) does not exist\.$#'
+			identifier: empty.offset
+			count: 1
+			path: app/Http/Controllers/Api/Admin/CompetitionController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\User\:\:\$spent_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/CustomerController.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Api/Admin/CustomerController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$day\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$orders\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DashboardController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Competition\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DashboardController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Order\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DashboardController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 3
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:tickets\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 4
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Offset ''src'' on non\-empty\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Competition\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Winner\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>entries_count" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/Admin/DrawController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$closed_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$limit_monthly_pence\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$self_excluded_until\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$suspended_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:tokens\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Match expression does not handle remaining value\: mixed$#'
+			identifier: match.unhandled
+			count: 2
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\HarmFlag\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Parameter \#1 \$user of method App\\Services\\ResponsiblePlay\:\:setLimits\(\) expects App\\Models\\User, Illuminate\\Database\\Eloquent\\Model given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/Admin/HarmFlagController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$amount_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$automatic\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$competition\.$#'
+			identifier: property.notFound
+			count: 5
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$error_code\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$error_message\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 4
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$kind\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$payload\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$provider_reference\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$reason\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$refund_number\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$staff\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$summary\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 2
+			path: app/Http/Controllers/Api/Admin/OrderController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/Admin/PostalController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/Admin/PostalController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Api/Admin/PostalController.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/Admin/PostalController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Pagination\\AbstractPaginator\<int,App\\Models\\PostalEntry\>\:\:through\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/Admin/PostalController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/Admin/PreviewLinkController.php
+
+		-
+			message: '#^Using nullsafe method call on non\-nullable type Laravel\\Sanctum\\PersonalAccessToken\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Controllers/Api/AuthController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Contracts\\Auth\\Authenticatable\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/CheckoutController.php
+
+		-
+			message: '#^Parameter \#2 \$user of method App\\Services\\CheckoutService\:\:start\(\) expects App\\Models\\User\|null, Illuminate\\Contracts\\Auth\\Authenticatable\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/CheckoutController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$access_key\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$lines\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$reference\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Cannot call method gt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Instanceof between Laravel\\Sanctum\\PersonalAccessToken and Laravel\\Sanctum\\PersonalAccessToken will always evaluate to true\.$#'
+			identifier: instanceof.alwaysTrue
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Offset ''src'' on non\-empty\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<\(int\|string\),Illuminate\\Database\\Eloquent\\Collection\<int, App\\Models\\Ticket\>\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,Illuminate\\Database\\Eloquent\\Model\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<\(int\|string\),array\<string, mixed\>\>\:\:sortByDesc\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/MeController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 3
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:drawsPhysically\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 5
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\PreviewLink\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Competition\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Draw\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Parameter \#1 \$source of method Illuminate\\Support\\Collection\<int,array\<string, mixed\>\>\:\:concat\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Controllers/Api/PublicController.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 7
+			path: app/Http/Resources/CompetitionResource.php
+
+		-
+			message: '#^Offset ''price_pence'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Resources/CompetitionResource.php
+
+		-
+			message: '#^Offset ''qty'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Resources/CompetitionResource.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Resources/CompetitionTeaser.php
+
+		-
+			message: '#^Offset ''alt'' on non\-falsy\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Resources/CompetitionTeaser.php
+
+		-
+			message: '#^Offset ''src'' on non\-falsy\-string on left side of \?\? does not exist\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Http/Resources/CompetitionTeaser.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Resources/MeResource.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Resources/MeResource.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Http/Resources/MeResource.php
+
+		-
+			message: '#^Offset ''effective_at'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Resources/MeResource.php
+
+		-
+			message: '#^Offset ''value'' does not exist on string\.$#'
+			identifier: offsetAccess.notFound
+			count: 1
+			path: app/Http/Resources/MeResource.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Support\\Collection\<int,string\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Http/Resources/MeResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$bundle_saving_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$credit_used_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$discount_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$lines\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$reference\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$status_note\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$subtotal_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$total_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Call to an undefined method App\\Http\\Resources\\OrderResource\:\:loadMissing\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/OrderResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/WinnerResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Http/Resources/WinnerResource.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Http/Resources/WinnerResource.php
+
+		-
+			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Http/Resources/WinnerResource.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>total_tickets" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Http/Resources/WinnerResource.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PostalEntryLogged.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PostalEntryLogged.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/PostalEntryLogged.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Mail/PostalEntryLogged.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:postalDeadlineSentence\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Mail/PostalEntryLogged.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cash_alternative_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/WinnerNotified.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$name\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/WinnerNotified.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/WinnerNotified.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Mail/WinnerNotified.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Mail/WinnerNotified.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Competition.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Models/Competition.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Competition.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/DiscountCode.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/PostalEntry.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Models/PreviewLink.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublished\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Models/PreviewLink.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/PreviewLink.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>value" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Models/Setting.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 3
+			path: app/Models/User.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Winner.php
+
+		-
+			message: '#^Cannot call method lte\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Models/Winner.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$competition\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$id\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$line_total_pence\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$qty\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CheckoutService.php
+
+		-
+			message: '#^Offset ''dateOfBirth'' on array\{email\: string, name\: string, phone\?\: string\|null, dateOfBirth\: string\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/CheckoutService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$competition\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/CreditCardCap.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$email\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DrawService.php
+
+		-
+			message: '#^Access to an undefined property Sprouthub\\Verity\\Models\\Winner\:\:\$created_at\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/DrawService.php
+
+		-
+			message: '#^Method App\\Services\\DrawService\:\:sync\(\) should return App\\Models\\Draw\|null but returns Illuminate\\Database\\Eloquent\\Model\|null\.$#'
+			identifier: return.type
+			count: 1
+			path: app/Services/DrawService.php
+
+		-
+			message: '#^Parameter \#1 \$competition of method App\\Services\\DrawService\:\:sync\(\) expects App\\Models\\Competition, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
+			identifier: argument.type
+			count: 1
+			path: app/Services/DrawService.php
+
+		-
+			message: '#^Property App\\Services\\DrawService\:\:\$verity is never read, only written\.$#'
+			identifier: property.onlyWritten
+			count: 1
+			path: app/Services/DrawService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:drawsPhysically\(\)\.$#'
+			identifier: method.notFound
+			count: 2
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Cannot call method lt\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Winner\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/Draws/VerityDrawEngine.php
+
+		-
+			message: '#^Cannot call method toDateString\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/FreeEntryService.php
+
+		-
+			message: '#^Cannot call method copy\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Payments/CashflowsGateway.php
+
+		-
+			message: '#^Cannot call method isPast\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 1
+			path: app/Services/Payments/CashflowsReconciler.php
+
+		-
+			message: '#^Offset ''price_pence'' on array\{qty\: int\<2, max\>, price_pence\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/PricingService.php
+
+		-
+			message: '#^Offset ''qty'' on array\{qty\: int, price_pence\: int\} on left side of \?\? always exists and is not nullable\.$#'
+			identifier: nullCoalesce.offset
+			count: 1
+			path: app/Services/PricingService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$discount\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$orders\.$#'
+			identifier: property.notFound
+			count: 2
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$revenue\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Access to an undefined property App\\Models\\Order\:\:\$total\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
+			identifier: property.notFound
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
+			identifier: method.notFound
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\PostalEntry\>\:\:map\(\) contains unresolvable type\.$#'
+			identifier: argument.unresolvableType
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>\(Expression\)" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Using nullsafe property access "\?\-\>tickets" on left side of \?\? is unnecessary\. Use \-\> instead\.$#'
+			identifier: nullsafe.neverNull
+			count: 1
+			path: app/Services/ReportService.php
+
+		-
+			message: '#^Cannot call method format\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/ResponsiblePlay.php
+
+		-
+			message: '#^Cannot call method isFuture\(\) on string\.$#'
+			identifier: method.nonObject
+			count: 2
+			path: app/Services/ResponsiblePlay.php
+
+		-
+			message: '#^Empty array passed to foreach\.$#'
+			identifier: foreach.emptyArray
+			count: 1
+			path: app/Services/ResponsiblePlay.php
+
+		-
+			message: '#^If condition is always false\.$#'
+			identifier: if.alwaysFalse
+			count: 1
+			path: app/Services/ResponsiblePlay.php
