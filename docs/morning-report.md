@@ -47,8 +47,8 @@ was changed.
 - **#66:** competition page: on phones under 420px, "Enter now · £40" and "Free postal entry" stack instead of
   wrapping onto 2–3 lines.
 - **#67:** the branded 500 page.
-- **#68:** an unknown `PAYMENT_DRIVER` is an error. (Merging if CI is green; if this line is still here, check
-  the PR.)
+- **#68:** an unknown `PAYMENT_DRIVER` is an error.
+- **#65:** this report.
 
 ## Draft PRs needing your decision
 
