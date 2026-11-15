@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Ticket;
 use App\Services\CreditCardCap;
 use App\Services\Draws\VerityDrawEngine;
+use App\Services\Payments\PaymentRedactor;
 use App\Services\RefundService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
@@ -65,7 +66,8 @@ class OrderController extends Controller
                 'refundNeeded' => $order->status === 'cancelled' && $order->paid_at !== null,
                 'history' => $order->paymentEvents->map(fn ($e) => [
                     'at' => $e->created_at?->toIso8601String(), 'kind' => $e->kind, 'status' => $e->status,
-                    'summary' => $e->summary, 'payload' => $e->payload,
+                    // Redacted again on the way out: rows stored before a redaction rule existed are masked too.
+                    'summary' => $e->summary, 'payload' => $e->payload === null ? null : PaymentRedactor::redact($e->payload),
                 ])->values(),
                 'refunds' => $order->refunds->map(fn ($r) => [
                     'number' => $r->refund_number, 'amount' => Money::pounds($r->amount_pence), 'status' => $r->status,

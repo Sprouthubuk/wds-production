@@ -43,11 +43,27 @@ Source: developer.cashflows.com (the Gateway guide, the HCP integration guide, a
    of the API key followed by the exact JSON string sent. For a GET, it's the SHA-512 of the API key alone.
 
 Every call and notification is kept on the order, with card numbers cut to the first 6 and last 4 digits and no keys.
+The `token=` and `key=` values in any URL (the notification token in `webhookUrl`, the order view key in the return
+URLs) are redacted before saving, and again when shown, so older rows are masked too.
 You can see them in Admin → order → **Payment** → History.
+
+**Missed notifications.** `payments:reconcile` runs every 5 minutes (scheduled, without overlapping). It re-queries
+Cashflows for:
+- pending Cashflows orders older than 3 minutes;
+- Cashflows orders cancelled or failed in the last hour without payment, which only a Paid answer can move.
+
+It reads the payment job (`GET /api/gateway/payment-jobs/{job}`) to find every payment in it, then
+re-queries each one. The answer is applied exactly as for a notification: the same idempotency and the same
+late-payment and credit-cap refunds. A pending order past its expiry with no payment taken is cancelled as
+expired, and its tickets are released. Each action shows in the order's history as `Reconcile re-query: …`.
 
 ### Card type and the £250 credit card cap
 
-Cashflows' docs don't name a credit/debit field. The code looks for any funding or card-type field in the payment,
+Cashflows' docs don't name a credit/debit field. The Gateway API has no expand or include parameter, no card-details
+or step-details endpoint, and the notification only carries the two references. The only documented card data is
+`TruncatedCardNumber` (BIN + last 4) inside `attributes.cashFlowsAcquiringDetails`, which the integration re-query
+didn't return. The separate Payments API lists `/IinDetails` (BIN lookup), but its response isn't documented. Both are
+open questions for Cashflows. The code looks for any funding or card-type field in the payment,
 including inside `cashFlowsAcquiringDetails` (a JSON string). If it doesn't find one, it looks up the BIN: the first
 6 digits of `TruncatedCardNumber`, through `BinLookup`. For now that lookup always returns "don't know" (`NullBinLookup`).
 If neither gives an answer, the card type is **unknown**.

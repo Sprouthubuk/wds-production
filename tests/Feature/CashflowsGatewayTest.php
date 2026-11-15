@@ -39,6 +39,8 @@ class CashflowsGatewayTest extends TestCase
     private array $sent = [];
     /** What GET …/payments/{ref} answers, per payment reference: [httpStatus, json]. */
     private array $payments = [];
+    /** What GET …/payment-jobs/{job} answers, per job reference: [httpStatus, json]. */
+    private array $jobs = [];
     /** What POST …/refunds answers: [httpStatus, json]. */
     private array $refundReply = [201, ['data' => ['reference' => 'RF1', 'status' => 'Completed']]];
     private array $createReply = [];
@@ -69,6 +71,11 @@ class CashflowsGatewayTest extends TestCase
             }
             if ($request->method() === 'GET' && preg_match('#/payment-jobs/([^/]+)/payments/([^/]+)$#', $path, $m)) {
                 [$status, $json] = $this->payments[$m[2]] ?? [404, ['errors' => ['not found']]];
+
+                return Http::response($json, $status);
+            }
+            if ($request->method() === 'GET' && preg_match('#/payment-jobs/([^/]+)$#', $path, $m)) {
+                [$status, $json] = $this->jobs[$m[1]] ?? [404, ['errors' => ['not found']]];
 
                 return Http::response($json, $status);
             }
@@ -520,5 +527,174 @@ class CashflowsGatewayTest extends TestCase
         $this->assertStringNotContainsString('8400682600000009', $stored);
         $this->assertStringNotContainsString(self::KEY, $stored);
         $this->assertStringContainsString('840068******0009', $stored);
+    }
+
+    public function test_tokens_and_view_keys_in_urls_are_redacted_when_stored_and_when_shown(): void
+    {
+        $redacted = json_encode(PaymentRedactor::redact(['data' => ['attributes' => [
+            'webhookUrl' => 'https://wds-staging-api.on-forge.com/api/payments/cashflows/notify?token=SECRET-TOKEN',
+            'returnUrlSuccess' => 'https://wds-staging.on-forge.com/order/WDS-1?key=VIEW-KEY-1&result=success',
+            'returnUrlFailed' => 'https://x.test/?a=1&KEY=VIEW-KEY-2#top',
+            'encoded' => 'https%3A%2F%2Fx.test%2Forder%3Fkey%3DVIEW-KEY-3%26result%3Dsuccess',
+        ]], 'monkey' => 'keyring=fine', 'paymentJobReference' => '210121017238589452']), JSON_UNESCAPED_SLASHES);
+        foreach (['SECRET-TOKEN', 'VIEW-KEY-1', 'VIEW-KEY-2', 'VIEW-KEY-3'] as $secret) {
+            $this->assertStringNotContainsString($secret, $redacted, $secret);
+        }
+        $this->assertStringContainsString('notify?token=[redacted]', $redacted);
+        $this->assertStringContainsString('?key=[redacted]&result=success', $redacted);
+        $this->assertStringContainsString('%3Fkey%3D%5Bredacted%5D%26result%3Dsuccess', $redacted);
+        $this->assertStringContainsString('keyring=fine', $redacted);
+        $this->assertStringContainsString('210121017238589452', $redacted);
+
+        // Stored: the payment job request carries the order view key in every return URL.
+        $order = $this->checkout($this->comp(), 1);
+        $stored = PaymentEvent::where('order_id', $order->id)->pluck('payload')->toJson(JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString($order->access_key, $stored);
+        $this->assertStringContainsString('key=[redacted]&result=success', $stored);
+
+        // Shown: a row stored before this rule existed is masked in Admin → order → Payment.
+        PaymentEvent::create(['order_id' => $order->id, 'kind' => 'status', 'status' => 'Paid', 'summary' => 'old row', 'payload' => [
+            'data' => ['attributes' => ['webhookUrl' => 'https://api.test/notify?token=OLD-SECRET', 'returnUrlSuccess' => "https://x.test/order/{$order->reference}?key={$order->access_key}"]],
+        ]]);
+        $admin = User::factory()->create(['role' => 'admin']);
+        $shown = json_encode($this->actingAs($admin)->getJson("/api/admin/orders/{$order->id}")->assertOk()->json('payment.history'), JSON_UNESCAPED_SLASHES);
+        $this->assertStringNotContainsString('OLD-SECRET', $shown);
+        $this->assertStringNotContainsString($order->access_key, $shown);
+        $this->assertStringContainsString('token=[redacted]', $shown);
+    }
+
+    // ------------------------------------------------------------------ payments:reconcile
+
+    private function reconcile(): void
+    {
+        $this->assertSame(0, Artisan::call('payments:reconcile'));
+    }
+
+    private function summaries(Order $order): array
+    {
+        return PaymentEvent::where('order_id', $order->id)->orderBy('id')->pluck('summary')->all();
+    }
+
+    private function nextJob(string $job, string $payment): void
+    {
+        $this->createReply[1]['data']['reference'] = $job;
+        $this->createReply[1]['data']['order']['payments'][0]['reference'] = $payment;
+    }
+
+    public function test_reconcile_catches_a_payment_whose_notification_never_came_once_and_only_once(): void
+    {
+        $order = $this->checkout($this->comp(), 2);
+        $this->payment('Paid', '20.00', $this->debit());
+
+        $this->travel(2)->minutes();
+        $this->reconcile();                                              // under 3 minutes old: left alone
+        $this->assertCount(0, $this->sentTo('GET', '/payments/PAY1'));
+        $this->assertSame('pending', $order->fresh()->status);
+
+        $this->travel(2)->minutes();
+        $this->reconcile();
+        $this->assertSame(['paid', 'debit'], [$order->fresh()->status, $order->fresh()->card_type]);
+        $this->assertSame(2, Ticket::count());
+        $this->assertContains('Reconcile re-query: Cashflows says Paid; order pending → paid', $this->summaries($order));
+        $this->assertContains('Reconcile re-query: Paid · card debit (gateway)', $this->summaries($order));
+
+        // Then the notification arrives after all, and reconcile runs again: nothing happens twice.
+        $this->notify(['notifyType' => 'PaymentStatusChange', 'paymentJobReference' => 'JOB1', 'paymentReference' => 'PAY1'])->assertOk();
+        $this->travel(5)->minutes();
+        $this->reconcile();
+        $this->assertSame(2, Ticket::count());
+        Mail::assertQueued(TicketsIssued::class, 1);
+        $this->assertCount(2, $this->sentTo('GET', '/payments/PAY1'));   // reconcile once, the notification once
+    }
+
+    public function test_reconcile_applies_failed_and_cancelled_and_follows_the_paid_payment_in_the_job(): void
+    {
+        $c = $this->comp();
+        $failed = $this->checkout($c, 1);
+        $this->payment('Failed', '10.00');
+        $this->travel(4)->minutes();
+        $this->reconcile();
+        $this->assertSame('failed', $failed->fresh()->status);
+        $this->assertNull($failed->fresh()->reserved_until);
+        $this->assertContains('Reconcile re-query: Cashflows says Failed; order pending → failed', $this->summaries($failed));
+
+        $this->nextJob('JOB2', 'PAY2');
+        $cancelled = $this->checkout($c, 1, 'leia@example.com');
+        $this->payment('Cancelled', '10.00', null, 'PAY2');
+        $this->travel(4)->minutes();
+        $this->reconcile();
+        $this->assertSame('cancelled', $cancelled->fresh()->status);
+        $this->assertStringContainsString('You cancelled the payment', $cancelled->fresh()->status_note);
+
+        // A declined attempt, then a good one in the same payment job: the job lists both, and the paid one wins.
+        $this->nextJob('JOB3', 'PAY3');
+        $retried = $this->checkout($c, 1, 'han@example.com');
+        $this->jobs['JOB3'] = [200, ['data' => ['reference' => 'JOB3', 'order' => ['payments' => [['reference' => 'PAY3'], ['reference' => 'PAY4']]]]]];
+        $this->payment('Failed', '10.00', null, 'PAY3');
+        $this->payment('Paid', '10.00', $this->debit(), 'PAY4');
+        $this->travel(4)->minutes();
+        $this->reconcile();
+        $this->assertSame(['paid', 'PAY4'], [$retried->fresh()->status, $retried->fresh()->payment_reference]);
+        $this->assertSame('failed', $failed->fresh()->status);           // only Paid moves a failed order
+    }
+
+    public function test_reconcile_expires_an_unpaid_order_past_the_payment_page_expiry_and_releases_its_tickets(): void
+    {
+        $c = $this->comp(['total_tickets' => 3]);
+        $order = $this->checkout($c, 3);
+        $this->payment('Pending', '30.00');
+        $this->travel(5)->minutes();
+        $this->reconcile();                                              // still on the payment page
+        $this->assertSame('pending', $order->fresh()->status);
+
+        $this->travel(11)->minutes();                                    // past reserved_until (15 minutes)
+        $this->reconcile();
+        $order->refresh();
+        $this->assertSame(['cancelled', null], [$order->status, $order->reserved_until]);
+        $this->assertStringContainsString('The payment page expired', $order->status_note);
+        $this->assertContains('Reconcile re-query: still Pending after the payment page expired; order cancelled, tickets released', $this->summaries($order));
+
+        // The tickets are free again.
+        $this->nextJob('JOB2', 'PAY2');
+        $this->checkout($c, 3, 'leia@example.com');
+    }
+
+    public function test_reconcile_refunds_a_late_payment_once_the_competition_has_closed_and_survives_cashflows_being_down(): void
+    {
+        $c = $this->comp();
+        $this->nextJob('JOB9', 'PAY9');                                  // someone else's entry, so it can close
+        $this->checkout($c, 1, 'leia@example.com');
+        $this->payment('Paid', '10.00', $this->debit(), 'PAY9');
+        $this->notify(['notifyType' => 'PaymentStatusChange', 'paymentJobReference' => 'JOB9', 'paymentReference' => 'PAY9'])->assertOk();
+        $this->nextJob('JOB1', 'PAY1');
+        $order = $this->checkout($c, 1);
+        $this->payments['PAY1'] = [503, []];
+        $this->travel(4)->minutes();
+        $this->reconcile();                                              // Cashflows down: nothing changes, try again later
+        $this->assertSame('pending', $order->fresh()->status);
+        $this->assertContains('Reconcile re-query: failed (Cashflows status query failed (HTTP 503).); will try again', $this->summaries($order));
+
+        $this->travel(16)->minutes();
+        Artisan::call('orders:expire');
+        $this->assertSame('cancelled', $order->fresh()->status);
+        Verity::close($c->verity_ref, 'Closed early for the reconcile test');
+        $this->payment('Paid', '10.00', $this->debit());                // the money did arrive; the notification didn't
+        $this->reconcile();
+        $order->refresh();
+        $this->assertSame(['refunded', 1000], [$order->status, $order->refunded_pence]);
+        $this->assertStringContainsString("We've refunded your payment in full", $order->status_note);
+        $this->travel(5)->minutes();
+        $this->reconcile();
+        $this->assertCount(1, $this->sentTo('POST', '/payments/PAY1/refunds'));
+        $this->assertSame(0, Ticket::whereIn('order_line_id', $order->lines()->pluck('id'))->count());
+    }
+
+    public function test_reconcile_is_scheduled_every_five_minutes_without_overlapping(): void
+    {
+        $event = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+            ->first(fn ($e) => str_contains((string) $e->command, 'payments:reconcile'));
+        $this->assertNotNull($event);
+        $this->assertSame('*/5 * * * *', $event->expression);
+        $this->assertTrue($event->withoutOverlapping);
     }
 }
