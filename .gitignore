@@ -30,3 +30,9 @@ Thumbs.db
 /web/node_modules
 /web/dist
 /web/.astro
+
+# End-to-end runs (web/e2e/run.mjs) and QA screenshots
+/storage/e2e
+/qa/screenshots
+/web/test-results
+/web/playwright-report

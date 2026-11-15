@@ -153,6 +153,8 @@ const config = JSON.stringify({
   .enter-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 8px; }
   .enter-row .btn { width: 100%; padding-left: 10px; padding-right: 10px; }
   .postal-link { white-space: normal; text-align: center; line-height: 1.15; }
+  /* Narrow phones: side by side, "Enter now · £40" and "Free postal entry" wrapped onto 2–3 lines. Stack them. */
+  @media (max-width: 420px) { .enter-row { grid-template-columns: 1fr; } }
   .postal-note { margin: 0; }
   .postal-note a { color: inherit; }
   .packs { display: grid; gap: 6px; }
