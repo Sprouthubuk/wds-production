@@ -1,7 +1,8 @@
 ---
 /**
  * The ticket entry panel. One script drives every panel on the page.
- * variant="full"  → competition page / mobile (tabs for online vs free postal entry)
+ * variant="full"  → competition page / mobile. The free postal route is a "Free postal entry" button beside
+ *                   Enter, always visible before purchase; the address and instructions are on /free-postal-entry.
  * variant="hero"  → compact card in the homepage hero
  */
 import { drawChannels } from '../lib/channels';
@@ -14,10 +15,10 @@ interface Props { competition: Competition; settings: SiteSettings; variant?: 'f
 const { competition: c, settings, variant = 'full' } = Astro.props;
 
 const left = Math.max(0, c.totalTickets - c.ticketsSold);
-const cap = Math.max(1, Math.min(c.maxPerPerson || 50, left || 1));
+const cap = Math.max(1, Math.min(c.maxPerPerson ?? left, left || 1)); // no per-person cap: up to what's left
 const startQty = Math.min(c.bundles.find((b) => b.qty === 3)?.qty ?? 1, cap);
 const pct = percentSold(c.ticketsSold, c.totalTickets);
-const cd = countdownParts(c.drawAt);
+const cd = countdownParts(c.drawAt ?? new Date().toISOString());
 const options = [{ qty: 1, price: c.ticketPrice }, ...[...c.bundles].sort((a, b) => a.qty - b.qty)].filter((o) => o.qty <= cap);
 const soldOut = left === 0;
 const postalSentence = postalDeadlineSentence(c);
@@ -26,13 +27,20 @@ const config = JSON.stringify({
   bundles: c.bundles, maxPerPerson: c.maxPerPerson, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
 });
 ---
+{c.ticketPrice === 0 ? (
+  <div class={`entry entry--${variant}`}>
+    <div class="odds-strip"><div><span>Entry</span><b class="num">Free</b></div><div><span>Odds per entry</span><b class="num">{odds(c.totalTickets)}</b></div></div>
+    <a href={`/competitions/${c.slug}`} class="btn btn--block btn--lg">Enter free</a>
+    <span class="foot">One free entry per account · or free by post</span>
+  </div>
+) : (
 <div class={`entry entry--${variant}`} data-entry-panel data-config={config}>
   <div class="odds-strip">
     <div><span>Odds per ticket</span><b class="num">{odds(c.totalTickets)}</b></div>
     <div><span>Only</span><b class="num">{c.totalTickets.toLocaleString('en-GB')} <small>tickets</small></b></div>
   </div>
 
-  {variant === 'hero' ? (
+  {variant === 'hero' && c.drawAt ? (
     <div class="drawline"><span><span class="dot"></span> Draw in</span><b class="num" data-countdown={c.drawAt} data-countdown-text>{cd.text}</b></div>
   ) : null}
 
@@ -44,7 +52,7 @@ const config = JSON.stringify({
     <div class="sold-foot num"><span><strong data-count-to={variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}>{variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}</strong> sold</span><span><strong>{left.toLocaleString('en-GB')}</strong> left</span></div>
   </div>
 
-  {variant === 'full' ? (
+  {variant === 'full' && c.drawAt ? (
     <div class="countdown" data-countdown={c.drawAt}>
       <div><b data-unit="d">{cd.d}</b><small>Days</small></div>
       <div><b data-unit="h">{cd.h}</b><small>Hrs</small></div>
@@ -53,14 +61,7 @@ const config = JSON.stringify({
     </div>
   ) : null}
 
-  {variant === 'full' ? (
-    <div class="tabs" role="tablist" aria-label="How to enter">
-      <button role="tab" aria-selected="true" data-tab="online">Enter online</button>
-      <button role="tab" aria-selected="false" data-tab="post">Free by post</button>
-    </div>
-  ) : null}
-
-  <div class="online" data-pane="online">
+  <div class="online">
     {soldOut ? (
       <p class="alert">This competition has sold out. Free postal entries already received are included in the draw.</p>
     ) : (
@@ -74,13 +75,14 @@ const config = JSON.stringify({
                 <span class="p-label">{o.qty === 1 ? '1 ticket' : variant === 'hero' ? `${o.qty} for` : `${o.qty} tickets`}</span>
                 <span class="p-price">{money(o.price)}</span>
                 <span class="p-save">{save > 0.004 ? `Save ${money(save)}` : 'Single'}</span>
+                {variant === 'full' ? <span class="p-odds">{odds(c.totalTickets, o.qty)} chance</span> : null}
               </button>
             );
           })}
         </div>
 
         <div class="own">
-          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span><span class="small muted">Max {c.maxPerPerson} per person</span></div> : null}
+          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span>{c.maxPerPerson ? <span class="small muted">Max {c.maxPerPerson} per person</span> : null}</div> : null}
           <div class="stepper">
             <button type="button" data-step="-1" aria-label="One fewer ticket">−</button>
             <div><span class="qty num" data-qty aria-live="polite">{startQty}</span><span class="word" data-word>{startQty === 1 ? 'ticket' : 'tickets'}</span></div>
@@ -103,33 +105,28 @@ const config = JSON.stringify({
         {variant === 'hero' ? (
           <div class="btn-pair">
             <button type="button" class="btn" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter online'}</button>
-            <a href="/free-postal-entry" class="btn">Free by post</a>
+            <a href="/free-postal-entry" class="btn">Free postal entry</a>
           </div>
         ) : (
-          c.preview
-            ? <button type="button" class="btn btn--block btn--lg" disabled>Preview: entries disabled</button>
-            : <button type="button" class="btn btn--block btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>
+          <div class="enter-row">
+            {c.preview
+              ? <button type="button" class="btn btn--lg" disabled>Preview: entries disabled</button>
+              : <button type="button" class="btn btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>}
+            <a href="/free-postal-entry" class="btn btn--outline btn--lg postal-link" data-postal-link>Free postal entry</a>
+          </div>
         )}
+        {variant === 'full' ? <p class="small muted-2 postal-note">Same draw, same chance. {postalSentence} <a href="/free-postal-entry">How to enter by post</a>.</p> : null}
       </>
     )}
   </div>
 
-  {variant === 'full' ? (
-    <div class="post" data-pane="post" hidden>
-      <span class="label">Post a postcard or letter to</span>
-      <address>{settings.postalEntryAddress.map((l, i) => <>{l}{i < settings.postalEntryAddress.length - 1 ? <br /> : null}</>)}</address>
-      <ul><li>Competition: {c.title}</li><li>Full name, address and date of birth</li><li>Phone number and email address</li></ul>
-      <span class="small muted-2">{postalSentence} One entry per envelope. Same draw, same odds.</span>
-      <a href="/free-postal-entry" class="btn btn--block btn--lg">Full postal entry guide</a>
-    </div>
-  ) : null}
-
   {variant === 'hero' ? (
-    <span class="foot">Same draw, same chance · Max {c.maxPerPerson} per person</span>
+    <span class="foot">Same draw, same chance{c.maxPerPerson ? ` · Max ${c.maxPerPerson} per person` : ''}</span>
   ) : (
     <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>{drawChannels(settings).drawnLive}</span></div>
   )}
 </div>
+)}
 
 <style>
   .entry { display: flex; flex-direction: column; gap: 18px; }
@@ -151,12 +148,13 @@ const config = JSON.stringify({
   .entry--hero .progress { height: 4px; background: rgba(255,255,255,.18); }
   .sold-foot { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted-2); }
   .sold-foot strong { color: #fff; }
-  .tabs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .tabs button { min-height: 50px; border: 1px solid #fff; background: #000; color: #fff; font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; transition: background-color .4s var(--ease), color .4s var(--ease); }
-  .online:not([hidden]), .post:not([hidden]) { animation: rise .6s var(--ease); }
-  .tabs button[aria-selected='true'] { background: #fff; color: #000; }
-  .online, .post { display: flex; flex-direction: column; gap: 14px; }
-  .post[hidden], .online[hidden] { display: none; }
+  .online { display: flex; flex-direction: column; gap: 14px; }
+  /* Enter and the free postal route side by side, before any purchase, at every width. */
+  .enter-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 8px; }
+  .enter-row .btn { width: 100%; padding-left: 10px; padding-right: 10px; }
+  .postal-link { white-space: normal; text-align: center; line-height: 1.15; }
+  .postal-note { margin: 0; }
+  .postal-note a { color: inherit; }
   .packs { display: grid; gap: 6px; }
   .packs button { position: relative; min-height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 4px; border: 1px solid #3a3a3a; background: transparent; color: #fff; cursor: pointer; transition: background-color .45s var(--ease), color .45s var(--ease), border-color .45s var(--ease), transform .2s var(--ease); }
   .packs button:hover { border-color: #fff; }
@@ -165,6 +163,7 @@ const config = JSON.stringify({
   .p-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .p-price { font-size: 24px; font-weight: 700; line-height: 1.05; }
   .p-save { font-size: 11px; font-weight: 700; }
+  .p-odds { font-size: 11px; opacity: .7; }
   .entry--hero .packs button { min-height: 70px; }
   .entry--hero .p-price { font-size: 18px; }
   .own { display: flex; flex-direction: column; gap: 12px; }
@@ -197,8 +196,6 @@ const config = JSON.stringify({
   .save[hidden] { display: none; }
   .nudge { min-height: 44px; padding: 0 14px; background: transparent; border: 1px dashed #fff; color: #fff; font-size: 13px; text-align: left; cursor: pointer; }
   .nudge[hidden] { display: none; }
-  address { font-style: normal; font-size: 17px; font-weight: 700; line-height: 1.45; text-transform: uppercase; background: #fff; color: #000; padding: 16px; }
-  ul { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.8; color: #d0d0d0; }
   .muted-2 { color: var(--muted-2); }
   .trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; font-size: 12px; color: var(--muted); }
   .foot { font-size: 12px; color: #8a8a8a; text-align: center; }
@@ -210,7 +207,7 @@ const config = JSON.stringify({
   import type { Bundle } from '../lib/types';
   import { pop } from '../lib/motion';
 
-  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number; cap: number; totalTickets: number; drawAt: string };
+  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number | null; cap: number; totalTickets: number; drawAt: string };
 
   document.querySelectorAll<HTMLElement>('[data-entry-panel]').forEach((root) => {
     const cfg: Cfg = JSON.parse(root.dataset.config || '{}');
@@ -247,12 +244,6 @@ const config = JSON.stringify({
     root.querySelectorAll<HTMLButtonElement>('[data-pack]').forEach((b) => b.addEventListener('click', () => set(Number(b.dataset.pack))));
     root.querySelectorAll<HTMLButtonElement>('[data-step]').forEach((b) => b.addEventListener('click', () => set(qty + Number(b.dataset.step))));
     $<HTMLInputElement>('[data-range]')?.addEventListener('input', (e) => set(Number((e.target as HTMLInputElement).value)));
-
-    root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((tab) => tab.addEventListener('click', () => {
-      const which = tab.dataset.tab;
-      root.querySelectorAll<HTMLButtonElement>('[data-tab]').forEach((t) => t.setAttribute('aria-selected', String(t === tab)));
-      root.querySelectorAll<HTMLElement>('[data-pane]').forEach((p) => { p.hidden = p.dataset.pane !== which; });
-    }));
 
     root.querySelectorAll<HTMLButtonElement>('[data-enter]').forEach((b) => b.addEventListener('click', () => {
       addToBasket({ competitionId: cfg.id, slug: cfg.slug, title: cfg.title, image: cfg.image, qty, ticketPrice: cfg.ticketPrice, bundles: cfg.bundles, maxPerPerson: cfg.maxPerPerson, drawAt: cfg.drawAt });

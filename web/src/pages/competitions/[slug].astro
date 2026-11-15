@@ -1,29 +1,47 @@
 ---
 import { drawChannels } from '../../lib/channels';
-import { POSTAL_HOURS_BEFORE_CLOSE, postalBy, postalDeadlineSentence } from '../../lib/postal';
+import { POSTAL_HOURS_BEFORE_CLOSE, hasPostalRoute, postalBy, postalDeadlineSentence, seasonalPostNote } from '../../lib/postal';
 import Layout from '../../layouts/Layout.astro';
 import EntryPanel from '../../components/EntryPanel.astro';
+import FreeEntryPanel from '../../components/FreeEntryPanel.astro';
+import { api } from '../../lib/api';
+import { currentUser, getToken } from '../../lib/session';
 import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
 import { money, percentSold, priceFor } from '../../lib/pricing';
 import { countdownParts } from '../../lib/countdown';
+import { prelaunchState } from '../../lib/prelaunch';
 
 const { slug } = Astro.params;
-const [c, settings] = await Promise.all([getCompetition(slug!), getSettings()]);
+const [c, settings, pre] = await Promise.all([getCompetition(slug!), getSettings(), prelaunchState(Astro.locals)]);
 if (!c) {
   const teaser = await getUpcomingBySlug(slug!);
   if (teaser) return Astro.rewrite(`/launching-soon/${encodeURIComponent(slug!)}`);
   return Astro.rewrite('/404');
 }
 const ch = drawChannels(settings);
-const drawDate = new Date(c.drawAt);
-const drawLabel = drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
-const postalLabel = postalBy(c);
+// A free competition (£0): one online entry per verified account, no basket. The panel depends on who's looking.
+const free = c.ticketPrice === 0;
+const me = free ? await currentUser(Astro.cookies) : null;
+const entered = free && me
+  ? await api<{ data: { slug: string; online: string[] }[] }>('/me/entries', { token: getToken(Astro.cookies) })
+    .then((r) => r.data.find((e) => e.slug === c.slug)?.online ?? null).catch(() => null)
+  : null;
+const drawDate = c.drawAt ? new Date(c.drawAt) : null;
+const drawLabel = drawDate ? drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'To be confirmed';
+const postal = hasPostalRoute(c); // free competitions: online only
+const postalLabel = postal ? postalBy(c) : null;
 const postalSentence = postalDeadlineSentence(c);
+const postNote = seasonalPostNote(c);
+const drawRule = 'The draw goes ahead on the stated date and time however many tickets have sold. Closing dates are not extended.';
+const ukShort = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 const closesLabel = c.closesAt ? new Date(c.closesAt).toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'When sold out or before the draw';
 const faqs = [
-  { q: 'When is the draw?', a: `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}. ${ch.youtube && ch.instagram ? `Watch it live on our socials: Instagram @${ch.instagram.handle} or YouTube.` : `Watch it live on ${ch.where}.`}` },
-  { q: 'Can I enter for free?', a: `Yes. Post a postcard or letter with your details to the free entry address. ${postalSentence} Postal entries have exactly the same chance of winning.` },
+  { q: 'When is the draw?', a: `${drawDate ? `Live on ${drawDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: 'Europe/London' })}.` : 'The date is to be confirmed.'} ${ch.youtube && ch.instagram ? `Watch it live on our socials: Instagram @${ch.instagram.handle} or YouTube.` : `Watch it live on ${ch.where}.`}` },
+  free
+    ? { q: 'How do I enter?', a: 'Sign in, confirm your email address and press Enter free. One entry per person, online only.' }
+    : { q: 'Can I enter for free?', a: `Yes. Post a postcard or letter with your details to the free entry address. ${postalSentence} Postal entries have exactly the same chance of winning.` },
   { q: 'How do I get my ticket numbers?', a: 'Ticket numbers are issued in order. Online entries get theirs by email straight after payment and can see them in their account. Postal entries are emailed once logged.' },
+  { q: 'What if not every ticket sells?', a: drawRule },
   { q: 'What happens if I win?', a: 'We contact you straight after the draw, verify your ID and arrange handover. Winners must be 18 or over.' },
 ];
 const jsonLd = {
@@ -31,11 +49,20 @@ const jsonLd = {
   description: c.strapline, offers: { '@type': 'Offer', priceCurrency: 'GBP', price: c.ticketPrice.toFixed(2), availability: c.ticketsSold < c.totalTickets ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut' },
 };
 ---
-<Layout title={c.title} description={`Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
+<Layout title={c.title} description={free ? `Win the ${c.title}. Free to enter online. ${ch.drawnLive}.` : `Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="container crumbs"><a href="/">Home</a> / <a href="/competitions">Competitions</a> / <span>{c.title}</span></div>
+  {c.postponement ? (
+    <div class="container"><div class="postponed" role="status">
+      <span class="label">Postponed</span>
+      <b>Entries now close {closesLabel}{c.postponement.from ? `, not ${ukShort(c.postponement.from)}` : ''}. Live draw: {drawLabel}.</b>
+      {c.postponement.reason ? <span class="small">Reason: {c.postponement.reason}</span> : null}
+      <span class="small muted">Every entrant has been emailed. Entries already made stay in the draw. The change is on the draw's public audit record.</span>
+    </div></div>
+  ) : null}
 
   <div class="container layout">
+      {c.images.length ? (
       <div class="gallery" data-gallery>
         <div class="main-img" data-swipe>
           <img src={c.images[0]?.src} alt={c.images[0]?.alt} data-main width="1024" height="768" fetchpriority="high" style={`view-transition-name: comp-${c.id}`} />
@@ -49,6 +76,15 @@ const jsonLd = {
           ))}
         </div>
       </div>
+      ) : (
+      <div class="gallery">
+        <div class="main-img empty" role="img" aria-label={`Photos of the ${c.title} coming soon`}>
+          <img src="/images/wds-logo.png" alt="" width="150" height="50" class="empty-logo" />
+          <span class="small">Photos coming soon</span>
+          <span class="chip chip--solid live"><span class="dot"></span>Live now</span>
+        </div>
+      </div>
+      )}
 
     <div class="main">
       <section class="stack block" data-reveal>
@@ -57,7 +93,7 @@ const jsonLd = {
         {c.description.map((p) => <p class="body">{p}</p>)}
         <div class="specs" data-reveal-group>
           {c.specs.map((s, i) => <div class={i === 0 ? 'light' : ''}><span class="label">{s.label}</span><b>{s.value}</b></div>)}
-          <div><span class="label">Cash alternative</span><b>{c.cashAlternative ? money(c.cashAlternative) : 'TBC'}</b></div>
+          {c.cashAlternative ? <div><span class="label">Cash alternative</span><b>{money(c.cashAlternative)}</b></div> : null}
         </div>
         {c.buildVideoUrl ? (
           <a href={c.buildVideoUrl} class="zoom video" data-reveal="img"><img src={c.images[2]?.src ?? c.images[0]?.src} alt="" loading="lazy" /><span class="overlay"><span class="play"><svg width="26" height="26" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z"></path></svg></span><span class="stack" style="gap: 6px"><b>Watch the build</b><span class="small">See every step on the WDS Originals YouTube channel</span></span></span></a>
@@ -73,6 +109,7 @@ const jsonLd = {
           <div><span class="label">Watch on</span><b>{ch.instagram ? `Instagram @${ch.instagram.handle}` : 'YouTube'}{ch.instagram && ch.youtube ? <> · <a href={ch.youtube.url}>YouTube</a></> : null}</b></div>
           <div><span class="label">Ticket numbers</span><b>Issued in order</b></div>
         </div>
+        <p class="small muted" style="margin: 0">{drawRule}</p>
       </section>
 
       <section class="stack block faq" data-reveal>
@@ -87,15 +124,25 @@ const jsonLd = {
         <span class="eyebrow">Win this {c.category === 'cars' ? 'car' : 'prize'}</span>
         <h1 class="display panel-title">{c.title}</h1>
       </div>
-      <div class="prices"><div><span class="label">Online</span><b>{money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
-      <EntryPanel competition={c} settings={settings} />
+      <div class="prices"><div><span class="label">Online</span><b>{free ? 'Free' : money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
+      {postalLabel ? (
+        <div class="postal-deadline">
+          <span class="label">Free postal entries must be received by</span>
+          <b>{postalLabel} <span class="small">(UK time)</span></b>
+          {postNote ? <span class="small">{postNote}</span> : null}
+          <a href="/free-postal-entry" class="small">How to enter by post →</a>
+        </div>
+      ) : null}
+      {free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} />}
     </aside>
   </div>
 
   <div class="sticky-bar" slot="after">
     <div class="container">
-      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · {percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
-      <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>Enter · from {money(c.ticketPrice)}</a><a href="/free-postal-entry" class="btn">By post · Free</a></div>
+      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">{c.drawAt ? <>Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · </> : null}{percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
+      {pre.on
+        ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
+        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a>{postal ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}</div>}
     </div>
   </div>
 </Layout>
@@ -113,10 +160,18 @@ const jsonLd = {
   .prices > div { padding: 14px 0; display: flex; flex-direction: column; gap: 4px; }
   .prices > div + div { padding-left: 20px; border-left: 1px solid var(--line-2); }
   .prices b { font-size: 30px; }
+  .postponed { border: 2px solid #fff; background: #fff; color: #000; padding: 14px 16px; margin: 0 0 18px; display: flex; flex-direction: column; gap: 6px; }
+  .postponed .muted { color: #444; }
+  .postponed b { font-size: 17px; line-height: 1.35; }
+  .postal-deadline { border: 1px solid #fff; padding: 14px 16px; display: flex; flex-direction: column; gap: 6px; }
+  .postal-deadline b { font-size: 18px; line-height: 1.3; }
+  .postal-deadline a { color: inherit; }
   .gallery { display: flex; flex-direction: column; gap: 10px; }
   .main-img { position: relative; overflow: hidden; touch-action: pan-y; animation: fade 1s ease both; }
   .main-img img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; transition: opacity .35s ease, transform 1.2s var(--ease); }
   .main-img img.swap { opacity: 0; transform: scale(1.03); }
+  .main-img.empty { aspect-ratio: 4 / 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border: 1px solid var(--line); background: repeating-linear-gradient(135deg, #0b0b0b 0 14px, #0e0e0e 14px 28px); color: var(--muted); letter-spacing: .14em; text-transform: uppercase; }
+  .main-img.empty .empty-logo { width: 120px; height: auto; aspect-ratio: auto; opacity: .5; }
   .nav-btn { position: absolute; top: 50%; width: 48px; height: 48px; margin-top: -24px; border: 0; border-radius: 50%; background: rgba(0,0,0,.6); color: #fff; font-size: 18px; cursor: pointer; opacity: 0; transition: opacity .4s, background-color .3s; -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
   .nav-btn:hover { background: #fff; color: #000; }
   .prev { left: 14px; } .next { right: 14px; }

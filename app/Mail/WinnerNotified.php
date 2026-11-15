@@ -21,6 +21,16 @@ class WinnerNotified extends Mailable implements ShouldQueue
 
     public function __construct(public Winner $winner) {}
 
+    /** "£5,000" (or "£1,234.50"); null when the competition has no cash alternative. */
+    public static function cashAlternative(?int $pence): ?string
+    {
+        if (! $pence) {
+            return null;
+        }
+
+        return '£'.($pence % 100 === 0 ? number_format(intdiv($pence, 100)) : number_format($pence / 100, 2));
+    }
+
     public function envelope(): Envelope
     {
         return new Envelope(subject: "You've won: {$this->winner->competition->title}");
@@ -40,6 +50,7 @@ class WinnerNotified extends Mailable implements ShouldQueue
                 'ticket' => $this->winner->ticket?->display($this->winner->competition->total_tickets),
                 'accountUrl' => $front.'/account',
                 'verifyUrl' => $this->winner->draw_id ? rtrim((string) config('raffle.draws.verify_page'), '/').'/'.$this->winner->draw_id : $front.'/live-draws',
+                'cashAlternative' => self::cashAlternative($this->winner->competition->cash_alternative_pence),
                 'settings' => SettingsPayload::get(),
             ],
         );

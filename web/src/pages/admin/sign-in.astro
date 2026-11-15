@@ -1,29 +1,5 @@
 ---
-import '../../styles/global.css';
+// Admin sign-in is /sign-in?next=/admin now (src/middleware.ts redirects here first; this is a fallback).
+import { safeNext, signInUrl } from '../../lib/auth-gate';
+return Astro.redirect(signInUrl(safeNext(Astro.url.searchParams.get('next'), '/admin')));
 ---
-<!doctype html>
-<html lang="en-GB">
-<head><meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="robots" content="noindex" /><title>Sign in · WDS Admin</title><link rel="icon" href="/favicon.svg" /></head>
-<body style="display:grid;place-items:center;min-height:100vh;padding:24px">
-  <form class="stack" style="gap:16px;width:min(380px,100%);border:1px solid var(--line);padding:32px;background:#0b0b0b" data-admin-login>
-    <img src="/images/wds-logo.png" alt="WDS Competitions" width="140" height="46" style="width:140px" />
-    <h1 class="h3">Admin sign in</h1>
-    <div class="field"><label for="e">Email</label><input id="e" name="email" type="email" required autocomplete="username" /></div>
-    <div class="field"><label for="p">Password</label><input id="p" name="password" type="password" required autocomplete="current-password" /></div>
-    <p class="alert" role="alert" hidden data-err></p>
-    <button class="btn" type="submit">Sign in</button>
-  </form>
-  <script>
-    const form = document.querySelector<HTMLFormElement>('[data-admin-login]')!;
-    const err = form.querySelector<HTMLElement>('[data-err]')!;
-    form.addEventListener('submit', async (e) => {
-      e.preventDefault(); err.hidden = true;
-      const fd = new FormData(form);
-      const res = await fetch('/api/admin-auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.fromEntries(fd)) });
-      const data = await res.json().catch(() => ({}));
-      if (res.ok) location.href = data.redirect || '/admin';
-      else { err.textContent = data.message || 'Sign in failed.'; err.hidden = false; }
-    });
-  </script>
-</body>
-</html>

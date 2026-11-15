@@ -14,13 +14,13 @@ const link = (p: number) => { const n = new URLSearchParams(q); n.set('page', St
     <select name="channel"><option value="">All channels</option>{['online', 'event'].map((s) => <option selected={q.get('channel') === s}>{s}</option>)}</select>
     <button class="btn btn--outline" type="submit">Filter</button>
   </form>
-  <p class="small muted">"Cancelled" orders with a payment taken need refunding in the payment provider's dashboard, then mark them refunded here.</p>
+  <p class="small muted">Open an order to see its payment (gateway references, card type, history) and to refund it through Cashflows, in full or in part. "Mark refunded" only records a refund made outside the site (cash, or in the Cashflows Portal).</p>
   <section class="panel">
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>Order</th><th>Customer</th><th>Competition</th><th>Tickets</th><th>Total</th><th>Paid by</th><th>Status</th><th>When</th><th></th></tr></thead>
       <tbody>{page.data.map((o) => (
         <tr>
-          <td><strong>{o.reference}</strong></td>
+          <td><a href={`/admin/orders/${o.id}`}><strong>{o.reference}</strong></a></td>
           <td>{o.name}<div class="small muted">{o.email}</div></td>
           <td class="small">{o.competition}</td>
           <td>{o.tickets}</td><td>{gbp(o.total)}</td>

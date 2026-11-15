@@ -27,6 +27,8 @@ class SettingsController extends Controller
             'socials' => ['sometimes', 'array'], 'socials.*.label' => ['required', 'string'], 'socials.*.url' => ['required', 'url'],
             'youtubeUrl' => ['sometimes', 'nullable', 'url'],
             'drawsYoutubeUrl' => ['sometimes', 'nullable', 'url:https'],
+            'siteSpendCapEnabled' => ['sometimes', 'boolean'],
+            'siteSpendCapMonthly' => ['sometimes', 'nullable', 'numeric', 'min:1', 'max:100000', 'required_if:siteSpendCapEnabled,true'],
         ]);
         Setting::put('site', array_merge(Setting::get('site', []) ?? [], $d));
 

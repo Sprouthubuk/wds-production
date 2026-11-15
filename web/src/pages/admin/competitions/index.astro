@@ -14,7 +14,7 @@ const list = (await adminGet<{ data: Competition[] }>(Astro.cookies, '/competiti
           <td style="width:72px">{c.images[0] ? <img src={c.images[0].src} alt="" width="64" height="40" style="width:64px;height:40px;object-fit:cover" /> : null}</td>
           <td><strong>{c.title}</strong><div class="small muted">/{c.slug}</div></td>
           <td><span class={`pill pill--${c.status}`}>{c.status}</span></td>
-          <td>{gbp(c.ticketPrice)}{c.bundles.length ? <div class="small muted">{c.bundles.map((b) => `${b.qty} for ${gbp(b.price)}`).join(' · ')}</div> : null}</td>
+          <td>{c.ticketPrice === 0 ? <strong>Free</strong> : gbp(c.ticketPrice)}{c.bundles.length ? <div class="small muted">{c.bundles.map((b) => `${b.qty} for ${gbp(b.price)}`).join(' · ')}</div> : null}</td>
           <td><div class="bar" style="margin-bottom:6px"><span style={`width:${Math.round((c.ticketsSold / c.totalTickets) * 100)}%`}></span></div><span class="small">{c.ticketsSold} / {c.totalTickets}</span></td>
           <td class="small">{when(c.drawAt)}</td>
           <td><a class="btn btn--outline" href={`/admin/competitions/${c.id}`}>Edit</a></td>

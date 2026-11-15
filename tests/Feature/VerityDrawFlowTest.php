@@ -212,8 +212,10 @@ class VerityDrawFlowTest extends TestCase
 
         app(CheckoutService::class)->handlePaymentResult(new PaymentResult($order, 'paid'));
         $o = Order::where('reference', $order)->firstOrFail();
-        $this->assertSame('cancelled', $o->status);   // money taken, no tickets: shown as "refund needed"
+        $this->assertSame('refunded', $o->status);   // money taken, no tickets: refunded automatically
         $this->assertNotNull($o->paid_at);
+        $this->assertSame($o->total_pence, $o->refunded_pence);
+        $this->assertStringContainsString("We've refunded your payment in full", $o->status_note);
         $this->assertSame(0, Ticket::where('order_line_id', $o->lines()->first()->id)->count());
         $this->assertSame(1, EntryGroup::count());       // only the order fulfilled before the close
         $this->assertSame(1, Ticket::count());
@@ -281,6 +283,11 @@ class VerityDrawFlowTest extends TestCase
         ]);
 
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['status' => 'live'])->assertStatus(422);
+        // No photo yet: the public gallery would be empty, so publishing is refused until one is uploaded.
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish")->assertStatus(422)
+            ->assertJsonPath('message', 'Upload at least one photo of the prize (Photos, then Save) before publishing.');
+        $this->assertFalse($draft->fresh()->isPublished());
+        $draft->update(['images' => [['src' => '/images/prize.jpg', 'alt' => 'The prize']]]);
         $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish")->assertOk()
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'locked in'));
         $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish")->assertStatus(422);
@@ -290,8 +297,9 @@ class VerityDrawFlowTest extends TestCase
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['closesAt' => '2026-10-31 20:00:00'])->assertStatus(422);
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['strapline' => 'New words are fine'])->assertOk();
 
-        // The closing time only moves later, through extend, with a public reason.
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/extend", ['closesAt' => '2026-10-31 20:00:00', 'reason' => 'Show moved by a day'])->assertOk();
+        // The closing time only moves later, through Postpone (emergency only), with a public reason and a confirmation.
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/extend", ['closesAt' => '2026-10-31 20:00:00', 'reason' => 'Show moved by a day'])->assertStatus(422);
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/extend", ['closesAt' => '2026-10-31 20:00:00', 'reason' => 'The show venue moved the event by a day', 'confirm' => true])->assertOk();
         $this->assertSame('2026-10-31 20:00:00', $draft->fresh()->closes_at->toDateTimeString());
         $this->assertTrue(AuditEvent::where('type', 'competition.extended')->exists());
     }

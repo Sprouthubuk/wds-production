@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\Admin;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CheckoutController;
+use App\Http\Controllers\Api\EmailVerificationController;
+use App\Http\Controllers\Api\FreeEntryController;
 use App\Http\Controllers\Api\EngagementController;
 use App\Http\Controllers\Api\MeController;
 use App\Http\Controllers\Api\PaymentController;
@@ -17,6 +19,7 @@ Route::get('/upcoming/{slug}', [PublicController::class, 'upcomingBySlug']);
 Route::get('/preview/{token}', [PublicController::class, 'preview'])->middleware('throttle:30,1');
 Route::get('/winners', [PublicController::class, 'winners']);
 Route::get('/draws', [PublicController::class, 'draws']);
+Route::get('/draws/lookup', [PublicController::class, 'lookup'])->middleware('throttle:60,1');
 Route::get('/draws/{draw}/certificate', [PublicController::class, 'certificate'])->name('draws.certificate');
 Route::get('/settings', [PublicController::class, 'settings']);
 
@@ -29,13 +32,18 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/contact', [EngagementController::class, 'contact']);
 });
 
+// The "Confirm your email" link (signed; lands on the website's account page)
+Route::get('/auth/verify-email/{user}/{hash}', [EmailVerificationController::class, 'verify'])->name('auth.verify-email')->middleware(['signed', 'throttle:20,1']);
+
 // Checkout (guest or signed in) and order confirmation
 Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:20,1');
 Route::get('/orders/{reference}', [CheckoutController::class, 'show']);
 
 // Payments
 Route::post('/payments/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
-Route::get('/payments/fake', [PaymentController::class, 'fake'])->name('payments.fake')->middleware('signed');
+// Cashflows notifications: ?token=CASHFLOWS_WEBHOOK_TOKEN, then the status is always re-queried from Cashflows.
+Route::post('/payments/cashflows/notify', [PaymentController::class, 'cashflows'])->name('payments.cashflows')->middleware('throttle:120,1');
+Route::get('/payments/fake', [PaymentController::class, 'fake'])->name('payments.fake'); // signature checked in the controller
 
 // Signed-in customer
 Route::middleware('auth:sanctum')->group(function () {
@@ -47,7 +55,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/limits', [MeController::class, 'limits']);
     Route::post('/me/break', [MeController::class, 'takeBreak']);
     Route::post('/me/self-exclude', [MeController::class, 'selfExclude']);
+    Route::post('/me/close', [MeController::class, 'close']);
     Route::post('/me/verification', [MeController::class, 'verification']);
+    Route::post('/me/verify-email', [EmailVerificationController::class, 'resend'])->middleware('throttle:3,10');
+    // A free competition (£0): one online entry per verified account. No basket, no payment.
+    Route::post('/competitions/{competition}/free-entry', [FreeEntryController::class, 'store'])->middleware('throttle:10,1');
 });
 
 // Staff (event sales + postal logging)
@@ -56,6 +68,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:staff'])->group(functi
     Route::post('/event-sales', [Admin\EventSaleController::class, 'store']);
     Route::get('/event-sales/summary', [Admin\EventSaleController::class, 'summary']);
     Route::get('/postal', [Admin\PostalController::class, 'index']);
+    Route::get('/postal/competitions', [Admin\PostalController::class, 'competitions']);
     Route::post('/postal', [Admin\PostalController::class, 'store']);
 });
 
@@ -79,11 +92,14 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/orders', [Admin\OrderController::class, 'index']);
     Route::get('/orders/{order}', [Admin\OrderController::class, 'show']);
     Route::post('/orders/{order}/refunded', [Admin\OrderController::class, 'markRefunded']);
+    Route::post('/orders/{order}/refund', [Admin\OrderController::class, 'refund']);
 
     Route::get('/customers', [Admin\CustomerController::class, 'index']);
     Route::get('/customers/{user}', [Admin\CustomerController::class, 'show']);
     Route::post('/customers/{user}/credit', [Admin\CustomerController::class, 'addCredit']);
     Route::post('/customers/{user}/suspend', [Admin\CustomerController::class, 'setSuspended']);
+    Route::get('/harm-flags', [Admin\HarmFlagController::class, 'index']);
+    Route::post('/harm-flags/{flag}', [Admin\HarmFlagController::class, 'act']);
     Route::post('/customers/{user}/role', [Admin\CustomerController::class, 'setRole']);
     Route::get('/verifications', [Admin\CustomerController::class, 'verifications']);
     Route::get('/verifications/{verification}/{which}', [Admin\CustomerController::class, 'verificationFile']);
@@ -93,6 +109,12 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/draws', [Admin\DrawController::class, 'index']);
     Route::get('/draws/{draw}/entries.csv', [Admin\DrawController::class, 'entries']);
     Route::post('/draws/{draw}/publish', [Admin\DrawController::class, 'publish']);
+    Route::post('/competitions/{competition}/close-now', [Admin\DrawController::class, 'closeNow']);
+    Route::post('/competitions/{competition}/close-entries', [Admin\DrawController::class, 'closeEntries']);
+    Route::post('/competitions/{competition}/external-result', [Admin\DrawController::class, 'externalResult']);
+    Route::get('/competitions/{competition}/reveal', [Admin\DrawController::class, 'reveal']);
+    Route::post('/competitions/{competition}/draw-tool', [Admin\DrawController::class, 'drawTool']);
+    Route::get('/competitions/{competition}/chip-sheet', [Admin\DrawController::class, 'chipSheet']);
 
     Route::get('/winners', [Admin\WinnerController::class, 'index']);
     Route::post('/winners', [Admin\WinnerController::class, 'store']);
@@ -100,6 +122,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     // Permanent and public (Verity's audit chain). There is no separate redraw route: a redraw is chosen
     // at the forfeit and committed to a future drand round there and then (protocol R2).
     Route::post('/winners/{winner}/forfeit', [Admin\WinnerController::class, 'forfeit']);
+    Route::post('/winners/{winner}/contacted', [Admin\WinnerController::class, 'contacted']);
     Route::post('/winners/{winner}/image', [Admin\WinnerController::class, 'uploadImage']);
 
     Route::get('/promotions', [Admin\PromotionController::class, 'index']);

@@ -24,6 +24,10 @@ const LABELS = {
   audit: 'Audit records match the published hashes',
   witness: 'Independent timestamp of the close',
   carried: 'Carry-over recorded on the audit chain',
+  'external-tool': 'Random number tool sealed with the entry list',
+  'external-ticket': 'Winning ticket is in the sealed entry list',
+  'external-livestream': 'Livestream of the draw',
+  external: 'Drawn externally on the livestream',
 };
 const label = (key) => LABELS[key] ?? (key.startsWith('redraw-') ? `Redraw ${key.slice(7)} (protocol R2)` : key.startsWith('carried-') ? `Entries carried from ${key.slice(8)}` : key);
 
@@ -71,6 +75,7 @@ class VerityVerify extends HTMLElement {
       ok: 'Verified: every check passed in your browser.',
       bad: 'Verification FAILED: at least one check does not match.',
       unverifiable: 'Not independently verifiable (local demo randomness).',
+      external: 'Verity verified the sealed entry list and that the winning ticket was on it. The random selection was made externally on the linked livestream.',
       pending: 'Not drawn yet: the seed and the entry list are published once it is.',
       error: 'The record could not be checked.',
     }[result.verdict] ?? result.verdict;
@@ -101,6 +106,10 @@ class VerityVerify extends HTMLElement {
       ['Entries', v.entries_count],
       ['Entries hash', v.entries_hash],
       ['drand round', v.beacon_round],
+      ['Draw method', v.draw_method === 'external' ? 'External draw on a livestream' : v.draw_now ? 'Verity live draw (close & draw now)' : null],
+      ['Random number tool', v.external?.tool ? `${v.external.tool.name} · ${v.external.tool.url}` : null],
+      ['Sealed (list + tool)', v.external?.seal],
+      ['Livestream', v.external?.livestream_url],
       ['Revealed seed', v.revealed_seed],
       ['Winning tickets', (record?.winning_tickets ?? []).join(', ')],
       ['Engine', record?.engine ? `${record.engine.version} · ${record.engine.engine_sha256}` : null],

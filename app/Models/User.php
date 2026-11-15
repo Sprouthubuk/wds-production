@@ -15,7 +15,7 @@ class User extends Authenticatable
     protected $fillable = [
         'name', 'first_name', 'last_name', 'email', 'password', 'phone', 'date_of_birth', 'address',
         'marketing_opt_in', 'role', 'limit_daily_pence', 'limit_weekly_pence', 'limit_monthly_pence',
-        'pending_limit_increases', 'break_until', 'self_excluded_until', 'suspended_at',
+        'pending_limit_increases', 'break_until', 'self_excluded_until', 'suspended_at', 'closed_at',
     ];
 
     protected $hidden = ['password', 'remember_token'];
@@ -31,6 +31,7 @@ class User extends Authenticatable
             'break_until' => 'datetime',
             'self_excluded_until' => 'datetime',
             'suspended_at' => 'datetime',
+            'closed_at' => 'datetime',
         ];
     }
 
@@ -38,6 +39,12 @@ class User extends Authenticatable
     public function tickets(): HasMany { return $this->hasMany(Ticket::class); }
     public function creditTransactions(): HasMany { return $this->hasMany(CreditTransaction::class); }
     public function verifications(): HasMany { return $this->hasMany(IdVerification::class); }
+
+    /** Self-excluded or closed: no entries and no marketing of any kind. */
+    public function isExcludedFromMarketing(): bool
+    {
+        return $this->closed_at !== null || $this->suspended_at !== null || ($this->self_excluded_until && $this->self_excluded_until->isFuture());
+    }
 
     public function isAdmin(): bool { return $this->role === 'admin'; }
     public function isStaff(): bool { return in_array($this->role, ['staff', 'admin'], true); }
@@ -47,10 +54,11 @@ class User extends Authenticatable
         return (int) $this->creditTransactions()->sum('amount_pence');
     }
 
-    /** True if the customer may not enter right now (break, self-exclusion or suspension). */
+    /** True if the customer may not enter right now (break, self-exclusion, suspension or closed account). */
     public function isBlockedFromPlay(): bool
     {
-        return ($this->break_until && $this->break_until->isFuture())
+        return $this->closed_at !== null
+            || ($this->break_until && $this->break_until->isFuture())
             || ($this->self_excluded_until && $this->self_excluded_until->isFuture())
             || $this->suspended_at !== null;
     }

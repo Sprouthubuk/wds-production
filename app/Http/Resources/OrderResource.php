@@ -15,6 +15,7 @@ class OrderResource extends JsonResource
         return [
             'reference' => $this->reference,
             'status' => $this->status,
+            'message' => $this->status_note,   // e.g. why a payment was refunded
             'total' => Money::pounds($this->total_pence),
             'subtotal' => Money::pounds($this->subtotal_pence),
             'bundleSaving' => Money::pounds($this->bundle_saving_pence),
@@ -25,7 +26,7 @@ class OrderResource extends JsonResource
                 'competition' => $l->competition->title,
                 'slug' => $l->competition->slug,
                 'qty' => $l->qty,
-                'drawAt' => $l->competition->draw_at->toIso8601String(),
+                'drawAt' => $l->competition->draw_at?->toIso8601String(),
                 'ticketNumbers' => $l->tickets->sortBy('number')->map(fn ($t) => $t->display($l->competition->total_tickets))->values(),
             ]),
         ];

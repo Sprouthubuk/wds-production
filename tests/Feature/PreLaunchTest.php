@@ -42,6 +42,7 @@ class PreLaunchTest extends TestCase
         $this->assertSame('BMW E46 330Ci Clubsport', $json['title']);
         $this->assertSame(['src' => '/images/e46.jpg', 'alt' => 'The car'], $json['image']);
         $this->assertSame($c->draw_at->toIso8601String(), $json['drawAt']);
+        $this->assertArrayHasKey('opensAt', $json);
         $this->assertNoDraftNumbers($this->getJson('/api/upcoming')->getContent());
     }
 

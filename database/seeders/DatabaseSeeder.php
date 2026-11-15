@@ -7,6 +7,7 @@ use App\Models\Competition;
 use App\Models\Setting;
 use App\Models\User;
 use App\Models\Winner;
+use App\Support\ClientDrafts;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 
@@ -44,16 +45,24 @@ class DatabaseSeeder extends Seeder
             'ticket_price_pence' => 1495,
             'bundles' => [['qty' => 3, 'price_pence' => 4000], ['qty' => 10, 'price_pence' => 12500]],
             'total_tickets' => 750,
-            'max_per_person' => 50,
+            'max_per_person' => null,
+            'cash_alternative_pence' => 500000,
             'opens_at' => now(),
-            // Placeholder dates until Jason confirms them. Postal entries must be received 48 hours
-            // before closes_at unless postal_closes_at is set (Competition::postalClosesAt()).
-            'closes_at' => '2026-12-24 18:00:00',
+            // Confirmed by the client: entries close Thu 24 Dec 2026 at 19:00 UK time (GMT, so UTC), live
+            // draw at 19:30. Postal entries must be received 48 hours before closes_at
+            // (Competition::postalClosesAt()): by 19:00 on Tue 22 Dec.
+            'closes_at' => '2026-12-24 19:00:00',
             'postal_closes_at' => null,
-            'draw_at' => '2026-12-24 20:00:00',
+            'draw_at' => '2026-12-24 19:30:00',
             'postal_entry_enabled' => true,
             'event_sales_enabled' => true,
         ]);
+
+        // The client's other confirmed drafts (created once, never overwritten): wds:client-drafts does the same in production.
+        $confirmed = ClientDrafts::confirmed();
+        foreach (ClientDrafts::newDrafts() as $slug => $attributes) {
+            Competition::firstOrCreate(['slug' => $slug], ($confirmed[$slug] ?? []) + $attributes);
+        }
 
         Winner::firstOrCreate(['display_name' => 'Mark Robinson', 'prize' => 'Alpina D3 Coupé'], [
             'image' => '/images/winner-mark-robinson.jpg', 'verification' => 'approved', 'handover' => 'delivered', 'show_on_site' => true,

@@ -8,6 +8,7 @@ use App\Models\Draw;
 use App\Models\Entrant;
 use App\Models\User;
 use App\Models\Winner;
+use App\Services\DrawService;
 use Illuminate\Support\Facades\DB;
 use Sprouthub\Verity\Engine\Drand;
 use Sprouthub\Verity\Engine\VerityException;
@@ -26,7 +27,10 @@ use Sprouthub\Verity\Models\Winner as VerityWinner;
  */
 class VerityDrawEngine
 {
-    /** Verity's entry sources: online and event sales are both paid; postal entries are free, equal chances. */
+    /**
+     * Verity's entry sources: online and event sales are both paid; postal entries are free, equal chances.
+     * An online entry to a free competition (£0) is recorded as "free".
+     */
     public const SOURCE_FOR_CHANNEL = ['online' => 'paid', 'event' => 'paid', 'postal' => 'postal'];
 
     /**
@@ -44,6 +48,19 @@ class VerityDrawEngine
         if ($competition->closes_at->isPast()) {
             throw new EntryException('The closing time has passed.');
         }
+        if (! $competition->draw_at) {
+            throw new EntryException('Set the live draw time before publishing.');
+        }
+        if ($competition->draw_at->lt($competition->closes_at)) {
+            throw new EntryException('The live draw can\'t be before entries close.');
+        }
+        // A malformed VERITY_SEED_KEY would crash the publish half way ("Unsupported cipher or incorrect key length").
+        if ($why = \App\Support\VerityKeyChecks::seedKeyProblem()) {
+            throw new EntryException('Publishing is blocked: the server\'s VERITY_SEED_KEY is not a valid key ('.$why.') Fix it on the server, then run php artisan verity:check --strict.');
+        }
+        if ($competition->drawsExternally() && ! $competition->drawTool()) {
+            throw new EntryException('Name the random number tool for the external draw (and its https link) before publishing.');
+        }
 
         return DB::transaction(function () use ($competition) {
             $locked = Competition::query()->whereKey($competition->id)->lockForUpdate()->firstOrFail();
@@ -55,10 +72,12 @@ class VerityDrawEngine
                     'title' => $locked->title,
                     'max_tickets' => (int) $locked->total_tickets,
                     'ticket_price_pence' => (int) $locked->ticket_price_pence,
-                    'max_per_person' => (int) $locked->max_per_person,
+                    'max_per_person' => $locked->max_per_person === null ? null : (int) $locked->max_per_person, // null = no cap
                     'closes_at' => $locked->closes_at,
                     'opens_at' => $locked->opens_at,
                     'ticket_allocation' => 'sequential', // 1, 2, 3 … across online, postal and event (no instant wins)
+                    'draw_method' => $locked->engineDrawMethod(), // fixed from here on (a physical draw is external to Verity)
+                ] + ($locked->drawsExternally() ? ['external_tool' => $locked->drawTool()] : []) + [
                     'meta' => ['wds_competition_id' => $locked->id, 'wds_slug' => $locked->slug],
                 ], endPrizes: [[
                     'name' => $locked->title,
@@ -100,6 +119,9 @@ class VerityDrawEngine
     public function addEntries(Competition $competition, Entrant $entrant, int $qty, array $owner): EntryGroup
     {
         $source = self::SOURCE_FOR_CHANNEL[$owner['channel']] ?? throw new EntryException("Unknown channel {$owner['channel']}.");
+        if ($source === 'paid' && $competition->isFree()) {
+            $source = 'free';
+        }
         $options = array_filter([
             'source' => $source,
             'host_ref' => self::hostRef($owner),
@@ -186,6 +208,84 @@ class VerityDrawEngine
     }
 
     /** Verity still takes entries (and withdrawals) for this competition. */
+    /**
+     * Method A, on the livestream: close entries now and commit to the next drand round (about a minute
+     * away). verity:process-due draws it once the round is out; the closing time stays as the backstop.
+     */
+    public function closeAndDrawNow(Competition $competition, User $admin): Competition
+    {
+        if ($competition->drawsExternally()) {
+            throw new EntryException('This competition is drawn externally: use "Close entries".');
+        }
+
+        return $this->closeLive($competition, fn ($vc, $reason) => Verity::closeAndDrawNow($vc, $reason));
+    }
+
+    /** Method B: change the random number tool, until entries close (on Verity's audit trail each time). */
+    public function setDrawTool(Competition $competition, string $name, string $url, User $admin): Competition
+    {
+        if (! $competition->drawsExternally()) {
+            throw new EntryException('Only an externally drawn competition has a random number tool.');
+        }
+        if ($competition->drawsPhysically()) {
+            throw new EntryException('A physical draw uses numbered tokens: there is no random number tool to set.');
+        }
+        try {
+            $vc = Verity::setExternalTool($this->verityCompetition($competition), $name, $url, 'admin:'.$admin->id);
+        } catch (VerityException $e) {
+            throw new EntryException($e->getMessage());
+        }
+        $competition->update(['draw_tool_name' => $vc->external_tool_name, 'draw_tool_url' => $vc->external_tool_url]);
+
+        return $competition;
+    }
+
+    /** Method B, on the livestream: close entries and seal the list with the random number tool (no drand round). */
+    public function closeEntries(Competition $competition, User $admin): Competition
+    {
+        if (! $competition->drawsExternally()) {
+            throw new EntryException('This competition is drawn by Verity: use "Close & draw now".');
+        }
+
+        return $this->closeLive($competition, fn ($vc, $reason) => Verity::close($vc, $reason));
+    }
+
+    /** Method B: the winning ticket drawn on the livestream, recorded on Verity's audit chain with the link. */
+    public function recordExternalResult(Competition $competition, int $number, string $livestreamUrl, User $admin): Competition
+    {
+        if (! $competition->drawsExternally()) {
+            throw new EntryException('Only an externally drawn competition takes a result.');
+        }
+        try {
+            Verity::recordExternalResult($this->verityCompetition($competition), $number, $livestreamUrl, 'admin:'.$admin->id);
+        } catch (VerityException $e) {
+            throw new EntryException(str_contains($e->getMessage(), 'sealed entry list')
+                ? 'Ticket '.\App\Models\Ticket::format($number, (int) $competition->total_tickets).' is not on the sealed entry list.'
+                : $e->getMessage());
+        }
+        app(DrawService::class)->sync($competition);
+
+        return $competition->fresh();
+    }
+
+    private function closeLive(Competition $competition, callable $close): Competition
+    {
+        $vc = $this->verityCompetition($competition);
+        if ($vc->status !== 'live') {
+            throw new EntryException("{$competition->title} isn't taking entries (it's {$vc->status}).");
+        }
+        // Closing before the advertised time needs a public reason on Verity's record.
+        $reason = 'Entries closed live on the draw stream at '.now()->timezone('Europe/London')->format('g:ia \o\n j F Y').' (UK time).';
+        try {
+            $close($vc, $reason);
+        } catch (VerityException $e) {
+            throw new EntryException($e->getMessage());
+        }
+        app(DrawService::class)->sync($competition);
+
+        return $competition->fresh();
+    }
+
     public function isOpen(Competition $competition): bool
     {
         return $competition->isPublished() && in_array($this->verityCompetition($competition)->status, ['live', 'paused', 'draft'], true);
@@ -198,6 +298,32 @@ class VerityDrawEngine
         }
 
         return VerityCompetition::query()->where('ref', $competition->verity_ref)->firstOrFail();
+    }
+
+    /**
+     * Every valid ticket number on the entry list Verity sealed at the close, with the count and the
+     * sealed fingerprint (read only). Refused until entries have closed: before then the list can change.
+     *
+     * @return array{competition:string, reference:string, count:int, entriesHash:string, sealedAt:?string, tickets:list<string>}
+     */
+    public function chipSheet(Competition $competition): array
+    {
+        $vc = $this->verityCompetition($competition);
+        if (! $vc->entries_hash || in_array($vc->status, ['draft', 'live', 'paused'], true)) {
+            throw new EntryException('The chip sheet is ready once entries have closed and the list is sealed.');
+        }
+        $numbers = array_map(fn ($e) => (int) $e['ticket'], app(\Sprouthub\Verity\Services\DrawService::class)->entries($vc));
+        sort($numbers);
+
+        return [
+            'competition' => $competition->title,
+            'reference' => $competition->verity_ref,
+            'count' => count($numbers),
+            'entriesHash' => (string) $vc->entries_hash,
+            'sealedAt' => $vc->closed_at?->toIso8601String(),
+            // The same 4-digit format as everywhere else ("0001"; the sheet and its CSV show "#0001").
+            'tickets' => array_map(fn ($n) => \App\Models\Ticket::pad($n, (int) $competition->total_tickets), $numbers),
+        ];
     }
 
     /** The public verification record (spec §7): everything anyone needs to re-run the draw. */
@@ -241,6 +367,16 @@ class VerityDrawEngine
                 ->map(fn ($r) => ['redraw' => $r['redraw'], 'forfeitedTicket' => $r['forfeited_ticket'], 'drandRound' => $r['beacon_round'] ?? null, 'drandRoundAt' => $r['round_time'] ?? null])
                 ->values()->all(),
             'howToVerify' => config('raffle.draws.verify_page').'/'.$draw->id,
+            // How it was drawn: "verity" (drand) or "external" (on the livestream, from the sealed list).
+            'method' => $v['draw_method'] ?? 'verity',
+            'drawNow' => (bool) ($v['draw_now'] ?? false),
+            'livestreamUrl' => $v['external']['livestream_url'] ?? null,
+            'drawTool' => $v['external']['tool'] ?? null,     // the random number tool, sealed with the entry list
+            'seal' => $v['external']['seal'] ?? null,
+            'externalKind' => ($v['draw_method'] ?? 'verity') === 'external' ? ($draw->competition?->drawsPhysically() ? 'physical' : 'rng') : null,
+            'statement' => ($v['draw_method'] ?? 'verity') === 'external'
+                ? ($draw->competition?->drawsPhysically() ? Competition::PHYSICAL_STATEMENT : Competition::EXTERNAL_STATEMENT) : null,
+            'recordedAt' => $v['external']['recorded_at'] ?? null,
         ];
     }
 

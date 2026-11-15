@@ -8,11 +8,26 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class Winner extends Model
 {
     protected $fillable = ['competition_id', 'draw_id', 'ticket_id', 'user_id', 'display_name', 'prize', 'image', 'verification', 'handover', 'show_on_site', 'drawn_at',
-        'verity_winner_id', 'redraw_number', 'forfeited_at', 'forfeit_category', 'forfeit_note', 'forfeited_by'];
+        'verity_winner_id', 'redraw_number', 'forfeited_at', 'forfeit_category', 'forfeit_note', 'forfeited_by', 'contacted_at', 'contact_reminder_sent_at'];
 
     protected function casts(): array
     {
-        return ['show_on_site' => 'boolean', 'drawn_at' => 'datetime', 'forfeited_at' => 'datetime'];
+        return ['show_on_site' => 'boolean', 'drawn_at' => 'datetime', 'forfeited_at' => 'datetime', 'contacted_at' => 'datetime', 'contact_reminder_sent_at' => 'datetime'];
+    }
+
+    public const CONTACT_WITHIN_HOURS = 48;
+
+    /** The winner has this long from the draw to claim (terms: 14 days). */
+    public function claimBy(): ?\Illuminate\Support\Carbon
+    {
+        return $this->drawn_at?->copy()->addDays((int) config('raffle.draws.claim_days'));
+    }
+
+    /** Not contacted within 48 hours of the draw (and still a live claim). */
+    public function contactOverdue(): bool
+    {
+        return ! $this->contacted_at && ! $this->isForfeited() && $this->drawn_at
+            && $this->drawn_at->lte(now()->subHours(self::CONTACT_WITHIN_HOURS));
     }
 
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }

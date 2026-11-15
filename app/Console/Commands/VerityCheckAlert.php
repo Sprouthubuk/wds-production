@@ -25,7 +25,7 @@ class VerityCheckAlert extends Command
     {
         // The same rows verity:check prints (the hourly verity:check records them on the audit chain).
         try {
-            $rows = SecurityChecks::run();
+            $rows = array_merge(\App\Support\VerityKeyChecks::run(), SecurityChecks::run());
         } catch (\Throwable $e) {
             report($e);
             Alerts::track('wds-verity-check', ['verity:check' => mb_substr($e->getMessage(), 0, 300)], 'verity:check could not run', 'All clear: verity:check runs again');

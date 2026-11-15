@@ -29,7 +29,9 @@ export interface Competition {
   ticketPrice: number;
   totalTickets: number;
   ticketsSold: number;
-  maxPerPerson: number;
+  maxPerPerson: number | null; // null = no per-person cap
+  /** Postponed (emergency only): the old closing time and the public reason. */
+  postponement?: { at: string; from: string | null; reason: string | null } | null;
   bundles: Bundle[];
   opensAt: string | null;
   closesAt: string | null;
@@ -68,6 +70,10 @@ export interface DrawResult {
   /** "Redraw pending" / "Prize unawarded" when the winner was forfeited and there's no current winner. */
   note?: string | null;
   redraws?: number;
+  /** The draw reference (e.g. WDS-7KQ2MX) and method (A: verity, B: external) of a published draw. */
+  reference?: string | null;
+  method?: 'verity' | 'external';
+  externalKind?: 'rng' | 'physical' | null;
 }
 
 /** A competition that isn't live yet: only what the public may see (never prices or ticket counts). */
@@ -75,6 +81,8 @@ export interface CompetitionTeaser {
   slug: string;
   title: string;
   image: { src: string; alt: string } | null;
+  /** When entries open (optional); the pre-launch countdown targets it while it's still ahead. */
+  opensAt?: string | null;
   drawAt: string | null;
 }
 
@@ -90,6 +98,8 @@ export interface SiteSettings {
   youtubeUrl: string;
   /** Optional YouTube channel for live draws (Instagram stays primary). */
   drawsYoutubeUrl: string | null;
+  siteSpendCapEnabled?: boolean;
+  siteSpendCapMonthly?: number | null;
 }
 
 export interface BasketLine {
@@ -100,6 +110,6 @@ export interface BasketLine {
   qty: number;
   ticketPrice: number;
   bundles: Bundle[];
-  maxPerPerson: number;
+  maxPerPerson: number | null; // null = no per-person cap
   drawAt: string;
 }

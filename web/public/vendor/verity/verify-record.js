@@ -8,7 +8,8 @@
 // (local demo randomness can't be checked independently): never reported as passing.
 //
 // Each check: { key, ok: true | false | null, note }  (null = can't be checked independently).
-// Verdict: 'ok' (every check true), 'bad' (any false), 'unverifiable' (otherwise). A redraw that is
+// Verdict: 'ok' (every check true), 'bad' (any false), 'external' (an external draw, spec §16.2: every check
+// true but the pick itself, which was made outside Verity on a livestream), 'unverifiable' (otherwise). A redraw that is
 // scheduled and not yet drawn (protocol R2) is listed in `scheduled`: its commitment is checked now, its result later.
 import { sha256, runDraw, entriesHash, allocateInstantWins, instantTableHash, SPECS, SPEC_3, runRedrawR2, redrawRound, REDRAW_R2, eligibleEntries, eligibleHash, carryProblem } from './verity.js';
 import { verifyRound, roundTime, QUICKNET } from './drand.js';
@@ -37,6 +38,16 @@ export const auditHash = (e) => sha256(`${e.prev_hash}|${e.seq}|${e.type}|${cano
 const HEX64 = /^[0-9a-f]{64}$/;
 const isTicket = (t) => Number.isSafeInteger(t) && t >= 1;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const HTTPS = /^https:\/\//i;
+
+/** Spec §16.2: the seal of an external draw's close (the entry fingerprint and the random number tool). */
+export const externalSeal = (ref, entriesHash, name, url) => sha256(`VERITY-EXTERNAL-SEAL|${ref}|${entriesHash}|${name}|${url}`);
+/** Spec §16.2: the seed an external draw's R2 redraws start from (the sealed list and the winning ticket). */
+export const externalDrawSeed = (ref, entriesHash, ticket) => sha256(`VERITY-EXTERNAL|${ref}|${entriesHash}|${ticket}`);
+
+/** The statement every external draw is shown with (spec §16.2). */
+export const EXTERNAL_NOTE =
+  'Verity verified the sealed entry list and that the winning ticket was on it. The random selection was made externally on the linked livestream.';
 
 /**
  * A draw that closed below its minimum and was carried over (D2, spec §13.3): never drawn, so there is
@@ -200,7 +211,31 @@ export async function verifyRecord(v, { previous = [] } = {}) {
   if (okEntries && spec === SPEC_3) await carriedChecks(v, entries, previous, add);
 
   let draw = null;
-  if (hasDraw) {
+  const external = vt.draw_method === 'external';
+  const ext = vt.external ?? {};
+  let seal = null;
+  if (hasDraw && external) {
+    // 4–5 for an external draw (spec §16.2): no beacon and nothing to re-run. Verity sealed the list (with
+    // the random number tool) at the close; the winning ticket must be on it, and the redraw seed derives from both.
+    const tool = ext.tool ?? {};
+    const okTool = typeof tool.name === 'string' && tool.name !== '' && HTTPS.test(String(tool.url ?? ''));
+    seal = okTool && HEX64.test(String(vt.entries_hash ?? '')) ? await externalSeal(ref, vt.entries_hash, tool.name, tool.url) : null;
+    add(
+      'external-tool',
+      !!seal && seal === ext.seal,
+      seal && seal === ext.seal
+        ? `The random number tool (${tool.name}, ${tool.url}) was sealed with the entry list when entries closed, before the pick.`
+        : 'The random number tool isn’t the one sealed with the entry list at the close.',
+    );
+    const ticket = winningTickets[0];
+    const onList = winningTickets.length === 1 && okEntries && entries.some((e) => e.ticket === ticket);
+    add('external-ticket', onList, onList ? `Ticket ${ticket} is in the sealed entry list.` : 'The winning ticket isn’t in the sealed entry list.');
+    add('external-livestream', HTTPS.test(String(ext.livestream_url ?? '')), HTTPS.test(String(ext.livestream_url ?? '')) ? `Drawn on the livestream: ${ext.livestream_url}` : 'No livestream link was recorded.');
+    const wantSeed = isTicket(ticket) && HEX64.test(String(vt.entries_hash ?? '')) ? await externalDrawSeed(ref, vt.entries_hash, ticket) : null;
+    add('seed', !!wantSeed && wantSeed === vt.draw_seed, wantSeed === vt.draw_seed ? 'The redraw seed derives from the sealed list and the winning ticket.' : 'The draw seed doesn’t derive from the sealed list and the winning ticket.');
+    add('external', null, EXTERNAL_NOTE);
+    draw = isTicket(ticket) ? { drawSeed: wantSeed, winners: [{ ticket }] } : null;
+  } else if (hasDraw) {
     // 4. The beacon: drand only, BLS-verified, published after entries froze, the round fixed at launch.
     const closedEvt = last(['competition.closed']);
     const closedAt = Math.max(Date.parse(vt.closed_at) / 1000 || 0, closedEvt ? Date.parse(closedEvt.occurred_at) / 1000 : 0);
@@ -219,9 +254,14 @@ export async function verifyRecord(v, { previous = [] } = {}) {
       // Fixed at launch from the advertised closing time (spec §4.2): always a round after it. (The exact
       // delay can change between competitions, so the round is matched to the chain's launch record below.)
       const plannedFromClose = roundTime(planned) > Date.parse(c.closes_at) / 1000;
-      const whichRound = vt.beacon_late ? round > planned : round === planned;
+      // "Close & draw now" (spec §16.1): the first round safely after the close, never one chosen later: no
+      // more than commit_ahead_seconds (+ 30 s for drand's latest round and the relay) after it.
+      const ahead = Math.max(3, Number(v?.drand?.commit_ahead_seconds ?? 0) || 0);
+      const whichRound = vt.draw_now ? roundTime(round) <= closedAt + ahead + 30 : vt.beacon_late ? round > planned : round === planned;
       const ok = sig.valid && future && plannedFromClose && whichRound;
-      const late = vt.beacon_late ? ' Entries closed late, so a fresh future round was used instead of the one planned at launch.' : '';
+      const late = vt.draw_now
+        ? ' Entries were closed live (“close & draw now”), so the next round after the close was used instead of the one planned at launch.'
+        : vt.beacon_late ? ' Entries closed late, so a fresh future round was used instead of the one planned at launch.' : '';
       add(
         'beacon',
         ok,
@@ -233,12 +273,15 @@ export async function verifyRecord(v, { previous = [] } = {}) {
               ? 'This round was already public when entries closed.'
               : !plannedFromClose
                 ? 'The round planned at launch isn’t after the advertised closing time.'
-                : 'This is not the round fixed when the draw was launched.',
+                : vt.draw_now
+                  ? 'Closed with “close & draw now”, but this round is later than the next one after the close.'
+                  : 'This is not the round fixed when the draw was launched.',
       );
     }
 
     // 5. The draw itself: draw seed and winners, in order (redraws included: the winner count grows).
     try {
+      if (external) throw new Error('external');
       if (!okSeed || !okEntries) throw new Error('missing inputs');
       draw = await runDraw({ ref, serverSeed: seed, entries, beacon: vt.beacon_randomness, winnerCount, spec });
     } catch {
@@ -271,6 +314,7 @@ export async function verifyRecord(v, { previous = [] } = {}) {
     const published = last(['competition.published']);
     if (!published) problems.push('there is no launch record');
     else {
+      if ((published.payload.draw_method ?? 'verity') !== (vt.draw_method ?? 'verity')) problems.push('the draw method isn’t the one published at launch');
       if (published.payload.commitment !== vt.commitment) problems.push('the commitment isn’t the one published at launch');
       if ((published.payload.spec ?? 'VERITY-1') !== (spec ?? 'VERITY-1')) problems.push('the spec isn’t the one published at launch');
     }
@@ -286,6 +330,10 @@ export async function verifyRecord(v, { previous = [] } = {}) {
       if (p.entries_hash !== vt.entries_hash || p.entries_count !== vt.entries_count) problems.push('the entry list isn’t the one recorded at close');
       if (hasDraw && ((p.beacon_round ?? null) !== (vt.beacon_round ?? null) || !!p.beacon_late !== !!vt.beacon_late)) problems.push('the drand round isn’t the one committed at close');
       if ((p.drand_latest_round ?? null) !== (vt.drand_latest_round ?? null)) problems.push('drand’s latest round at close doesn’t match');
+      if (!!p.draw_now !== !!vt.draw_now) problems.push('“close & draw now” isn’t what the close recorded');
+      if ((p.draw_method ?? 'verity') !== (vt.draw_method ?? 'verity')) problems.push('the draw method isn’t the one recorded at close');
+      if (external && (p.external_seal !== ext.seal || p.external_tool?.name !== ext.tool?.name || p.external_tool?.url !== ext.tool?.url || (seal && p.external_seal !== seal)))
+        problems.push('the random number tool isn’t the one sealed at close');
     }
     if (hasDraw) {
       const done = last(['draw.completed']);
@@ -300,6 +348,8 @@ export async function verifyRecord(v, { previous = [] } = {}) {
           problems.push('the redraws on the chain aren’t the ones in the record');
         if (done.payload.draw_seed !== vt.draw_seed || done.payload.server_seed !== seed) problems.push('the draw seed or revealed seed isn’t the one recorded at the draw');
         if (!same([...done.payload.winning_tickets, ...redrawn], winningTickets)) problems.push('the winners aren’t the ones recorded at the draw and redraws');
+        if (external && (done.payload.method !== 'external' || done.payload.livestream_url !== ext.livestream_url || done.payload.external_seal !== ext.seal || done.payload.entries_hash !== vt.entries_hash))
+          problems.push('the external result isn’t the one recorded on the chain (ticket, livestream link, seal)');
       }
     } else {
       const fin = last(['competition.finished']);
@@ -462,6 +512,7 @@ export async function verifyRecord(v, { previous = [] } = {}) {
     won.push(r.winning_ticket);
   }
 
-  const verdict = checks.some((x) => x.ok === false) ? 'bad' : checks.some((x) => x.ok === null) ? 'unverifiable' : 'ok';
+  const nulls = checks.filter((x) => x.ok === null).map((x) => x.key);
+  const verdict = checks.some((x) => x.ok === false) ? 'bad' : nulls.length === 1 && nulls[0] === 'external' ? 'external' : nulls.length ? 'unverifiable' : 'ok';
   return { checks, verdict, draw, scheduled };
 }

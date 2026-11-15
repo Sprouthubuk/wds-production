@@ -9,6 +9,8 @@ export interface Me {
   firstName: string;
   lastName: string;
   email: string;
+  /** Confirmed by the emailed link (or by setting a password from one). Needed for free competitions. */
+  emailVerified: boolean;
   phone: string | null;
   dateOfBirth: string | null;
   address: string | null;
@@ -43,7 +45,7 @@ export function clearAdminToken(cookies: AstroCookies): void {
 }
 
 export const sampleMe: Me = {
-  id: 0, firstName: 'Preview', lastName: 'Customer', email: 'preview@example.com', phone: null, dateOfBirth: null, address: null,
+  id: 0, firstName: 'Preview', lastName: 'Customer', email: 'preview@example.com', emailVerified: true, phone: null, dateOfBirth: null, address: null,
   marketingOptIn: false, siteCredit: 0, limits: { daily: null, weekly: null, monthly: null }, breakUntil: null, selfExcludedUntil: null, isAdmin: false,
 };
 

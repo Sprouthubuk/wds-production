@@ -66,6 +66,7 @@ class DrawService
                 ['competition_id' => $competition->id, 'verity_ref' => $vc->ref],
                 [
                     'engine' => 'verity',
+                    'method' => $vc->draw_method ?? 'verity',
                     'status' => 'prepared',
                     'entries_count' => (int) $vc->entries_count,
                     'entries_hash' => (string) $vc->entries_hash,
@@ -77,6 +78,10 @@ class DrawService
 
             if ($vc->status === 'drawn') {
                 $this->mirrorWinners($competition, $vc, $draw);
+                if (($vc->draw_method ?? 'verity') === 'external' && ! $draw->livestream_url) {
+                    $done = \Sprouthub\Verity\Models\AuditEvent::query()->where('competition_id', $vc->id)->where('type', 'draw.completed')->orderBy('seq')->first();
+                    $draw->update(['livestream_url' => $done?->payload['livestream_url'] ?? null]);
+                }
             }
 
             return $draw->fresh();

@@ -11,9 +11,85 @@ class Competition extends Model
     protected $fillable = [
         'slug', 'title', 'strapline', 'category', 'badge', 'status', 'images', 'description', 'specs',
         'ticket_price_pence', 'bundles', 'total_tickets', 'max_per_person', 'cash_alternative_pence',
-        'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order',
-        'verity_ref', 'verity_status', 'published_at',
+        'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order', 'draw_method', 'draw_tool_name', 'draw_tool_url',
+        'verity_ref', 'verity_status', 'published_at', 'postponed_at', 'postponed_from', 'postponement_reason', 'instant_win',
     ];
+
+    /** Verity draws on drand ("Close & draw now" on stream, or automatically at the closing time). */
+    public const DRAW_VERITY = 'verity';
+
+    /** Verity seals the entries; the winner is drawn on the livestream with a named random number generator and recorded. */
+    public const DRAW_EXTERNAL = 'external';
+
+    /**
+     * Verity seals the entries; the winner is drawn by hand from numbered tokens on the livestream, with an
+     * independent witness, and recorded. To Verity it's an external draw (spec §16.2) whose "tool" is this
+     * method, sealed with the entry list at the close: no random number generator link to give.
+     */
+    public const DRAW_PHYSICAL = 'physical';
+
+    /** The draw methods an admin can choose, in the order the form shows them. */
+    public const DRAW_METHODS = [self::DRAW_VERITY, self::DRAW_EXTERNAL, self::DRAW_PHYSICAL];
+
+    /** A physical draw's method, as sealed with the entry list (Verity needs a name and an https link: our description of it). */
+    public const PHYSICAL_TOOL = ['name' => 'Physical draw (numbered tokens)', 'url' => 'https://wdscompetitions.co.uk/live-draws#physical-draw'];
+
+    /** A free competition (ticket price £0): "Enter free", one online entry per verified account, no payment. */
+    public function isFree(): bool
+    {
+        return (int) $this->ticket_price_pence === 0;
+    }
+
+    /** Drawn on the livestream from the list Verity sealed (a random number generator or numbered tokens). */
+    public function drawsExternally(): bool
+    {
+        return in_array($this->draw_method ?? self::DRAW_VERITY, [self::DRAW_EXTERNAL, self::DRAW_PHYSICAL], true);
+    }
+
+    public function drawsPhysically(): bool
+    {
+        return ($this->draw_method ?? self::DRAW_VERITY) === self::DRAW_PHYSICAL;
+    }
+
+    /** The method as Verity knows it: verity or external (a physical draw is an external one). */
+    public function engineDrawMethod(): string
+    {
+        return $this->drawsExternally() ? self::DRAW_EXTERNAL : self::DRAW_VERITY;
+    }
+
+    /** For an external draw, how the pick is made: "rng" (a random number generator) or "physical" (numbered tokens). */
+    public function externalKind(): ?string
+    {
+        return $this->drawsExternally() ? ($this->drawsPhysically() ? 'physical' : 'rng') : null;
+    }
+
+    /** What every external draw's certificate and verify page says (the engine's verifiers say the same). */
+    public const EXTERNAL_STATEMENT = 'Verity verified the sealed entry list and that the winning ticket was on it. The random selection was made externally on the linked livestream.';
+
+    /** A physical draw's certificate and verify page. */
+    public const PHYSICAL_STATEMENT = 'Drawn by hand from numbered tokens on a live stream, supervised by an independent witness. Verity verified the sealed entry list and that the winning ticket was on it.';
+
+    public function drawStatement(): ?string
+    {
+        return match ($this->externalKind()) {
+            'physical' => self::PHYSICAL_STATEMENT,
+            'rng' => self::EXTERNAL_STATEMENT,
+            default => null,
+        };
+    }
+
+    /**
+     * @return array{name:string, url:string}|null the random number tool an external draw will be picked with;
+     *                                             for a physical draw, the method itself (no admin input)
+     */
+    public function drawTool(): ?array
+    {
+        if ($this->drawsPhysically()) {
+            return self::PHYSICAL_TOOL;
+        }
+
+        return $this->draw_tool_name && $this->draw_tool_url ? ['name' => $this->draw_tool_name, 'url' => $this->draw_tool_url] : null;
+    }
 
     /** Set (never saved) when a draft is shown through a preview link; see PublicController. */
     public bool $previewing = false;
@@ -29,6 +105,9 @@ class Competition extends Model
             'closes_at' => 'datetime',
             'postal_closes_at' => 'datetime',
             'draw_at' => 'datetime',
+            'postponed_at' => 'datetime',
+            'instant_win' => 'boolean', // none yet; credit cards are refused on these (CreditCardCap)
+            'postponed_from' => 'datetime',
             'published_at' => 'datetime',
             'postal_entry_enabled' => 'boolean',
             'event_sales_enabled' => 'boolean',
@@ -51,7 +130,7 @@ class Competition extends Model
         return $this->status === 'live'
             && (! $this->opens_at || $this->opens_at->isPast())
             && (! $this->closes_at || $this->closes_at->isFuture())
-            && $this->draw_at->isFuture();
+            && $this->draw_at?->isFuture() === true;
     }
 
     /** Tickets held by pending (unpaid, unexpired) online orders. */
@@ -76,6 +155,12 @@ class Competition extends Model
     public const POSTAL_LATE_REASON = 'Received less than 48 hours before close';
 
     /** Postal entries must be received by this moment: postal_closes_at, or 48 hours before closes_at. */
+    /** Free postal entry is the free route for paid competitions only: free ones are entered online (one per verified account). */
+    public function hasPostalRoute(): bool
+    {
+        return ! $this->isFree() && (bool) $this->postal_entry_enabled;
+    }
+
     public function postalClosesAt(): ?\Illuminate\Support\Carbon
     {
         return $this->postal_closes_at ?? $this->closes_at?->copy()->subHours(self::POSTAL_CLOSE_HOURS_BEFORE);
@@ -84,15 +169,21 @@ class Competition extends Model
     /**
      * The postal deadline in words, with the exact UK date and time, for emails (the website builds
      * the same sentence in web/src/lib/postal.ts):
-     * "Postal entries must be received at least 48 hours before close: by 6:00pm on Tuesday 22 December 2026 (UK time)."
+     * "Postal entries must be received at least 48 hours before close: by Tuesday 22 December 2026, 7:00pm (UK time)."
      */
+    /** A moment as the site shows deadlines, in UK time: "Tuesday 22 December 2026, 7:00pm" (web: ukDateTime()). */
+    public static function ukDeadline(\DateTimeInterface $at): string
+    {
+        return \Illuminate\Support\Carbon::instance($at)->copy()->timezone('Europe/London')->format('l j F Y, g:ia');
+    }
+
     public function postalDeadlineSentence(): ?string
     {
         $by = $this->postalClosesAt();
         if (! $by) {
             return null;
         }
-        $when = $by->copy()->timezone('Europe/London')->format('g:ia').' on '.$by->copy()->timezone('Europe/London')->format('l j F Y');
+        $when = self::ukDeadline($by);
 
         return $this->postal_closes_at
             ? "Postal entries must be received by {$when} (UK time)."

@@ -7,5 +7,6 @@ const { eyebrow, title, intro } = Astro.props;
     <span class="eyebrow">{eyebrow}</span>
     <h1 class="display display--l">{title}</h1>
     {intro ? <p class="lead">{intro}</p> : null}
+    <slot />
   </div>
 </section>

@@ -1,4 +1,5 @@
 ---
+import { ticket } from '../lib/ticket';
 import { odds } from '../lib/pricing';
 interface Props { e: { competition: string; slug: string; image: string; drawAt: string; totalTickets: number; status: string; online: string[]; postal: string[]; won: boolean } }
 const { e } = Astro.props;
@@ -10,8 +11,8 @@ const draw = new Date(e.drawAt).toLocaleDateString('en-GB', { day: 'numeric', mo
   <div class="body">
     <div class="top"><strong>{e.competition}</strong><span class="chip chip--solid">{e.won ? 'Winner' : e.status === 'live' ? `Live · draw ${draw}` : 'Drawn'}</span></div>
     <span class="small muted">{total} ticket{total === 1 ? '' : 's'} · your odds {odds(e.totalTickets, total || 1)}</span>
-    {e.online.length ? <div class="stack" style="gap: 8px"><span class="label">Online · {e.online.length}</span><div class="chips">{e.online.map((n) => <span class="num">{n}</span>)}</div></div> : null}
-    {e.postal.length ? <div class="stack" style="gap: 8px"><span class="label">Postal · {e.postal.length}</span><div class="chips postal">{e.postal.map((n) => <span class="num">{n}</span>)}</div></div> : null}
+    {e.online.length ? <div class="stack" style="gap: 8px"><span class="label">Online · {e.online.length}</span><div class="chips">{e.online.map((n) => <span class="num">{ticket(n)}</span>)}</div></div> : null}
+    {e.postal.length ? <div class="stack" style="gap: 8px"><span class="label">Postal · {e.postal.length}</span><div class="chips postal">{e.postal.map((n) => <span class="num">{ticket(n)}</span>)}</div></div> : null}
     {e.status === 'live' ? <div class="row" style="gap: 8px"><a href={`/competitions/${e.slug}`} class="btn">Add more tickets</a><a href="/live-draws" class="btn btn--outline">Watch the draw</a></div> : null}
   </div>
 </article>

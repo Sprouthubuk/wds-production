@@ -4,6 +4,7 @@ import '../styles/motion.css';
 import Header from '../components/Header.astro';
 import Footer from '../components/Footer.astro';
 import { getSettings } from '../lib/api';
+import { prelaunchState } from '../lib/prelaunch';
 
 interface Props {
   title: string;
@@ -12,7 +13,7 @@ interface Props {
   image?: string;
 }
 const { title, description = 'Win genuine WDS Originals BMW builds, parts and merchandise. Low ticket numbers, better odds, free postal entry and every draw streamed live.', active = 'none', image = '/images/e46-clubsport-34.jpg' } = Astro.props;
-const settings = await getSettings();
+const [settings, pre] = await Promise.all([getSettings(), prelaunchState(Astro.locals)]);
 const preview = Astro.locals.preview ?? null;
 const fullTitle = title === 'Home' ? 'WDS Competitions — Win genuine WDS Originals builds' : `${title} — WDS Competitions`;
 const canonical = new URL(Astro.url.pathname, Astro.site);
@@ -43,7 +44,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       </div>
     ) : null}
     <a class="sr-only" href="#main">Skip to content</a>
-    <Header active={active} />
+    <Header active={active} prelaunch={pre.on} firstAccessHref={pre.href} />
     <main id="main">
       <slot />
     </main>

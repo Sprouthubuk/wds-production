@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Exceptions\EntryException;
+use App\Exceptions\LimitReachedException;
+use App\Http\Resources\Money;
+use App\Http\Resources\SettingsPayload;
 use App\Models\Order;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -13,6 +16,9 @@ class ResponsiblePlay
     {
         $this->applyDueIncreases($user);
 
+        if ($user->closed_at) {
+            throw new EntryException('This account is closed.');
+        }
         if ($user->suspended_at) {
             throw new EntryException('Your account is suspended. Please contact us.');
         }
@@ -35,17 +41,42 @@ class ResponsiblePlay
             $spent = $this->spentSince($user, $from);
             if ($spent + $amountPence > $limit) {
                 $left = max(0, $limit - $spent);
-                throw new EntryException(sprintf(
-                    'This would take you over your %s spending limit. You have £%s left.',
-                    $label, number_format($left / 100, 2)
-                ));
+                throw new LimitReachedException($limit === 0
+                    ? "Your {$label} spend limit is £0, so you can't make paid entries. You can raise it in your account (increases take effect after ".config('raffle.limit_increase_delay_hours').' hours).'
+                    : sprintf('This would take you over your %s spending limit. You have £%s left.', $label, number_format($left / 100, 2)), $label);
             }
+        }
+    }
+
+    /**
+     * Optional site-wide monthly cap (Admin → Settings, off by default): what one customer (account or email)
+     * spends this calendar month, UK time, on every channel and payment method, paid or still reserved.
+     */
+    public function assertWithinSiteCap(?User $account, string $email, int $amountPence): void
+    {
+        $s = SettingsPayload::get();
+        $cap = Money::pence($s['siteSpendCapMonthly'] ?? null);
+        if (empty($s['siteSpendCapEnabled']) || $cap === null || $amountPence <= 0) {
+            return;
+        }
+        $from = CarbonImmutable::now('Europe/London')->startOfMonth()->utc();
+        $spent = (int) Order::where(fn ($q) => $q->where('email', $email)->when($account, fn ($q) => $q->orWhere('user_id', $account->id)))
+            ->where(fn ($q) => $q->where('status', 'paid')
+                ->orWhere(fn ($q) => $q->where('status', 'pending')->where('reserved_until', '>', now())))
+            ->where('created_at', '>=', $from)
+            ->sum('total_pence');
+        if ($spent + $amountPence > $cap) {
+            throw new EntryException(sprintf(
+                'Each customer can spend up to £%s a month on WDS Competitions. This would take you over it: you have £%s left this month.',
+                number_format($cap / 100, 2), number_format(max(0, $cap - $spent) / 100, 2),
+            ));
         }
     }
 
     public function spentSince(User $user, \DateTimeInterface $from): int
     {
-        return (int) Order::where('user_id', $user->id)
+        // The account's orders, and guest orders placed with the account's email.
+        return (int) Order::where(fn ($q) => $q->where('user_id', $user->id)->orWhere('email', $user->email))
             ->where(fn ($q) => $q->where('status', 'paid')
                 ->orWhere(fn ($q) => $q->where('status', 'pending')->where('reserved_until', '>', now())))
             ->where('created_at', '>=', $from)
@@ -53,7 +84,7 @@ class ResponsiblePlay
     }
 
     /**
-     * Lower limits apply immediately; raising or removing a limit waits 24 hours.
+     * Lower limits (including £0) apply immediately; raising or removing a limit waits 72 hours (config).
      * @param array{daily?:int|null, weekly?:int|null, monthly?:int|null} $limits pence, null = no limit
      * @return array<string,string> messages per period
      */
@@ -79,7 +110,7 @@ class ResponsiblePlay
                 $messages[$period] = 'Applied now.';
             } else {
                 $pending[$period] = ['value' => $new, 'effective_at' => $effective];
-                $messages[$period] = 'Takes effect in 24 hours.';
+                $messages[$period] = 'Delayed.';
             }
         }
 

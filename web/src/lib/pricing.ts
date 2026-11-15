@@ -22,7 +22,9 @@ export function savingFor(qty: number, ticketPrice: number, bundles: Bundle[]): 
 
 export function money(value: number): string {
   if (!Number.isFinite(value)) return '£—';
-  return Math.abs(value - Math.round(value)) < 0.001 ? `£${Math.round(value)}` : `£${value.toFixed(2)}`;
+  return Math.abs(value - Math.round(value)) < 0.001
+    ? `£${Math.round(value).toLocaleString('en-GB')}`
+    : `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
 export function odds(totalTickets: number, qty = 1): string {

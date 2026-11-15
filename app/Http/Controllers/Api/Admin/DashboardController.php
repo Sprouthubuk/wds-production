@@ -29,10 +29,13 @@ class DashboardController extends Controller
             'postalThisWeek' => PostalEntry::where('created_at', '>=', now()->startOfWeek())->count(),
             'idToReview' => IdVerification::where('status', 'to_review')->count(),
             'refundsNeeded' => Order::where('status', 'cancelled')->whereNotNull('paid_at')->count(),
+            'harmFlagsOpen' => \App\Models\HarmFlag::where('status', 'open')->count(),
+            'winnersToContact' => \App\Models\Winner::whereNull('contacted_at')->whereNull('forfeited_at')->whereNotNull('drawn_at')
+                ->where('drawn_at', '<=', now()->subHours(\App\Models\Winner::CONTACT_WITHIN_HOURS))->count(),
             'daily' => $last7->map(fn ($r) => ['day' => $r->day, 'revenue' => Money::pounds((int) $r->pence), 'orders' => (int) $r->orders]),
             'live' => Competition::where('status', 'live')->orderBy('draw_at')->get()->map(fn ($c) => [
                 'id' => $c->id, 'title' => $c->title, 'sold' => $c->tickets_allocated, 'total' => $c->total_tickets,
-                'drawAt' => $c->draw_at->toIso8601String(),
+                'drawAt' => $c->draw_at?->toIso8601String(),
                 'revenue' => Money::pounds((int) DB::table('order_lines')->join('orders', 'orders.id', '=', 'order_lines.order_id')
                     ->where('orders.status', 'paid')->where('order_lines.competition_id', $c->id)->sum('order_lines.line_total_pence')),
             ]),

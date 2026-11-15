@@ -134,3 +134,6 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Sign-in redirect tests (built server + mock API)
+        run: npm test

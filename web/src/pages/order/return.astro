@@ -1,0 +1,19 @@
+---
+/**
+ * Return from the Cashflows payment page when the Portal's default return URLs are used (each payment job also sets
+ * its own, straight to /order/<reference>). Cashflows adds ?paymentjobref=&paymentref=&ordernumber= (and
+ * status=cancelled on the cancelled URL). This only forwards to the order page, which asks the API, which asks
+ * Cashflows: the return itself is never trusted.
+ */
+const p = Astro.url.searchParams;
+const reference = (p.get('ordernumber') ?? '').trim();
+if (!/^WDS-[A-Z0-9]{4,12}$/i.test(reference)) return Astro.redirect('/basket');
+const next = new URLSearchParams();
+for (const name of ['paymentjobref', 'key']) {
+  const v = p.get(name);
+  if (v) next.set(name, v);
+}
+const result = p.get('result') ?? p.get('status');
+if (result && /^(success|failed|cancelled)$/.test(result)) next.set('result', result);
+return Astro.redirect(`/order/${encodeURIComponent(reference.toUpperCase())}?${next}`);
+---

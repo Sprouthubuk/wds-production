@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\ResponsiblePlay;
 use App\Services\TicketAllocator;
+use App\Http\Resources\Money;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password as PasswordBroker;
@@ -25,6 +26,8 @@ class AuthController extends Controller
             'password' => ['required', Password::min(10)],
             'ageConfirmed' => ['accepted'],
             'marketingOptIn' => ['boolean'],
+            // Optional monthly spend limit at registration (£0 = no paid entries); empty = none.
+            'monthlyLimit' => ['nullable', 'numeric', 'min:0', 'max:10000'],
         ]);
         $email = TicketAllocator::normaliseEmail($data['email']);
         if (User::where('email', $email)->exists()) {
@@ -44,7 +47,10 @@ class AuthController extends Controller
             'password' => $data['password'],
             'marketing_opt_in' => (bool) ($data['marketingOptIn'] ?? false),
             'role' => 'customer',
+            'limit_monthly_pence' => Money::pence($data['monthlyLimit'] ?? null),
         ]);
+
+        \Illuminate\Support\Facades\Mail::to($email)->queue(new \App\Mail\VerifyEmail($user));
 
         // Link any guest orders/tickets bought with this email before the account existed.
         \App\Models\Order::whereNull('user_id')->where('email', $email)->update(['user_id' => $user->id]);
@@ -59,6 +65,9 @@ class AuthController extends Controller
         $user = User::where('email', TicketAllocator::normaliseEmail($data['email']))->first();
         if (! $user || ! Hash::check($data['password'], $user->password)) {
             throw ValidationException::withMessages(['email' => 'Those details don\'t match an account.']);
+        }
+        if ($user->closed_at) {
+            throw ValidationException::withMessages(['email' => 'This account was closed at your request. Contact us if you need your details or tickets.']);
         }
 
         return response()->json([
@@ -90,6 +99,10 @@ class AuthController extends Controller
             ['email' => TicketAllocator::normaliseEmail($data['email']), 'password' => $data['password'], 'password_confirmation' => $request->input('password_confirmation'), 'token' => $data['token']],
             function (User $user, string $password) {
                 $user->forceFill(['password' => $password])->save();
+                // The link came to this inbox, so the email address is confirmed too.
+                if (! $user->hasVerifiedEmail()) {
+                    $user->markEmailAsVerified();
+                }
                 $user->tokens()->delete(); // sign out everywhere
             },
         );

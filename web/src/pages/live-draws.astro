@@ -3,6 +3,7 @@ import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getDraws, getSettings } from '../lib/api';
 import { drawChannels } from '../lib/channels';
+import { ticket } from '../lib/ticket';
 const [draws, settings] = await Promise.all([getDraws(), getSettings()]);
 const ch = drawChannels(settings);
 const fmt = (iso: string) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'Europe/London' }) : '—');
@@ -32,7 +33,7 @@ const upcoming = draws.filter((d) => !d.winningTicket && !d.winner);
           <thead><tr><th scope="col">Competition</th><th scope="col">Draw date</th><th scope="col">Winning ticket</th><th scope="col">Winner</th><th scope="col">Proof</th></tr></thead>
           <tbody>
             {draws.map((d) => (
-              <tr><td data-label="Competition"><strong>{d.competition}</strong></td><td data-label="Draw date">{fmt(d.drawAt)}</td><td data-label="Winning ticket">{d.winningTicket ?? (d.winner ? '—' : 'Upcoming')}</td><td data-label="Winner">{d.winner ?? d.note ?? '—'}{d.redraws ? <span class="small muted"> (redraw {d.redraws})</span> : null}</td><td data-label="Proof">{d.id && d.verifyUrl ? <a href={`/verify/${d.id}`}>Verify the draw</a> : '—'}</td></tr>
+              <tr><td data-label="Competition"><strong>{d.competition}</strong></td><td data-label="Draw date">{fmt(d.drawAt)}</td><td data-label="Winning ticket">{d.winningTicket ? ticket(d.winningTicket) : (d.winner ? '—' : 'Upcoming')}</td><td data-label="Winner">{d.winner ?? d.note ?? '—'}{d.redraws ? <span class="small muted"> (redraw {d.redraws})</span> : null}</td><td data-label="Proof">{d.id && d.verifyUrl ? <a href={`/verify/${d.id}`}>Verify the draw</a> : '—'}</td></tr>
             ))}
           </tbody>
         </table>
@@ -44,9 +45,11 @@ const upcoming = draws.filter((d) => !d.winningTicket && !d.winner);
       <div class="section-head"><h2 class="display display--s">How our draws work</h2></div>
       <div class="grid grid--4" data-reveal-group>
         <div class="tile"><h3 class="h3">Every entry included</h3><p class="small muted">Online, postal and event entries share one run of ticket numbers.</p></div>
-        <div class="tile"><h3 class="h3">Locked in at launch</h3><p class="small muted">When a competition goes live, the draw engine commits to its secret seed and to a public drand round after the closing time.</p></div>
-        <div class="tile"><h3 class="h3">Public randomness</h3><p class="small muted">The winner comes from that drand round, published by independent organisations after entries close. Nobody, including us, can know it in advance.</p></div>
-        <div class="tile"><h3 class="h3">Check it yourself</h3><p class="small muted">Each result links to a page that re-runs the whole draw in your browser from the published record.</p></div>
+        <div class="tile"><h3 class="h3">Locked in at launch</h3><p class="small muted">When a competition goes live its terms are fixed. For a Verity draw, the engine also commits to a secret seed and to a public drand round after the closing time.</p></div>
+        <div class="tile"><h3 class="h3">Sealed, then drawn</h3><p class="small muted">Entries are sealed and fingerprinted when they close. A Verity draw takes the winner from that drand round, which nobody, including us, can know in advance. An external draw is made live on the linked livestream, from the sealed list: with a named random number generator, or by hand from numbered tokens.</p></div>
+        <div class="tile" id="physical-draw"><h3 class="h3">Physical draws</h3><p class="small muted">Drawn by hand from numbered tokens on a live stream, supervised by an independent witness. There is one token for every valid ticket on the list Verity sealed at the close, and Verity verifies that the winning ticket was on it.</p></div>
+        <div class="tile" id="redraws"><h3 class="h3">Forfeits and redraws</h3><p class="small muted">If a winner forfeits, the forfeit is recorded on the audit chain first. The replacement is then drawn by Verity from a public drand round that was still in the future at that moment (protocol R2), whichever way the original draw was made. The forfeited result stays on the record.</p></div>
+        <div class="tile"><h3 class="h3">Check it yourself</h3><p class="small muted">Each result links to a page that re-checks the draw in your browser: the sealed entries, the whole pick for a Verity draw, and that an external draw's winning ticket was on the sealed list.</p></div>
       </div>
     </div>
   </section>

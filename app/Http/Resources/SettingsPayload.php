@@ -23,6 +23,10 @@ final class SettingsPayload
         // Optional YouTube channel for live draws. Instagram stays the primary channel; with both set
         // the copy says "Drawn live on our socials" (web/src/lib/channels.ts, drawnLiveOn() below).
         'drawsYoutubeUrl' => null,
+        // Optional site-wide cap on what any one customer can spend in a calendar month (all payment
+        // methods, all competitions). OFF by default: only switch it on if the client decides to.
+        'siteSpendCapEnabled' => false,
+        'siteSpendCapMonthly' => null, // pounds
     ];
 
     public static function get(): array

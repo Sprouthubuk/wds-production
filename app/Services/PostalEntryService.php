@@ -75,6 +75,9 @@ class PostalEntryService
 
     private function rejectionReason(Competition $competition, array $data, Carbon $received): ?string
     {
+        if ($competition->isFree()) {
+            return 'Free competitions have no postal entry';
+        }
         if (! $competition->postal_entry_enabled) {
             return 'Postal entry not enabled for this competition';
         }
@@ -87,7 +90,7 @@ class PostalEntryService
         if (! ResponsiblePlay::isAdult($data['date_of_birth'])) {
             return 'Entrant under 18';
         }
-        if ($this->allocator->heldBy($competition, $data['email']) >= $competition->max_per_person) {
+        if ($competition->max_per_person !== null && $this->allocator->heldBy($competition, $data['email']) >= $competition->max_per_person) {
             return 'Maximum entries per person reached';
         }
         if ($competition->available() < 1) {

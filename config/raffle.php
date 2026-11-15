@@ -7,8 +7,11 @@ return [
     // Minimum entrant age.
     'minimum_age' => 18,
 
-    // Hours before a responsible-play limit INCREASE takes effect (decreases are immediate).
-    'limit_increase_delay_hours' => 24,
+    // Hours before a responsible-play limit INCREASE takes effect (decreases are immediate). Policy: 72 hours.
+    'limit_increase_delay_hours' => 72,
+
+    // DCMS Voluntary Code: credit card spending per customer per calendar month (UK), across all competitions.
+    'credit_card_monthly_cap_pence' => 25000,
 
     // Where to send the customer after the hosted checkout.
     'frontend_url' => env('FRONTEND_URL', 'http://localhost:4321'),
@@ -26,7 +29,19 @@ return [
             'configuration_id' => env('CASHFLOWS_CONFIGURATION_ID'),
             'api_key' => env('CASHFLOWS_API_KEY'),
             'base_url' => env('CASHFLOWS_BASE_URL'),
-            'webhook_secret' => env('CASHFLOWS_WEBHOOK_SECRET'),
+            // Notifications aren't signed: the URL carries this secret (.../api/payments/cashflows/notify?token=...).
+            'webhook_token' => env('CASHFLOWS_WEBHOOK_TOKEN'),
+            // Optional: only accept notifications from these IPs (comma separated). Off when empty.
+            // Integration: 54.75.5.171,54.73.83.234   Production: 54.74.58.255,52.215.48.101
+            'webhook_ips' => env('CASHFLOWS_WEBHOOK_IPS', ''),
+            // Until card type detection is confirmed on real payments, a card of unknown type counts towards
+            // the GBP 250/month credit card cap.
+            'unknown_card_as_credit' => (bool) env('CASHFLOWS_UNKNOWN_CARD_AS_CREDIT', true),
+            // The payment page expires when the ticket reservation does (expirationDateTimeUtc on the payment job).
+            'send_expiry' => (bool) env('CASHFLOWS_SEND_EXPIRY', true),
+            // Log the whole (redacted) response of the first N paid payments, to see the real card fields.
+            'log_first_payments' => (int) env('CASHFLOWS_LOG_FIRST_PAYMENTS', 20),
+            'timeout' => (int) env('CASHFLOWS_TIMEOUT', 20),
         ],
     ],
 

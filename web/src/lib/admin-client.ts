@@ -21,6 +21,25 @@ export async function send(url: string, method: string, body?: BodyInit, isJson 
       return data;
     }
 
+/**
+ * A failed admin form or action also leaves its message on screen, next to what was pressed, until the
+ * next attempt (the toast alone disappears after a few seconds and is easy to miss).
+ */
+export function showError(anchor: HTMLElement, msg: string | null) {
+  const host = anchor.closest<HTMLElement>('[data-error-host]') ?? (anchor.tagName === 'FORM' ? anchor : anchor.parentElement!);
+  let box = host.querySelector<HTMLElement>(':scope > [data-admin-error]');
+  if (!msg) { if (box) box.hidden = true; return; }
+  if (!box) {
+    box = document.createElement('p');
+    box.className = 'alert alert--error adm-error';
+    box.setAttribute('role', 'alert');
+    box.dataset.adminError = '';
+    host.prepend(box);
+  }
+  box.textContent = msg;
+  box.hidden = false;
+}
+
 /** A datetime-local value ("2026-12-22T17:59") read as UK local time → UTC ISO string. */
 export function ukLocalToIso(v: string): string | null {
   if (!v) return null;
@@ -53,13 +72,14 @@ export function initAdmin() {
         }
         const btn = form.querySelector<HTMLButtonElement>('button[type=submit]');
         if (btn) btn.disabled = true;
+        showError(form, null);
         try {
           const data = await send(form.dataset.adminForm!, form.dataset.method || 'POST', body, !hasFile);
           say(data.message || 'Saved.');
           form.dispatchEvent(new CustomEvent('admin:saved', { detail: data }));
           if (form.hasAttribute('data-reload') && !data.preview) setTimeout(() => location.reload(), 700);
           if (form.hasAttribute('data-reset')) form.reset();
-        } catch (err) { say((err as Error).message, true); }
+        } catch (err) { say((err as Error).message, true); showError(form, (err as Error).message); }
         finally { if (btn) btn.disabled = false; }
       });
     });
@@ -67,12 +87,13 @@ export function initAdmin() {
     document.querySelectorAll<HTMLButtonElement>('[data-admin-action]').forEach((b) => b.addEventListener('click', async () => {
       if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
       b.disabled = true;
+      showError(b, null);
       try {
         const data = await send(b.dataset.adminAction!, b.dataset.method || 'POST', b.dataset.body || '{}');
         say(data.message || 'Done.');
         b.dispatchEvent(new CustomEvent('admin:done', { detail: data, bubbles: true }));
         if (b.hasAttribute('data-reload') && !data.preview) setTimeout(() => location.reload(), 900);
-      } catch (err) { say((err as Error).message, true); }
+      } catch (err) { say((err as Error).message, true); showError(b, (err as Error).message); }
       finally { b.disabled = false; }
     }));
   }
