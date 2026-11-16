@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\EntryException;
 use App\Exceptions\LimitReachedException;
+use App\Mail\LatePaymentRefunded;
 use App\Mail\TicketsIssued;
 use App\Models\Competition;
 use App\Models\CreditTransaction;
@@ -12,6 +13,7 @@ use App\Models\Entrant;
 use App\Models\Order;
 use App\Models\User;
 use App\Services\Payments\PaymentGateway;
+use App\Services\Payments\PaymentLog;
 use App\Services\Payments\PaymentResult;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -253,6 +255,18 @@ class CheckoutService
                 if (! in_array($order->status, ['pending', 'cancelled', 'failed'], true) || ($order->paid_at && $order->status !== 'pending')) {
                     return $order;
                 }
+                if ($clash = $this->latePaymentClash($order)) {
+                    // The order expired and its credit or code use has gone on another order since: honouring this
+                    // payment would spend it twice. Refund in full; Admin's history says exactly why.
+                    $this->refuseAndRefund($order, $result, $cardType, LatePaymentRefunded::MESSAGE);
+                    $order->refresh();
+                    PaymentLog::record($order, 'status', $order->status === 'refunded' ? 'Refunded' : 'Refund needed', "Late payment refused: {$clash}");
+                    if ($order->status === 'refunded') {
+                        Mail::to($order->email)->queue(new LatePaymentRefunded($order));
+                    }
+
+                    return $order;
+                }
                 if ($refusal = $this->creditCap->refusal($order, $cardType)) {
                     $this->refuseAndRefund($order, $result, $cardType, $refusal);
 
@@ -282,6 +296,33 @@ class CheckoutService
         }
 
         return $order->fresh();
+    }
+
+    /**
+     * A payment for an order whose reservation had ended (cancelled, failed, or pending past its expiry), whose site
+     * credit or discount-code use has since been taken by another order: honouring it would make the credit balance
+     * negative or take the code past its usage limit. Returns why, for Admin's payment history; null when there's
+     * no clash (every other late payment is handled as before).
+     */
+    private function latePaymentClash(Order $order): ?string
+    {
+        $late = $order->status !== 'pending' || ($order->reserved_until && $order->reserved_until->isPast());
+        if (! $late) {
+            return null;
+        }
+        if ($order->credit_used_pence > 0 && $order->user_id && ($user = User::find($order->user_id))) {
+            $balance = $user->creditBalancePence();
+            if ($balance < $order->credit_used_pence) {
+                return sprintf('the £%s site credit it used had already gone on another order (balance now £%s).',
+                    number_format($order->credit_used_pence / 100, 2), number_format($balance / 100, 2));
+            }
+        }
+        if ($order->discount_code_id && ($code = DiscountCode::find($order->discount_code_id))
+            && $code->usage_limit && $code->times_used >= $code->usage_limit) {
+            return "discount code {$code->code} had already reached its usage limit ({$code->usage_limit}) on other orders.";
+        }
+
+        return null;
     }
 
     /**

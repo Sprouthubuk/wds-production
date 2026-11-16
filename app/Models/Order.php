@@ -7,6 +7,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 
+/**
+ * Larastan reads this timestamp column as a string; the cast below makes it a date.
+ *
+ * @property \Illuminate\Support\Carbon|null $reserved_until
+ */
 class Order extends Model
 {
     protected $fillable = [
