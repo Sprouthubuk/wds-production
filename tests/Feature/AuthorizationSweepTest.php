@@ -23,7 +23,7 @@ class AuthorizationSweepTest extends TestCase
     use RefreshDatabase, VerityFakes;
 
     /** Staff (not only admins) may use these: postal entries and the event stand. */
-    private const STAFF_PREFIXES = ['api/admin/postal', 'api/admin/event-sales'];
+    private const STAFF_PREFIXES = ['api/admin/postal', 'api/admin/event-sales', 'api/admin/environment'];
 
     protected function setUp(): void
     {

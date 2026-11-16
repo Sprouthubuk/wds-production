@@ -12,6 +12,11 @@ return [
     // Contact form enquiries are sent from this address (Reply-To is the customer).
     'noreply_address' => env('NOREPLY_ADDRESS', 'noreply@wdscompetitions.co.uk'),
 
+    // The real production API address(es). Admin shows an amber STAGING badge unless APP_URL is one of these.
+    // The on-forge address is production's until api.wdscompetitions.co.uk is live (forge/README.md).
+    'production_app_urls' => array_values(array_filter(array_map('trim', explode(',', (string) env('PRODUCTION_APP_URLS',
+        'https://api.wdscompetitions.co.uk,https://wds-competitions-api.on-forge.com'))))),
+
     // Site footer: social links, the ICO registration line (shown only when set) and "Powered by RaffleLabs".
     'instagram' => ['handle' => 'wds_originals', 'url' => 'https://instagram.com/wds_originals'],
     'youtube' => ['name' => 'WDS Originals', 'url' => 'https://youtube.com/@wdsoriginals'],

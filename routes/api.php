@@ -64,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
 // Staff (event sales + postal logging)
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:staff'])->group(function () {
+    Route::get('/environment', [Admin\ShellController::class, 'environment']);
     Route::get('/event-sales/competitions', [Admin\EventSaleController::class, 'competitions']);
     Route::post('/event-sales', [Admin\EventSaleController::class, 'store']);
     Route::get('/event-sales/summary', [Admin\EventSaleController::class, 'summary']);
@@ -74,6 +75,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:staff'])->group(functi
 
 // Admin
 Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(function () {
+    Route::get('/search', [Admin\ShellController::class, 'search']);
     Route::get('/dashboard', Admin\DashboardController::class);
     Route::get('/reports/summary', [Admin\ReportController::class, 'summary']);
     Route::get('/reports/{type}.csv', [Admin\ReportController::class, 'export']);

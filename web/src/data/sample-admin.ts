@@ -14,6 +14,8 @@ const orders = [
 ];
 
 export const sampleAdmin: Record<string, unknown> = {
+  '/environment': { data: { production: false, label: 'Staging' } },
+  '/search': { data: { q: 'WDS-7KQ2ZD', orders: [{ id: 6, reference: 'WDS-7KQ2ZD', name: 'Dan Hughes', email: 'dan@example.com', status: 'paid', total: 125, createdAt: iso(4) }], customers: [], tickets: [] } },
   '/reports/summary': {
     data: {
       from: new Date(now - 29 * 864e5).toISOString().slice(0, 10), to: new Date(now).toISOString().slice(0, 10),
