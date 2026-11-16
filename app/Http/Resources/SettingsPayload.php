@@ -30,7 +30,19 @@ final class SettingsPayload
     public static function get(): array
     {
         // The contact address comes from config('wds.contact_email') only, whatever an older saved setting says.
-        return ['supportEmail' => (string) config('wds.contact_email')] + array_merge(self::DEFAULTS, Setting::get('site', []) ?? []);
+        return ['supportEmail' => (string) config('wds.contact_email'), 'footer' => self::footer()]
+            + array_merge(self::DEFAULTS, Setting::get('site', []) ?? []);
+    }
+
+    /** The site footer's config (config/wds.php), not editable in Admin. */
+    public static function footer(): array
+    {
+        return [
+            'instagram' => config('wds.instagram'),
+            'youtube' => config('wds.youtube'),
+            'icoNumber' => config('wds.ico_number') ?: null,
+            'poweredBy' => (bool) config('wds.powered_by'),
+        ];
     }
 
     /** Where draws are streamed, to finish "Drawn live on …": "our socials" or "Instagram @wds_originals". */
