@@ -1,11 +1,11 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, gbp, when } from '../../lib/admin';
+import Pager from '../../components/admin/Pager.astro';
 interface Row { id: number; reference: string; name: string; email: string; competition: string; tickets: number; total: number; status: string; channel: string; paymentMethod: string | null; createdAt: string }
 const q = Astro.url.searchParams;
 const qs = new URLSearchParams([...q].filter(([, v]) => v)).toString();
 const page = await adminGet<{ data: Row[]; total: number; current_page: number; last_page: number }>(Astro.cookies, `/orders${qs ? `?${qs}` : ''}`);
-const link = (p: number) => { const n = new URLSearchParams(q); n.set('page', String(p)); return `?${n}`; };
 ---
 <AdminLayout title="Orders" active="orders">
   <form class="filters" method="get">
@@ -15,22 +15,22 @@ const link = (p: number) => { const n = new URLSearchParams(q); n.set('page', St
     <button class="btn btn--outline" type="submit">Filter</button>
   </form>
   <p class="small muted">Open an order to see its payment (gateway references, card type, history) and to refund it through Cashflows, in full or in part. "Mark refunded" only records a refund made outside the site (cash, or in the Cashflows Portal).</p>
-  <section class="panel">
+  <section class="panel" data-list>
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Order</th><th>Customer</th><th>Competition</th><th>Tickets</th><th>Total</th><th>Paid by</th><th>Status</th><th>When</th><th></th></tr></thead>
-      <tbody>{page.data.map((o) => (
+      <thead><tr><th>Order</th><th>Customer</th><th>Competition</th><th class="num-r">Tickets</th><th class="num-r">Total</th><th>Paid by</th><th>Status</th><th>When</th><th></th></tr></thead>
+      <tbody>{page.data.length ? page.data.map((o) => (
         <tr>
           <td><a href={`/admin/orders/${o.id}`}><strong>{o.reference}</strong></a></td>
           <td>{o.name}<div class="small muted">{o.email}</div></td>
           <td class="small">{o.competition}</td>
-          <td>{o.tickets}</td><td>{gbp(o.total)}</td>
+          <td class="num-r">{o.tickets}</td><td class="num-r">{gbp(o.total)}</td>
           <td class="small">{o.channel === 'event' ? `Event · ${o.paymentMethod}` : o.paymentMethod ?? '—'}</td>
           <td><span class={`pill pill--${o.status}`}>{o.status}</span></td>
           <td class="small muted">{when(o.createdAt)}</td>
           <td>{['paid', 'cancelled'].includes(o.status) ? <button class="adm-link" data-admin-action={`/api/admin/orders/${o.id}/refunded`} data-confirm={`Mark ${o.reference} as refunded? Issue the refund in the payment provider first.`} data-reload>Mark refunded</button> : null}</td>
         </tr>
-      ))}</tbody>
+      )) : <tr><td colspan="9" class="tbl-empty"><strong>No orders found.</strong>{qs ? 'Try a different search or clear the filters.' : 'Orders appear here as soon as someone checks out.'}</td></tr>}</tbody>
     </table></div>
-    {page.last_page > 1 ? <div class="row small" style="gap:12px;margin-top:14px">{page.current_page > 1 ? <a href={link(page.current_page - 1)}>← Newer</a> : null}<span class="muted">Page {page.current_page} of {page.last_page} · {page.total} orders</span>{page.current_page < page.last_page ? <a href={link(page.current_page + 1)}>Older →</a> : null}</div> : null}
+    <Pager current={page.current_page} last={page.last_page} total={page.total} noun="orders" url={Astro.url} />
   </section>
 </AdminLayout>

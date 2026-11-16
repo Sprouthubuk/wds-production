@@ -9,7 +9,7 @@ const codes = await adminGet<Code[]>(Astro.cookies, '/promotions');
     <h2>Discount codes</h2>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>Code</th><th>Discount</th><th>Used</th><th>Expires</th><th>Status</th><th></th></tr></thead>
-      <tbody>{codes.map((c) => (
+      <tbody>{codes.length ? codes.map((c) => (
         <tr>
           <td><strong class="mono" style="font-size:14px">{c.code}</strong></td>
           <td>{c.type === 'percent' ? `${c.value}% off` : `£${(c.value / 100).toFixed(2)} off`}</td>
@@ -18,7 +18,7 @@ const codes = await adminGet<Code[]>(Astro.cookies, '/promotions');
           <td><span class={`pill ${c.active ? 'pill--live' : ''}`}>{c.active ? 'active' : 'off'}</span></td>
           <td><button class="adm-link" data-admin-action={`/api/admin/promotions/${c.id}`} data-method="PUT" data-body={JSON.stringify({ code: c.code, type: c.type, value: c.type === 'percent' ? c.value : c.value / 100, competitionId: c.competition_id, usageLimit: c.usage_limit, expiresAt: c.expires_at, active: !c.active })} data-reload>{c.active ? 'Turn off' : 'Turn on'}</button></td>
         </tr>
-      ))}</tbody>
+      )) : <tr><td colspan="6" class="tbl-empty"><strong>No promotion codes.</strong>Create one with the form.</td></tr>}</tbody>
     </table></div>
   </section>
   <section class="panel" style="max-width:760px">

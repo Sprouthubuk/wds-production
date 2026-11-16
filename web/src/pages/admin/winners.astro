@@ -11,7 +11,7 @@ const winners = await adminGet<W[]>(Astro.cookies, '/winners');
   <section class="panel">
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th></th><th>Winner</th><th>Prize</th><th>ID check</th><th>Handover</th><th>On site</th><th></th></tr></thead>
-      <tbody>{winners.map((w) => (
+      <tbody>{winners.length ? winners.map((w) => (
         <tr>
           <td style="width:64px">{w.image ? <img src={w.image} alt="" width="56" height="56" style="width:56px;height:56px;object-fit:cover" /> : <span class="muted small">No photo</span>}</td>
           <td colspan="6">
@@ -38,7 +38,7 @@ const winners = await adminGet<W[]>(Astro.cookies, '/winners');
             </form>
           </td>
         </tr>
-      ))}</tbody>
+      )) : <tr><td colspan="7" class="tbl-empty"><strong>No winners yet.</strong>Winners appear here once a draw has a result.</td></tr>}</tbody>
     </table></div>
   </section>
   <section class="panel">
