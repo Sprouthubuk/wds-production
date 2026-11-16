@@ -20,7 +20,9 @@ class Ticket extends Model
         return $q->whereNull('withdrawn_at');
     }
 
+    /** @return BelongsTo<Competition, $this> */
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
+    /** @return BelongsTo<OrderLine, $this> */
     public function orderLine(): BelongsTo { return $this->belongsTo(OrderLine::class); }
     public function postalEntry(): BelongsTo { return $this->belongsTo(PostalEntry::class); }
     public function user(): BelongsTo { return $this->belongsTo(User::class); }

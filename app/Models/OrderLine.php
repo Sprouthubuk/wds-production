@@ -10,6 +10,7 @@ class OrderLine extends Model
 {
     protected $fillable = ['order_id', 'competition_id', 'qty', 'unit_price_pence', 'line_total_pence'];
 
+    /** @return BelongsTo<Order, $this> */
     public function order(): BelongsTo { return $this->belongsTo(Order::class); }
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
     public function tickets(): HasMany { return $this->hasMany(Ticket::class); }

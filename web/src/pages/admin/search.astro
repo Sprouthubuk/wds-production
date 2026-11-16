@@ -1,0 +1,66 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { adminGet, gbp, when } from '../../lib/admin';
+
+interface Results {
+  q: string;
+  orders: { id: number; reference: string; name: string; email: string; status: string; total: number; createdAt: string | null }[];
+  customers: { id: number; name: string; email: string; role: string }[];
+  tickets: { number: string; competition: string; competitionId: number; name: string; channel: string; withdrawn: boolean; orderId: number | null; orderReference: string | null }[];
+}
+const q = (Astro.url.searchParams.get('q') ?? '').trim();
+const r = q ? (await adminGet<{ data: Results }>(Astro.cookies, `/search?q=${encodeURIComponent(q)}`)).data : null;
+// One exact order number: straight to the order.
+const exact = r?.orders.filter((o) => o.reference.toLowerCase() === q.toLowerCase()) ?? [];
+if (exact.length === 1) return Astro.redirect(`/admin/orders/${exact[0].id}`);
+const none = r && !r.orders.length && !r.customers.length && !r.tickets.length;
+---
+<AdminLayout title={q ? `Search: ${q}` : 'Search'} active="search">
+  {!q ? <p class="muted">Search by order number (WDS-…), customer email or name, or ticket number (e.g. 0042) using the box at the top.</p> : null}
+  {none ? <div class="panel adm-empty"><strong>No matches for “{q}”.</strong><p class="small muted" style="margin:6px 0 0">Try the full order number, part of the email address, or just the ticket number.</p></div> : null}
+
+  {r?.orders.length ? (
+    <section class="panel">
+      <h2>Orders</h2>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Order</th><th>Customer</th><th>Status</th><th class="num-r">Total</th><th>When</th></tr></thead>
+        <tbody>{r.orders.map((o) => (
+          <tr><td><a href={`/admin/orders/${o.id}`}><strong>{o.reference}</strong></a></td><td>{o.name}<div class="small muted">{o.email}</div></td><td><span class={`pill pill--${o.status}`}>{o.status}</span></td><td class="num-r">{gbp(o.total)}</td><td class="muted">{when(o.createdAt)}</td></tr>
+        ))}</tbody>
+      </table></div>
+    </section>
+  ) : null}
+
+  {r?.customers.length ? (
+    <section class="panel">
+      <h2>Customers</h2>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Customer</th><th>Role</th><th></th></tr></thead>
+        <tbody>{r.customers.map((c) => (
+          <tr><td><strong>{c.name}</strong><div class="small muted">{c.email}</div></td><td class="small">{c.role}</td><td><a class="small" href={`/admin/customers?q=${encodeURIComponent(c.email)}`}>Open in Customers →</a></td></tr>
+        ))}</tbody>
+      </table></div>
+    </section>
+  ) : null}
+
+  {r?.tickets.length ? (
+    <section class="panel">
+      <h2>Tickets</h2>
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Ticket</th><th>Competition</th><th>Holder</th><th>Order</th></tr></thead>
+        <tbody>{r.tickets.map((t) => (
+          <tr>
+            <td><strong class={t.withdrawn ? 'struck' : undefined}>#{t.number}</strong>{t.withdrawn ? <span class="pill" style="margin-left:6px">withdrawn</span> : null}</td>
+            <td><a href={`/admin/competitions/${t.competitionId}`}>{t.competition}</a></td>
+            <td>{t.name}<div class="small muted">{t.channel}</div></td>
+            <td>{t.orderId ? <a href={`/admin/orders/${t.orderId}`}>{t.orderReference}</a> : <span class="muted small">{t.channel === 'postal' ? 'Postal entry' : '—'}</span>}</td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+    </section>
+  ) : null}
+</AdminLayout>
+<style>
+  .struck { text-decoration: line-through; color: var(--muted); }
+  .num-r { text-align: right; }
+</style>
