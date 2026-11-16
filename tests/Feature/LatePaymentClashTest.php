@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\PaymentEvent;
 use App\Models\Ticket;
 use App\Models\User;
+use App\Support\RefundCopy;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Mail;
@@ -71,10 +72,14 @@ class LatePaymentClashTest extends TestCase
         $this->assertSame('refunded', $order->status);
         $this->assertSame($order->total_pence, $order->refunded_pence);
         $this->assertSame(0, Ticket::whereHas('orderLine', fn ($q) => $q->where('order_id', $order->id))->count());
-        $this->assertSame(LatePaymentRefunded::MESSAGE, $order->status_note);
+        $this->assertSame(RefundCopy::withTimescale(LatePaymentRefunded::MESSAGE), $order->status_note);
         Mail::assertQueued(LatePaymentRefunded::class, fn ($m) => $m->order->is($order) && $m->hasTo($order->email));
         $mail = new LatePaymentRefunded($order);
-        $this->assertStringContainsString("You're welcome to enter again.", html_entity_decode($mail->render(), ENT_QUOTES));
+        $content = $mail->content();
+        foreach ([html_entity_decode($mail->render(), ENT_QUOTES), view($content->text, $content->with)->render()] as $body) {
+            $this->assertStringContainsString("You're welcome to enter again.", $body);
+            $this->assertStringContainsString(RefundCopy::TIMESCALE, $body);
+        }
         $this->assertTrue(PaymentEvent::where('order_id', $order->id)->where('summary', 'like', "Late payment refused: {$reason}%")->exists(),
             'Admin history gives the specific reason');
     }

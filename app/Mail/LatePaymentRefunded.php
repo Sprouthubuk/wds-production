@@ -4,6 +4,7 @@ namespace App\Mail;
 
 use App\Http\Resources\SettingsPayload;
 use App\Models\Order;
+use App\Support\RefundCopy;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
@@ -37,6 +38,7 @@ class LatePaymentRefunded extends Mailable implements ShouldQueue
                 'order' => $this->order,
                 'amount' => '£'.number_format($this->order->total_pence / 100, 2),
                 'explanation' => self::MESSAGE,
+                'timescale' => RefundCopy::TIMESCALE,
                 'competitionsUrl' => rtrim(config('raffle.frontend_url'), '/').'/competitions',
                 'settings' => SettingsPayload::get(),
             ],

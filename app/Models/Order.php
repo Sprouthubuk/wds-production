@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Support\RefundCopy;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -45,5 +46,32 @@ class Order extends Model
         return $this->paid_at && $this->payment_provider && $this->payment_provider !== 'credit'
             ? max(0, (int) $this->total_pence - (int) $this->refunded_pence)
             : 0;
+    }
+
+    /**
+     * Why a payment was refused or refunded (status_note, set where it happened); otherwise, for a refund made in
+     * Admin, what was refunded. Card refunds carry the Refund policy's timescale (RefundCopy).
+     */
+    public function customerMessage(): ?string
+    {
+        if ($this->status_note) {
+            return $this->status_note;
+        }
+        $card = $this->payment_provider && $this->payment_provider !== 'credit';
+        $refunded = (int) $this->refunded_pence;
+        $text = match (true) {
+            $this->status === 'refunded' => $refunded > 0 && $refunded < (int) $this->total_pence
+                ? "We've refunded ".self::money($refunded).' of your payment.'
+                : "We've refunded your payment".($refunded > 0 ? ' of '.self::money($refunded) : '').' in full.',
+            $this->status === 'paid' && $refunded > 0 => "We've refunded ".self::money($refunded).' of your payment. Your tickets are unchanged.',
+            default => null,
+        };
+
+        return $text === null ? null : ($card ? RefundCopy::withTimescale($text) : $text);
+    }
+
+    private static function money(int $pence): string
+    {
+        return '£'.number_format($pence / 100, 2);
     }
 }
