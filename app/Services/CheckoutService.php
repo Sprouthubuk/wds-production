@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Services\Payments\PaymentGateway;
 use App\Services\Payments\PaymentLog;
 use App\Services\Payments\PaymentResult;
+use App\Support\RefundCopy;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -238,8 +239,8 @@ class CheckoutService
                     'status' => 'cancelled', 'paid_at' => now(), 'reserved_until' => null,
                     'payment_method' => $result->method ?? 'card',
                     'provider_reference' => $result->providerReference ?? $order->provider_reference,
-                    'status_note' => sprintf('We received a payment of £%s, which does not match your order total of £%s, so no tickets were issued. We will refund your payment; contact us if you have any questions.',
-                        number_format($result->amountPence / 100, 2), number_format($order->total_pence / 100, 2)),
+                    'status_note' => RefundCopy::withTimescale(sprintf('We received a payment of £%s, which does not match your order total of £%s, so no tickets were issued. We will refund your payment; contact us if you have any questions.',
+                        number_format($result->amountPence / 100, 2), number_format($order->total_pence / 100, 2))),
                 ]);
 
                 return $order;
@@ -334,7 +335,7 @@ class CheckoutService
         $order->update([
             'paid_at' => now(), 'payment_method' => $result->method ?? 'card', 'card_type' => $cardType, 'reserved_until' => null,
             'card_type_source' => $result->cardTypeSource, 'card_ref' => $result->cardRef,
-            'provider_reference' => $result->providerReference ?? $order->provider_reference, 'status_note' => $message,
+            'provider_reference' => $result->providerReference ?? $order->provider_reference, 'status_note' => RefundCopy::withTimescale($message),
             // cancelled + paid_at = money taken, no tickets ("refund needed") until the refund goes through.
             'status' => 'cancelled',
         ]);

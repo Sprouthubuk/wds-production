@@ -15,7 +15,7 @@ class OrderResource extends JsonResource
         return [
             'reference' => $this->reference,
             'status' => $this->status,
-            'message' => $this->status_note,   // e.g. why a payment was refunded
+            'message' => $this->resource->customerMessage(),   // why a payment was refused or refunded
             'total' => Money::pounds($this->total_pence),
             'subtotal' => Money::pounds($this->subtotal_pence),
             'bundleSaving' => Money::pounds($this->bundle_saving_pence),

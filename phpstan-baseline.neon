@@ -619,12 +619,6 @@ parameters:
 			path: app/Http/Resources/OrderResource.php
 
 		-
-			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$status_note\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Resources/OrderResource.php
-
-		-
 			message: '#^Access to an undefined property App\\Http\\Resources\\OrderResource\:\:\$subtotal_pence\.$#'
 			identifier: property.notFound
 			count: 1

@@ -64,6 +64,7 @@ const ch = drawChannels(settings);
           <a href="/competitions" class="btn btn--outline">Enter another competition</a>
         </div>
         {order.status === 'paid' ? <p class="small muted">{order.total === 0 ? 'Free entry: nothing to pay.' : `Total paid ${money(order.total)}.`}</p> : null}
+        {order.status === 'paid' && order.message ? <p class="body" data-refund-note>{order.message}</p> : null}
       </div>
       <div class="watch">
         <span class="label">Watch the draw</span>
