@@ -40,6 +40,16 @@ class Order extends Model
     public function paymentEvents(): HasMany { return $this->hasMany(PaymentEvent::class); }
     public function refunds(): HasMany { return $this->hasMany(OrderRefund::class); }
 
+    /**
+     * A refund of this order goes back to a bank card, so the Refund policy's timescale applies: paid through the
+     * payment provider, or on the card reader at the event stand. Not cash, and not orders covered by site credit.
+     */
+    public function refundGoesToBank(): bool
+    {
+        return ($this->payment_provider && $this->payment_provider !== 'credit')
+            || ($this->channel === 'event' && $this->payment_method === 'card_reader');
+    }
+
     /** What can still be refunded through the gateway: paid by card and not yet refunded. */
     public function refundablePence(): int
     {
@@ -57,7 +67,7 @@ class Order extends Model
         if ($this->status_note) {
             return $this->status_note;
         }
-        $card = $this->payment_provider && $this->payment_provider !== 'credit';
+        $card = $this->refundGoesToBank();
         $refunded = (int) $this->refunded_pence;
         $text = match (true) {
             $this->status === 'refunded' => $refunded > 0 && $refunded < (int) $this->total_pence

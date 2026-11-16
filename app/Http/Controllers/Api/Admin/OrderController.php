@@ -6,6 +6,7 @@ use App\Exceptions\EntryException;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\Money;
 use App\Http\Resources\OrderResource;
+use App\Mail\OrderRefunded;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Services\CreditCardCap;
@@ -13,6 +14,7 @@ use App\Services\Draws\VerityDrawEngine;
 use App\Services\Payments\PaymentRedactor;
 use App\Services\RefundService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 
 class OrderController extends Controller
@@ -117,6 +119,9 @@ class OrderController extends Controller
                 }
             });
         }
+        // The customer hears about it (after the commit). Once the whole payment is back, the email says so in full.
+        $full = $order->refundablePence() === 0;
+        Mail::to($order->email)->queue(new OrderRefunded($order, $full ? (int) $order->total_pence : $amount, $full, $void));
         $amountText = '£'.number_format($amount / 100, 2);
 
         return response()->json(['message' => match (true) {
@@ -157,6 +162,7 @@ class OrderController extends Controller
     {
         $request->validate(['void_tickets' => ['boolean']]);
         $lines = $order->lines()->with('competition')->get();
+        $alreadyRefunded = $order->status === 'refunded';
 
         if ($request->boolean('void_tickets')) {
             foreach ($lines as $line) {
@@ -179,6 +185,10 @@ class OrderController extends Controller
                 Ticket::where('order_line_id', $line->id)->whereNull('withdrawn_at')->update(['withdrawn_at' => now()]);
             }
         });
+        // Marking an order refunded a second time (to take its tickets out later) doesn't email the customer again.
+        if (! $alreadyRefunded) {
+            Mail::to($order->email)->queue(new OrderRefunded($order->fresh(), (int) $order->total_pence, true, $request->boolean('void_tickets')));
+        }
 
         return response()->json(['message' => $request->boolean('void_tickets')
             ? 'Order marked as refunded and its tickets taken out of the draw.'
