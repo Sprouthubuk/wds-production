@@ -61,3 +61,27 @@ test('small text links are still 24px tap targets on a phone (WCAG 2.2)', async 
     for (const h of heights) expect(h, `${sel} is ${h}px tall`).toBeGreaterThanOrEqual(24);
   }
 });
+
+test('on a phone the selected account tab is scrolled into view in the tab strip', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/sign-in');
+  await page.fill('#si-em', 'bob@e2e.test');
+  await page.fill('#si-pw', PASSWORD);
+  await page.click('button:has-text("Sign in")');
+  await page.waitForURL(/\/account/, { timeout: 15_000 });
+  const visible = (tab) => page.evaluate((k) => {
+    const t = document.querySelector(`[data-tab="${k}"]`).getBoundingClientRect();
+    const strip = document.querySelector('.tabs').getBoundingClientRect();
+    return t.left >= strip.left - 1 && t.right <= Math.min(strip.right, window.innerWidth) + 1;
+  }, tab);
+  for (const url of ['/account#limits', '/account#verify']) {
+    await page.goto(url);   // from another tab: a hash change
+    await expect.poll(() => visible(url.split('#')[1]), { message: `${url}: selected tab off-screen` }).toBe(true);
+    await page.reload();     // a fresh load at phone width
+    await expect.poll(() => visible(url.split('#')[1]), { message: `${url} (reload): selected tab off-screen` }).toBe(true);
+  }
+  for (const tab of ['overview', 'limits', 'wallet']) {
+    await page.locator(`[data-tab="${tab}"]`).click();
+    await expect.poll(() => visible(tab), { message: `${tab}: selected tab off-screen after a click` }).toBe(true);
+  }
+});

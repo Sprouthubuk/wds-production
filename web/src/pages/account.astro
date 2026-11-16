@@ -196,14 +196,26 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
   });
   const tabs = Array.from(document.querySelectorAll<HTMLAnchorElement>('[data-tab]'));
   const panes = Array.from(document.querySelectorAll<HTMLElement>('[data-pane]'));
-  const show = (key: string) => {
+  const strip = document.querySelector<HTMLElement>('.tabs');
+  // On phones the tabs are a sideways-scrolling strip: centre the selected one in it. Only the strip scrolls, never
+  // the page; a smooth scrollIntoView on load was cancelled by the page's own scroll reset, leaving it off-screen.
+  const centre = (behavior: ScrollBehavior) => {
+    const t = tabs.find((x) => x.getAttribute('aria-current') === 'true');
+    if (!strip || !t || strip.scrollWidth <= strip.clientWidth) return;
+    const sr = strip.getBoundingClientRect(), tr = t.getBoundingClientRect();
+    strip.scrollTo({ left: strip.scrollLeft + (tr.left - sr.left) - (sr.width - tr.width) / 2, behavior });
+  };
+  const show = (key: string, behavior: ScrollBehavior = 'smooth') => {
     const k = panes.some((p) => p.dataset.pane === key) ? key : 'overview';
     panes.forEach((p) => { p.hidden = p.dataset.pane !== k; });
     tabs.forEach((t) => t.setAttribute('aria-current', String(t.dataset.tab === k)));
-    tabs.find((t) => t.dataset.tab === k)?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+    centre(behavior);
   };
   tabs.forEach((t) => t.addEventListener('click', (e) => { e.preventDefault(); history.replaceState(null, '', `#${t.dataset.tab}`); show(t.dataset.tab!); }));
-  show(location.hash.slice(1));
+  show(location.hash.slice(1), 'instant');
+  // A link to another tab (/account#limits) while already on this page only changes the hash.
+  addEventListener('hashchange', () => show(location.hash.slice(1)));
+  matchMedia('(max-width: 900px)').addEventListener('change', () => centre('instant'));
 
   document.querySelectorAll<HTMLFormElement>('[data-account-form]').forEach((form) => form.addEventListener('submit', async (e) => {
     e.preventDefault();
