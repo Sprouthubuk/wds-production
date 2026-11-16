@@ -29,10 +29,11 @@ export const sampleAdmin: Record<string, unknown> = {
   },
   '/dashboard': {
     data: {
-      revenueToday: 1284.5, ordersToday: 31, revenueTotal: 6951.75, customers: 212, postalThisWeek: 6, idToReview: 1, refundsNeeded: 0,
-      daily: Array.from({ length: 14 }, (_, i) => ({ day: new Date(now - (13 - i) * 86_400_000).toISOString().slice(0, 10), revenue: [180, 240, 210, 395, 300, 520, 610, 450, 380, 700, 655, 820, 905, 1284.5][i], orders: [5, 7, 6, 10, 8, 13, 15, 11, 10, 17, 16, 20, 22, 31][i] })),
-      live: [{ id: bmw.id, title: bmw.title, sold: bmw.ticketsSold, total: bmw.totalTickets, drawAt: bmw.drawAt, revenue: 6951.75 }],
-      recentOrders: orders,
+      kpis: { revenueToday: 1284.5, ordersToday: 31, revenue7Days: 5214.4, revenueMonth: 6951.75, ticketsToday: 104, newCustomers7Days: 38, newCustomersToday: 6, averageOrderMonth: 22.43 },
+      daily: Array.from({ length: 30 }, (_, i) => ({ day: new Date(now - (29 - i) * 86_400_000).toISOString().slice(0, 10), revenue: i < 16 ? 0 : [180, 240, 210, 395, 300, 520, 610, 450, 380, 700, 655, 820, 905, 1284.5][i - 16], orders: i < 16 ? 0 : [5, 7, 6, 10, 8, 13, 15, 11, 10, 17, 16, 20, 22, 31][i - 16] })),
+      live: [{ id: bmw.id, title: bmw.title, image: bmw.images[0]?.src ?? null, sold: bmw.ticketsSold, total: bmw.totalTickets, revenue: 6951.75, closesAt: bmw.closesAt ?? null, drawAt: bmw.drawAt, drawMethod: 'Verity (drand)' }],
+      attention: [{ key: 'stale-pending', title: 'Payments pending over 15 minutes', count: 1, href: '/admin/orders?status=pending', items: [{ label: 'WDS-B6TN1C', detail: '£14.95 · started 26 minutes ago', href: '/admin/orders/4', at: iso(26) }] }],
+      recentOrders: orders.map((o) => ({ ...o, refundNeeded: false })),
     },
   },
   '/competitions': { data: sampleCompetitions.map((c) => ({ ...c, status: c.status })) },

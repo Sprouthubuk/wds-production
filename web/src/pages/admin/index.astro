@@ -2,53 +2,170 @@
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, gbp, when, day } from '../../lib/admin';
 
+interface AttentionItem { label: string; detail: string; href: string; at: string | null }
 interface Dash {
-  revenueToday: number; ordersToday: number; revenueTotal: number; customers: number; postalThisWeek: number; idToReview: number; refundsNeeded: number; harmFlagsOpen: number; winnersToContact: number;
+  kpis: { revenueToday: number; ordersToday: number; revenue7Days: number; revenueMonth: number; ticketsToday: number; newCustomers7Days: number; newCustomersToday: number; averageOrderMonth: number | null };
   daily: { day: string; revenue: number; orders: number }[];
-  live: { id: number; title: string; sold: number; total: number; drawAt: string; revenue: number }[];
-  recentOrders: { reference: string; name: string; tickets: number; total: number; status: string; channel: string; createdAt: string }[];
+  live: { id: number; title: string; image: string | null; sold: number; total: number; revenue: number; closesAt: string | null; drawAt: string | null; drawMethod: string }[];
+  attention: { key: string; title: string; count: number; href: string; items: AttentionItem[] }[];
+  recentOrders: { id: number; reference: string; name: string; tickets: number; total: number; status: string; channel: string; refundNeeded: boolean; createdAt: string }[];
 }
 const d = (await adminGet<{ data: Dash }>(Astro.cookies, '/dashboard')).data;
+const k = d.kpis;
+const pct = (sold: number, total: number) => (total ? Math.min(100, Math.round((sold / total) * 100)) : 0);
+
+// 30-day chart (SVG): one bar per UK day.
+const W = 600, H = 160, gap = 3;
 const max = Math.max(1, ...d.daily.map((x) => x.revenue));
+const bw = (W - gap * (d.daily.length - 1)) / Math.max(1, d.daily.length);
+const total30 = d.daily.reduce((s, x) => s + x.revenue, 0);
+const orders30 = d.daily.reduce((s, x) => s + x.orders, 0);
+const kpis: [string, string, string][] = [
+  ['Revenue today', gbp(k.revenueToday), `${k.ordersToday} paid order${k.ordersToday === 1 ? '' : 's'}`],
+  ['Last 7 days', gbp(k.revenue7Days), 'Net of refunds'],
+  ['This month', gbp(k.revenueMonth), 'Net of refunds'],
+  ['Tickets sold today', k.ticketsToday.toLocaleString('en-GB'), 'On paid orders'],
+  ['New customers', k.newCustomers7Days.toLocaleString('en-GB'), `Last 7 days · ${k.newCustomersToday} today`],
+  ['Average order', gbp(k.averageOrderMonth), 'This month'],
+];
+const attentionTotal = d.attention.reduce((s, g) => s + g.count, 0);
 ---
 <AdminLayout title="Dashboard" active="dashboard">
   <a slot="actions" class="btn" href="/admin/competitions/new">New competition</a>
-  <div class="kpis">
-    <div class="kpi"><span class="label">Revenue today</span><b>{gbp(d.revenueToday)}</b><span class="small muted">{d.ordersToday} orders</span></div>
-    <div class="kpi"><span class="label">Revenue to date</span><b>{gbp(d.revenueTotal)}</b></div>
-    <div class="kpi"><span class="label">Customers</span><b>{d.customers}</b></div>
-    <div class="kpi"><span class="label">Postal entries this week</span><b>{d.postalThisWeek}</b><a class="small" href="/admin/postal">Log entries →</a></div>
-    <div class="kpi"><span class="label">ID to review</span><b>{d.idToReview}</b><a class="small" href="/admin/customers#verifications">Review →</a></div>
-    {d.harmFlagsOpen > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Responsible play to review</span><b>{d.harmFlagsOpen}</b><a class="small" href="/admin/responsible-play">Review →</a></div> : null}
-    {d.winnersToContact > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Winners to contact (48h)</span><b>{d.winnersToContact}</b><a class="small" href="/admin/winners">Winners →</a></div> : null}
-    {d.refundsNeeded > 0 ? <div class="kpi" style="border-color:#5a2a2a"><span class="label">Refunds needed</span><b>{d.refundsNeeded}</b><a class="small" href="/admin/orders?status=cancelled">See orders →</a></div> : null}
+
+  <section class="dash-kpis" aria-label="Key figures">
+    {kpis.map(([label, value, sub]) => (
+      <div class="dash-kpi"><span class="label">{label}</span><b class="num">{value}</b><span class="small muted">{sub}</span></div>
+    ))}
+  </section>
+
+  <div class="dash-grid">
+    <section class="panel dash-attention" aria-labelledby="att-h" data-attention>
+      <div class="panel-head"><h2 id="att-h">Needs attention</h2>{attentionTotal ? <span class="count-badge">{attentionTotal}</span> : null}</div>
+      {d.attention.length ? (
+        <div class="att-groups">{d.attention.map((g) => (
+          <div class="att-group" data-attention-group={g.key}>
+            <div class="att-title"><span>{g.title}</span><a href={g.href} class="small">{g.count > g.items.length ? `All ${g.count} →` : 'Open →'}</a></div>
+            {g.items.length ? <ul>{g.items.map((i) => (
+              <li><a href={i.href}><strong>{i.label}</strong><span class="small muted">{i.detail}{i.at ? ` · ${when(i.at)}` : ''}</span></a></li>
+            ))}</ul> : <p class="small muted" style="margin:6px 0 0">{g.count} waiting.</p>}
+          </div>
+        ))}</div>
+      ) : (
+        <div class="adm-empty"><strong>All clear.</strong><span class="small muted">No refunds, stuck payments, deadlines or alerts need you right now.</span></div>
+      )}
+    </section>
+
+    <section class="panel dash-chart" aria-labelledby="chart-h">
+      <div class="panel-head"><h2 id="chart-h">Sales · last 30 days</h2><span class="small muted">{gbp(total30)} · {orders30} orders</span></div>
+      <svg viewBox={`0 0 ${W} ${H + 22}`} role="img" aria-label={`Daily sales for the last 30 days, net of refunds. Total ${gbp(total30)}.`} class="chart-svg">
+        <line x1="0" x2={W} y1={H} y2={H} stroke="#333" />
+        {d.daily.map((x, i) => {
+          const h = Math.max(x.revenue > 0 ? 3 : 1, (x.revenue / max) * (H - 8));
+          return <rect x={i * (bw + gap)} y={H - h} width={bw} height={h} rx="2" fill={x.revenue > 0 ? '#fff' : '#2a2a2a'}><title>{`${day(x.day)}: ${gbp(x.revenue)} · ${x.orders} orders`}</title></rect>;
+        })}
+        {d.daily.length ? <>
+          <text x="0" y={H + 16} fill="#9a9a9a" font-size="11">{day(d.daily[0].day)}</text>
+          <text x={W} y={H + 16} fill="#9a9a9a" font-size="11" text-anchor="end">{day(d.daily[d.daily.length - 1].day)}</text>
+        </> : null}
+      </svg>
+      <details class="small chart-table"><summary>Show as a table</summary>
+        <table class="tbl"><thead><tr><th>Day</th><th class="num-r">Sales</th><th class="num-r">Orders</th></tr></thead>
+          <tbody>{d.daily.slice().reverse().map((x) => <tr><td>{day(x.day)}</td><td class="num-r">{gbp(x.revenue)}</td><td class="num-r">{x.orders}</td></tr>)}</tbody></table>
+      </details>
+    </section>
   </div>
 
-  <div class="panels">
-    <section class="panel">
-      <h2>Live competitions</h2>
-      {d.live.length ? d.live.map((c) => (
-        <div class="stack" style="gap:8px;padding:10px 0;border-bottom:1px solid var(--line)">
-          <div class="row" style="justify-content:space-between;gap:12px"><a href={`/admin/competitions/${c.id}`}><strong>{c.title}</strong></a><span class="small muted">Draw {when(c.drawAt)}</span></div>
-          <div class="bar"><span style={`width:${Math.round((c.sold / c.total) * 100)}%`}></span></div>
-          <div class="row small muted" style="justify-content:space-between"><span>{c.sold} / {c.total} sold ({Math.round((c.sold / c.total) * 100)}%)</span><span>{gbp(c.revenue)}</span></div>
-        </div>
-      )) : <p class="muted">Nothing live. <a href="/admin/competitions/new">Create a competition</a>.</p>}
-    </section>
-    <section class="panel">
-      <h2>Revenue · last 14 days</h2>
-      <div class="chart" role="img" aria-label="Daily revenue">
-        {d.daily.map((x) => <div style={`height:${Math.max(2, (x.revenue / max) * 100)}%`} data-tip={`${day(x.day)} · ${gbp(x.revenue)} · ${x.orders} orders`}></div>)}
-      </div>
-    </section>
-  </div>
+  <section class="dash-live" aria-labelledby="live-h">
+    <div class="panel-head"><h2 id="live-h">Live competitions</h2><a class="small" href="/admin/competitions">All competitions →</a></div>
+    {d.live.length ? (
+      <div class="live-grid">{d.live.map((c) => (
+        <article class="live-card">
+          <a href={`/admin/competitions/${c.id}`} class="live-img" tabindex="-1" aria-hidden="true">
+            {c.image ? <img src={c.image} alt="" loading="lazy" /> : <span class="live-noimg">No photo</span>}
+          </a>
+          <div class="live-body">
+            <h3><a href={`/admin/competitions/${c.id}`}>{c.title}</a></h3>
+            <div class="bar" role="progressbar" aria-label={`${c.title}: tickets sold`} aria-valuemin="0" aria-valuemax={c.total} aria-valuenow={c.sold}><span style={`width:${pct(c.sold, c.total)}%`}></span></div>
+            <div class="live-row"><span><strong class="num">{c.sold.toLocaleString('en-GB')}</strong> / {c.total.toLocaleString('en-GB')} sold · {pct(c.sold, c.total)}%</span><strong class="num">{gbp(c.revenue)}</strong></div>
+            <dl class="live-facts">
+              <div><dt>Closes in</dt><dd data-countdown={c.closesAt ?? ''}>{c.closesAt ? when(c.closesAt) : '—'}</dd></div>
+              <div><dt>Draw</dt><dd>{when(c.drawAt)}</dd></div>
+              <div><dt>Method</dt><dd>{c.drawMethod}</dd></div>
+            </dl>
+          </div>
+        </article>
+      ))}</div>
+    ) : <div class="panel adm-empty"><strong>Nothing live.</strong><span class="small muted"><a href="/admin/competitions/new">Create a competition</a> to start selling.</span></div>}
+  </section>
 
-  <section class="panel">
-    <h2>Latest orders</h2>
-    <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Order</th><th>Customer</th><th>Tickets</th><th>Total</th><th>Channel</th><th>Status</th><th>When</th></tr></thead>
-      <tbody>{d.recentOrders.map((o) => <tr><td><strong>{o.reference}</strong></td><td>{o.name}</td><td>{o.tickets}</td><td>{gbp(o.total)}</td><td>{o.channel}</td><td><span class={`pill pill--${o.status}`}>{o.status}</span></td><td class="muted">{when(o.createdAt)}</td></tr>)}</tbody>
-    </table></div>
-    <p class="small" style="margin:12px 0 0"><a href="/admin/orders">All orders →</a></p>
+  <section class="panel" aria-labelledby="recent-h">
+    <div class="panel-head"><h2 id="recent-h">Recent orders</h2><a class="small" href="/admin/orders">All orders →</a></div>
+    {d.recentOrders.length ? (
+      <div class="tbl-wrap"><table class="tbl">
+        <thead><tr><th>Order</th><th>Customer</th><th class="num-r">Tickets</th><th class="num-r">Total</th><th>Channel</th><th>Status</th><th>When</th></tr></thead>
+        <tbody>{d.recentOrders.map((o) => (
+          <tr>
+            <td><a href={`/admin/orders/${o.id}`}><strong>{o.reference}</strong></a></td><td>{o.name}</td><td class="num-r">{o.tickets}</td><td class="num-r">{gbp(o.total)}</td><td class="small">{o.channel}</td>
+            <td>{o.refundNeeded ? <span class="pill pill--refund-needed">refund needed</span> : <span class={`pill pill--${o.status}`}>{o.status}</span>}</td>
+            <td class="muted small">{when(o.createdAt)}</td>
+          </tr>
+        ))}</tbody>
+      </table></div>
+    ) : <div class="adm-empty"><strong>No orders yet.</strong></div>}
   </section>
 </AdminLayout>
+
+<style>
+  .dash-kpis { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .dash-kpi { border: 1px solid var(--line); background: linear-gradient(180deg, #101010, #0a0a0a); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .dash-kpi b { font-size: 26px; letter-spacing: -0.01em; line-height: 1.1; overflow-wrap: anywhere; }
+  .dash-grid { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .panel-head h2 { margin: 0; font-size: 15px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; }
+  .count-badge { min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--amber); color: #000; font-weight: 800; font-size: 12px; display: inline-flex; align-items: center; justify-content: center; }
+  .att-groups { display: flex; flex-direction: column; gap: 16px; }
+  .att-group { border-left: 2px solid var(--amber); padding-left: 12px; }
+  .att-title { display: flex; justify-content: space-between; gap: 12px; font-weight: 700; font-size: 14px; }
+  .att-group ul { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
+  .att-group li a { display: flex; flex-direction: column; gap: 1px; padding: 8px 10px; margin: 0 -10px; border-radius: 8px; text-decoration: none; }
+  .att-group li a:hover { background: #141414; }
+  .chart-svg { width: 100%; height: auto; display: block; }
+  .chart-svg rect:hover { fill: #bdbdbd; }
+  .chart-table { margin-top: 12px; color: var(--muted-2); }
+  .chart-table summary { cursor: pointer; }
+  .chart-table .tbl { margin-top: 8px; }
+  .dash-live { margin: 4px 0 20px; }
+  .live-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+  .live-card { border: 1px solid var(--line); background: #0b0b0b; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .live-img { display: block; aspect-ratio: 16 / 9; background: #151515; }
+  .live-img img { width: 100%; height: 100%; object-fit: cover; }
+  .live-noimg { display: flex; height: 100%; align-items: center; justify-content: center; color: #777; font-size: 13px; }
+  .live-body { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .live-body h3 { margin: 0; font-size: 17px; }
+  .live-body h3 a { text-decoration: none; }
+  .live-body h3 a:hover { text-decoration: underline; }
+  .live-row { display: flex; justify-content: space-between; gap: 12px; font-size: 13px; color: var(--muted-2); }
+  .live-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 2px 0 0; padding-top: 10px; border-top: 1px solid var(--line); }
+  .live-facts dt { font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase; color: #9a9a9a; font-weight: 700; }
+  .live-facts dd { margin: 2px 0 0; font-size: 13px; }
+  .num-r { text-align: right; }
+  @media (max-width: 1280px) { .dash-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 1000px) { .dash-grid { grid-template-columns: minmax(0, 1fr); } }
+  @media (max-width: 560px) { .dash-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .dash-kpi b { font-size: 21px; } .live-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+
+<script>
+  // "Closes in": a live countdown, refreshed every 30 seconds.
+  const fmt = (ms: number) => {
+    if (ms <= 0) return 'Closed';
+    const m = Math.floor(ms / 60000), dd = Math.floor(m / 1440), hh = Math.floor((m % 1440) / 60), mm = m % 60;
+    return dd ? `${dd}d ${hh}h` : hh ? `${hh}h ${mm}m` : `${mm}m`;
+  };
+  const tick = () => document.querySelectorAll<HTMLElement>('[data-countdown]').forEach((el) => {
+    const at = el.dataset.countdown ? Date.parse(el.dataset.countdown) : NaN;
+    if (!Number.isNaN(at)) el.textContent = fmt(at - Date.now());
+  });
+  tick();
+  setInterval(tick, 30_000);
+</script>
