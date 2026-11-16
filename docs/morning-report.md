@@ -4,7 +4,66 @@ Nothing was deployed, published or reset. Nothing on Forge, in `.env`, in secret
 was touched. No real Cashflows, Resend or drand call was made. PR #25 was left alone. No Verity or draw-path code
 was changed.
 
-## Top 5 things to know
+## Update, 16 November (daytime): #83–#93
+
+All merged with the three checks green. Nothing was deployed. Forge, `.env`, staging and production were not
+touched, and #25 is still open and left alone.
+
+**Refunds and contact**
+- **#83, #84:** refund messages say how long a refund takes, and customers are emailed when an order is refunded
+  in Admin.
+- **#85 (staging bug, order WDS-QOYF9F):** ticking "take tickets out" on a partial refund is now refused.
+  - Orders refunded in full whose tickets are still in the draw show "Refunded in full but tickets are still in
+    the draw.", with a confirmed **Take tickets out of the draw** action. It works only while the competition is
+    open, is recorded in history, and sends the customer a short email.
+  - Use it on WDS-QOYF9F once deployed.
+- **#86–#88:** one contact address, `config('wds.contact_email')`, defaulting to sales@wdsoriginals.com.
+  - Contact-form enquiries are queued from noreply@wdscompetitions.co.uk with Reply-To the customer. Their
+    recipient can be changed with `ENQUIRY_EMAIL` (staging: a developer).
+  - The mail settings for production and staging are in `forge/README.md`.
+- **#89:** footer polish.
+  - The logo is no longer stretched.
+  - New blocks: contact, responsible play (GamCare, GambleAware), payments, and a legal line. The ICO number
+    shows only if `ICO_NUMBER` is set.
+  - The Instagram/YouTube links and "Powered by RaffleLabs" are config-driven (`SHOW_POWERED_BY`).
+
+**Admin redesign (#90–#93), no behaviour changes.** Screenshots at 375 and 1440 are in `docs/screenshots/admin/`.
+- **#90, shell:**
+  - grouped sidebar with icons; collapsible; a drawer on phones;
+  - top bar with breadcrumbs;
+  - quick search for an order number, email or ticket number;
+  - account menu;
+  - an amber **STAGING** badge unless `APP_URL` is a production address.
+- **#91, dashboard:**
+  - KPIs net of refunds, on UK days;
+  - "Needs attention", each item linking to it: refund needed, payments pending over 15 minutes, refunded
+    orders with tickets still in the draw, postal deadlines, competitions closing within 48 hours, draws
+    awaiting a result, responsible-play alerts, winners to contact, ID checks;
+  - live competition cards with a countdown;
+  - the last 10 orders;
+  - a 30-day sales chart.
+- **#92, components:**
+  - sticky table headers, status pills, right-aligned money, empty states, skeletons;
+  - numbered pagination, now also on Customers and Postal entries, which only ever showed the first 50;
+  - button variants;
+  - confirmations in a styled dialog, with the same question and the same yes/no;
+  - restyled toasts.
+- **#93, order and competition pages:**
+  - order summary header, Tickets / Payment / Refunds / History cards, and withdrawn tickets struck through;
+  - competition tabs (Details, Pricing, Photos, Draw, Entries) with exactly the same fields, saved together.
+- **New read-only, admin-only API:** `/api/admin/environment` (staff), `/api/admin/search`, the new
+  `/api/admin/dashboard` shape and `payment.withdrawnTickets` on an order. All have tests.
+
+**Things to know**
+- **Environment badge:** "production" means `APP_URL` is `https://api.wdscompetitions.co.uk` or
+  `https://wds-competitions-api.on-forge.com`. The second is production's current address per `forge/README.md`.
+  Override with `PRODUCTION_APP_URLS` (comma-separated) if that changes. Anything else shows STAGING.
+- **The frontend-design skill wasn't available,** so the redesign follows the site's own design system: black and
+  white, the site's type, and amber for warnings.
+- **Sign-in rate limit in local E2E:** sign-in allows 10 a minute, so running the full E2E suite twice within a
+  minute can fail a sign-in with "Too Many Attempts". Wait a minute and re-run. CI doesn't run E2E.
+
+## Top 5 things to know (overnight)
 
 1. **Security hole closed (#61).** Production runs `PAYMENT_DRIVER=fake` until Cashflows goes live. Until now,
    anyone could `POST /api/payments/webhook {"order":"WDS-…"}` and have their own order marked paid. That endpoint
@@ -29,14 +88,14 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 
 ## Baseline → now
 
-| | Baseline (main @ 6be81a3) | Now (main @ c56cfa8) |
-|---|---|---|
-| PHP tests | 186 (184 passed, 2 skipped) | 205 (203 passed, 2 skipped) |
-| Web tests (node) | 19/19 | 23/23 |
-| Website build | OK | OK, plus `astro check` (strict): 0 errors |
-| Larastan | not installed | level 5, 0 new errors. Pre-existing findings are in a baseline, which shrank in #71 when one false positive was fixed. |
-| `composer audit` / `npm audit` | clean / clean | clean / clean |
-| End-to-end (Playwright, local fakes) | none | 41 tests, all passing (`cd web && npm run build && npm run e2e`) |
+| | Baseline (main @ 6be81a3) | Overnight (main @ c56cfa8) | Now (main @ 1074a5c) |
+|---|---|---|---|
+| PHP tests | 186 (184 passed, 2 skipped) | 205 (203 passed, 2 skipped) | 233 (231 passed, 2 skipped) |
+| Web tests (node) | 19/19 | 23/23 | 26/26 |
+| Website build | OK | OK, plus `astro check` (strict): 0 errors | OK |
+| Larastan | not installed | level 5, 0 new errors. Pre-existing findings are in a baseline, which shrank in #71 when one false positive was fixed. | 0 errors; the baseline shrank by 27 entries in #91 when model date and image types were added |
+| `composer audit` / `npm audit` | clean / clean | clean / clean | not re-run |
+| End-to-end (Playwright, local fakes) | none | 41 tests, all passing (`cd web && npm run build && npm run e2e`) | 53 tests, all passing |
 
 ## Merged PRs
 
@@ -118,25 +177,26 @@ None.
   19:30.
 - **Legal pages:** they show "Draft for legal review" and "Last updated [DATE]". This is deliberate until the legal
   text is approved, so it's flagged, not rewritten.
-- **Instagram handle, two variants:**
-  - `@wds_originals` in the site copy and draws;
-  - `@wds_competitions` in the default social links (Admin → Settings can override).
+- **Instagram handle:** settled. Only `@wds_originals` is used (#86).
 
 ## Questions for Jason
 
-1. The footer says **"Powered by RaffleLabs"**. Is that the intended credit?
-2. **Instagram:** is the competitions account `@wds_competitions` or `@wds_originals`?
-3. Bundle prices show whole pounds ("£40") but single tickets show pence ("£14.95"). Is that intended?
-4. When will the legal pages' final text and "last updated" date be ready?
+1. The footer says **"Powered by RaffleLabs"**. Is that the intended credit? It can be turned off with
+   `SHOW_POWERED_BY=false` (#89).
+2. Bundle prices show whole pounds ("£40") but single tickets show pence ("£14.95"). Is that intended?
+3. When will the legal pages' final text and "last updated" date be ready?
+4. Is `https://wds-competitions-api.on-forge.com` still production's API address? The Admin STAGING badge relies
+   on it (see "Things to know" above).
 
 ## Next session starts here
 
-**State:** main @ c56cfa8 is green. The only open PR is #25 (leave alone). The working tree is clean and no local
-servers are running. The overnight QA list is finished.
+**State:** main @ 1074a5c is green. The only open PR is #25 (leave alone). The working tree is clean and no local
+servers are running. The Admin redesign (#90–#93) is finished.
 
 **Possible next work, waiting on Jason:**
 1. The guest and email spend-limit design.
-2. The copy questions 1–4.
+2. Questions 1–4.
+3. After deploy: clean up WDS-QOYF9F with "Take tickets out of the draw".
 
 **How to run:**
 - PHP: `php artisan test` (PowerShell).
