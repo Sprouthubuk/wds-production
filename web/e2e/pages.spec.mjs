@@ -77,3 +77,14 @@ test('internal links all resolve', async ({ page, request }) => {
 test.afterAll(() => {
   writeFileSync(path.join(shots, 'findings.txt'), findings.join('\n') + '\n');
 });
+
+// The countdown's digits roll in from opacity 0 every second (.roll), so axe sometimes catches one mid-fade and
+// reports low contrast. With animations stopped there must be no contrast failure at all: a real one fails here.
+test('competition pages and their countdowns pass colour contrast once animations settle', async ({ page }) => {
+  for (const p of ['/competitions/e2e-free', '/competitions/e2e-bmw', '/']) {
+    await page.goto(p);
+    await page.addStyleTag({ content: '*, *::before, *::after { animation: none !important; transition: none !important; }' });
+    const r = await new AxeBuilder({ page }).withRules(['color-contrast']).analyze();
+    expect(r.violations.flatMap((v) => v.nodes.map((n) => `${p}: ${n.target.join(' ')}`))).toEqual([]);
+  }
+});
