@@ -1,0 +1,21 @@
+---
+/** Page links for a paginated admin list: numbered pages, with Newer/Older. Keeps the other query parameters. */
+interface Props { current: number; last: number; total: number; noun: string; url: URL }
+const { current, last, total, noun, url } = Astro.props;
+const link = (p: number) => { const n = new URLSearchParams(url.searchParams); n.set('page', String(p)); return `?${n}`; };
+const pages: (number | null)[] = [];
+for (let p = 1; p <= last; p++) {
+  if (p === 1 || p === last || Math.abs(p - current) <= 1) pages.push(p);
+  else if (pages[pages.length - 1] !== null) pages.push(null);
+}
+---
+{last > 1 ? (
+  <nav class="pager" aria-label="Pages" data-pager>
+    <span class="muted">Page {current} of {last} · {total.toLocaleString('en-GB')} {noun}</span>
+    <div class="pager-links">
+      {current > 1 ? <a href={link(current - 1)} rel="prev">← Newer</a> : null}
+      {pages.map((p) => p === null ? <span class="gap" aria-hidden="true">…</span> : p === current ? <span class="cur" aria-current="page">{p}</span> : <a href={link(p)} aria-label={`Page ${p}`}>{p}</a>)}
+      {current < last ? <a href={link(current + 1)} rel="next">Older →</a> : null}
+    </div>
+  </nav>
+) : <p class="small muted" style="margin:12px 0 0">{total.toLocaleString('en-GB')} {noun}</p>}

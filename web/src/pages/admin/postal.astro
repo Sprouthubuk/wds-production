@@ -3,9 +3,10 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, localInput, when } from '../../lib/admin';
 import type { Competition } from '../../lib/types';
 import { postalBy } from '../../lib/postal';
+import Pager from '../../components/admin/Pager.astro';
 interface Row { id: number; competition: string; name: string; email: string; receivedOn: string; receivedAt: string; status: string; reason: string | null; ticket: string | null }
 const [page, comps] = await Promise.all([
-  adminGet<{ data: Row[] }>(Astro.cookies, '/postal'),
+  adminGet<{ data: Row[]; total?: number; current_page?: number; last_page?: number }>(Astro.cookies, `/postal${Number(Astro.url.searchParams.get('page')) > 1 ? `?page=${Number(Astro.url.searchParams.get('page'))}` : ''}`),
   adminGet<{ data: Competition[] }>(Astro.cookies, '/postal/competitions').catch(() => ({ data: [] as Competition[] })),
 ]);
 const nowLocal = localInput(new Date().toISOString());
@@ -36,8 +37,9 @@ const hint = (c?: Competition) => (c && deadline(c) ? `UK time. Must be on or be
     <h2>Logged entries</h2>
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th>Received</th><th>Name</th><th>Competition</th><th>Ticket</th><th>Status</th></tr></thead>
-      <tbody>{page.data.map((e) => <tr><td class="small">{when(e.receivedAt ?? e.receivedOn)}</td><td>{e.name}<div class="small muted">{e.email}</div></td><td class="small">{e.competition}</td><td>{e.ticket ? <strong>#{e.ticket}</strong> : '—'}</td><td><span class={`pill pill--${e.status}`}>{e.status}</span>{e.reason ? <div class="small muted">{e.reason}</div> : null}</td></tr>)}</tbody>
+      <tbody>{page.data.length ? page.data.map((e) => <tr><td class="small">{when(e.receivedAt ?? e.receivedOn)}</td><td>{e.name}<div class="small muted">{e.email}</div></td><td class="small">{e.competition}</td><td>{e.ticket ? <strong>#{e.ticket}</strong> : '—'}</td><td><span class={`pill pill--${e.status}`}>{e.status}</span>{e.reason ? <div class="small muted">{e.reason}</div> : null}</td></tr>) : <tr><td colspan="5" class="tbl-empty"><strong>No postal entries logged.</strong>Entries you log above appear here.</td></tr>}</tbody>
     </table></div>
+    {page.last_page ? <Pager current={page.current_page ?? 1} last={page.last_page} total={page.total ?? page.data.length} noun="entries" url={Astro.url} /> : null}
   </section>
 </AdminLayout>
 <script>

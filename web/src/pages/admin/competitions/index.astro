@@ -9,7 +9,7 @@ const list = (await adminGet<{ data: Competition[] }>(Astro.cookies, '/competiti
   <section class="panel">
     <div class="tbl-wrap"><table class="tbl">
       <thead><tr><th></th><th>Competition</th><th>Status</th><th>Price</th><th>Sold</th><th>Draw</th><th></th></tr></thead>
-      <tbody>{list.map((c) => (
+      <tbody>{list.length ? list.map((c) => (
         <tr>
           <td style="width:72px">{c.images[0] ? <img src={c.images[0].src} alt="" width="64" height="40" style="width:64px;height:40px;object-fit:cover" /> : null}</td>
           <td><strong>{c.title}</strong><div class="small muted">/{c.slug}</div></td>
@@ -19,7 +19,7 @@ const list = (await adminGet<{ data: Competition[] }>(Astro.cookies, '/competiti
           <td class="small">{when(c.drawAt)}</td>
           <td><a class="btn btn--outline" href={`/admin/competitions/${c.id}`}>Edit</a></td>
         </tr>
-      ))}</tbody>
+      )) : <tr><td colspan="7" class="tbl-empty"><strong>No competitions yet.</strong><a href="/admin/competitions/new">Create the first one</a>.</td></tr>}</tbody>
     </table></div>
   </section>
 </AdminLayout>

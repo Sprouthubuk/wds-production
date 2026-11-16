@@ -40,6 +40,54 @@ export function showError(anchor: HTMLElement, msg: string | null) {
   box.hidden = false;
 }
 
+/**
+ * A styled confirmation dialog in place of the browser's confirm box: the same question, and the same outcome
+ * (true = go ahead; Cancel, Escape or the backdrop = false). The confirm button is labelled with the action.
+ */
+export function confirmDialog(message: string, opts: { ok?: string; danger?: boolean } = {}): Promise<boolean> {
+  if (typeof HTMLDialogElement === 'undefined') return Promise.resolve(window.confirm(message));
+  const dialog = document.createElement('dialog');
+  dialog.className = 'adm-dialog';
+  dialog.setAttribute('aria-labelledby', 'adm-dialog-title');
+  dialog.setAttribute('aria-describedby', 'adm-dialog-text');
+  const form = document.createElement('form');
+  form.method = 'dialog';
+  const title = document.createElement('h2');
+  title.id = 'adm-dialog-title';
+  title.textContent = 'Are you sure?';
+  const text = document.createElement('p');
+  text.id = 'adm-dialog-text';
+  text.textContent = message;
+  const actions = document.createElement('div');
+  actions.className = 'adm-dialog-actions';
+  const cancel = document.createElement('button');
+  cancel.type = 'submit'; cancel.value = 'cancel'; cancel.className = 'btn btn--outline'; cancel.textContent = 'Cancel';
+  const ok = document.createElement('button');
+  ok.type = 'submit'; ok.value = 'ok'; ok.className = opts.danger ? 'btn btn--danger' : 'btn'; ok.textContent = opts.ok || 'Confirm';
+  ok.dataset.confirmOk = '';
+  actions.append(cancel, ok);
+  form.append(title, text, actions);
+  dialog.append(form);
+  document.body.append(dialog);
+  const back = document.activeElement as HTMLElement | null;
+  return new Promise((resolve) => {
+    dialog.addEventListener('close', () => {
+      resolve(dialog.returnValue === 'ok');
+      dialog.remove();
+      back?.focus?.();
+    }, { once: true });
+    dialog.addEventListener('click', (e) => { if (e.target === dialog) dialog.close('cancel'); });
+    dialog.showModal();
+    (opts.danger ? cancel : ok).focus();
+  });
+}
+
+/** The label for a confirmation's OK button: the pressed button's own words. */
+function actionLabel(el: HTMLElement | null): string | undefined {
+  const t = el?.textContent?.replace(/\s+/g, ' ').trim();
+  return t && t.length <= 40 ? t : undefined;
+}
+
 /** A datetime-local value ("2026-12-22T17:59") read as UK local time → UTC ISO string. */
 export function ukLocalToIso(v: string): string | null {
   if (!v) return null;
@@ -53,7 +101,10 @@ export function initAdmin() {
     document.querySelectorAll<HTMLFormElement>('form[data-admin-form]').forEach((form) => {
       form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (form.dataset.confirm && !confirm(form.dataset.confirm)) return;
+        if (form.dataset.confirm) {
+          const submitter = (e as SubmitEvent).submitter as HTMLElement | null ?? form.querySelector<HTMLElement>('button[type=submit]');
+          if (!(await confirmDialog(form.dataset.confirm, { ok: actionLabel(submitter), danger: !!submitter?.classList.contains('btn--danger') }))) return;
+        }
         const hasFile = !!form.querySelector('input[type=file]');
         let body: BodyInit;
         if (hasFile) body = new FormData(form);
@@ -85,7 +136,7 @@ export function initAdmin() {
     });
 
     document.querySelectorAll<HTMLButtonElement>('[data-admin-action]').forEach((b) => b.addEventListener('click', async () => {
-      if (b.dataset.confirm && !confirm(b.dataset.confirm)) return;
+      if (b.dataset.confirm && !(await confirmDialog(b.dataset.confirm, { ok: actionLabel(b), danger: b.classList.contains('btn--danger') }))) return;
       b.disabled = true;
       showError(b, null);
       try {

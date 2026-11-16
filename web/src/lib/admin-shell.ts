@@ -1,5 +1,20 @@
 /** The Admin shell: the phone drawer, the collapsible sidebar and the account menu (AdminLayout). */
+/** Filtering or paging a list reloads the page: show skeleton rows in its tables until the next page arrives. */
+function initSkeletons() {
+  const busy = (on: boolean) => document.querySelectorAll<HTMLElement>('.panel').forEach((p) => {
+    if (p.querySelector('.tbl')) on ? p.setAttribute('aria-busy', 'true') : p.removeAttribute('aria-busy');
+  });
+  document.querySelectorAll<HTMLFormElement>('form.filters').forEach((f) => {
+    if ((f.getAttribute('method') ?? 'get').toLowerCase() === 'get' && !f.hasAttribute('data-admin-form')) f.addEventListener('submit', () => busy(true));
+  });
+  document.querySelectorAll<HTMLAnchorElement>('[data-pager] a').forEach((a) => a.addEventListener('click', (e) => {
+    if (!e.metaKey && !e.ctrlKey && !e.shiftKey && e.button === 0) busy(true);
+  }));
+  window.addEventListener('pageshow', () => busy(false));   // back/forward cache
+}
+
 export function initShell() {
+  initSkeletons();
   const side = document.querySelector<HTMLElement>('[data-adm-side]');
   const openBtn = document.querySelector<HTMLButtonElement>('[data-adm-open]');
   const scrim = document.querySelector<HTMLElement>('[data-adm-scrim]');

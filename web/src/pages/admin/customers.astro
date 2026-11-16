@@ -1,11 +1,14 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, gbp, day, when } from '../../lib/admin';
+import Pager from '../../components/admin/Pager.astro';
 interface Row { id: number; name: string; email: string; phone: string | null; role: string; tickets: number; spent: number; credit: number; flags: string[]; joinedAt: string }
 interface Ver { id: number; created_at: string; user: { id: number; name: string; email: string } }
 const q = Astro.url.searchParams.get('q') ?? '';
+const pageNo = Number(Astro.url.searchParams.get('page')) || 1;
+const qs = new URLSearchParams([...(q ? [['q', q]] : []), ...(pageNo > 1 ? [['page', String(pageNo)]] : [])]).toString();
 const [page, vers] = await Promise.all([
-  adminGet<{ data: Row[]; total: number }>(Astro.cookies, `/customers${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  adminGet<{ data: Row[]; total: number; current_page?: number; last_page?: number }>(Astro.cookies, `/customers${qs ? `?${qs}` : ''}`),
   adminGet<Ver[]>(Astro.cookies, '/verifications'),
 ]);
 ---
@@ -14,11 +17,11 @@ const [page, vers] = await Promise.all([
 
   <section class="panel">
     <div class="tbl-wrap"><table class="tbl">
-      <thead><tr><th>Customer</th><th>Tickets</th><th>Spent</th><th>Credit</th><th>Flags</th><th>Joined</th><th>Actions</th></tr></thead>
-      <tbody>{page.data.map((u) => (
+      <thead><tr><th>Customer</th><th class="num-r">Tickets</th><th class="num-r">Spent</th><th class="num-r">Credit</th><th>Flags</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody>{page.data.length ? page.data.map((u) => (
         <tr>
           <td><strong>{u.name}</strong> {u.role !== 'customer' ? <span class="pill">{u.role}</span> : null}<div class="small muted">{u.email}{u.phone ? ` · ${u.phone}` : ''}</div></td>
-          <td>{u.tickets}</td><td>{gbp(u.spent)}</td><td>{gbp(u.credit)}</td>
+          <td class="num-r">{u.tickets}</td><td class="num-r">{gbp(u.spent)}</td><td class="num-r">{gbp(u.credit)}</td>
           <td>{u.flags.map((f) => <span class="pill" style="margin-right:4px">{f}</span>)}</td>
           <td class="small muted">{day(u.joinedAt)}</td>
           <td>
@@ -38,8 +41,9 @@ const [page, vers] = await Promise.all([
             </details>
           </td>
         </tr>
-      ))}</tbody>
+      )) : <tr><td colspan="7" class="tbl-empty"><strong>No customers found.</strong>Try a different search.</td></tr>}</tbody>
     </table></div>
+    {page.last_page ? <Pager current={page.current_page ?? 1} last={page.last_page} total={page.total ?? page.data.length} noun="customers" url={Astro.url} /> : null}
   </section>
 
   <section class="panel" id="verifications">

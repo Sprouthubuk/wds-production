@@ -133,3 +133,42 @@ test('dashboard: KPIs, needs attention, chart, live competitions and recent orde
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
 });
+
+test('tables and dialogs: empty state, styled confirm (Cancel keeps it, OK goes ahead), toast', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page);
+  await page.goto('/admin/orders?q=no-such-order-zzz');
+  await expect(page.locator('td.tbl-empty')).toContainText('No orders found.');
+
+  const ref = await paidOrder(page, 'confirm@e2e.test');
+  await page.goto(`/admin/orders?q=${ref}`);
+  const row = page.locator('tbody tr', { hasText: ref });
+  await expect(row.locator('.pill')).toHaveText('paid');
+  await expect(page.locator('th', { hasText: 'Total' })).toHaveCSS('text-align', 'right');
+
+  let nativeDialogs = 0;
+  page.on('dialog', (d) => { nativeDialogs++; d.dismiss(); });
+  await row.getByRole('button', { name: 'Mark refunded' }).click();
+  const dialog = page.getByRole('dialog', { name: 'Are you sure?' });
+  await expect(dialog).toBeVisible();
+  await expect(dialog).toContainText(`Mark ${ref} as refunded?`);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toBeHidden();
+  await expect(row.getByRole('button', { name: 'Mark refunded' })).toBeFocused();
+  await row.getByRole('button', { name: 'Mark refunded' }).click();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(dialog).toBeHidden();
+  await page.reload();
+  await expect(page.locator('tbody tr', { hasText: ref }).locator('.pill')).toHaveText('paid');
+
+  await page.locator('tbody tr', { hasText: ref }).getByRole('button', { name: 'Mark refunded' }).click();
+  await dialog.getByRole('button', { name: 'Mark refunded' }).click();
+  await expect(page.locator('.adm-toast')).toBeVisible();
+  await expect(page.locator('tbody tr', { hasText: ref }).locator('.pill')).toHaveText('refunded', { timeout: 5000 });
+  expect(nativeDialogs).toBe(0);
+
+  // Filtering shows skeleton rows until the next page arrives.
+  await page.locator('form.filters input[name=q]').fill(ref);
+  await Promise.all([page.waitForURL(/q=/), page.locator('form.filters button[type=submit]').click()]);
+  await expect(page.locator('.panel[aria-busy]')).toHaveCount(0);
+});
