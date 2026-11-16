@@ -36,6 +36,7 @@ class Order extends Model
 
     public function user(): BelongsTo { return $this->belongsTo(User::class); }
     public function lines(): HasMany { return $this->hasMany(OrderLine::class); }
+    /** @return HasManyThrough<Ticket, OrderLine, $this> */
     public function tickets(): HasManyThrough { return $this->hasManyThrough(Ticket::class, OrderLine::class); }
     public function discountCode(): BelongsTo { return $this->belongsTo(DiscountCode::class); }
     public function paymentEvents(): HasMany { return $this->hasMany(PaymentEvent::class); }

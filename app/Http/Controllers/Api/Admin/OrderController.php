@@ -73,6 +73,9 @@ class OrderController extends Controller
                 'ticketsInDraw' => $inDraw,
                 'refundedButInDraw' => $order->status === 'refunded' && $inDraw > 0,
                 'canWithdrawTickets' => $order->status === 'refunded' && $inDraw > 0 && $this->closedCompetition($order) === null,
+                // Ticket numbers taken out of the draw (shown struck through on the order page).
+                'withdrawnTickets' => $order->tickets()->with('competition')->whereNotNull('tickets.withdrawn_at')->orderBy('tickets.number')->get()
+                    ->map(fn (Ticket $t) => $t->display($t->competition->total_tickets))->values(),
                 'history' => $order->paymentEvents->map(fn ($e) => [
                     'at' => $e->created_at?->toIso8601String(), 'kind' => $e->kind, 'status' => $e->status,
                     // Redacted again on the way out: rows stored before a redaction rule existed are masked too.

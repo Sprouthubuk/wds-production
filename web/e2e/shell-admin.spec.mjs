@@ -172,3 +172,60 @@ test('tables and dialogs: empty state, styled confirm (Cancel keeps it, OK goes 
   await Promise.all([page.waitForURL(/q=/), page.locator('form.filters button[type=submit]').click()]);
   await expect(page.locator('.panel[aria-busy]')).toHaveCount(0);
 });
+
+test('order page: summary, cards, and a full refund that withdraws the tickets shows them struck through', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page);
+  const ref = await paidOrder(page, 'withdraw@e2e.test');
+  await page.goto(`/admin/search?q=${ref}`);
+  await page.waitForURL(/\/admin\/orders\/\d+$/);
+  await expect(page.getByRole('region', { name: 'Order summary' })).toContainText(ref);
+  for (const h of ['Tickets', 'Payment', 'Refunds', 'History']) await expect(page.getByRole('heading', { name: h, exact: true })).toBeVisible();
+  await expect(page.locator('[data-withdrawn]')).toHaveCount(0);
+
+  await page.fill('#rr', 'E2E full refund');
+  await page.getByLabel(/Take the tickets out of the draw/).check();
+  await page.getByRole('button', { name: 'Refund', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Refund' }).click();
+  await expect(page.locator('[data-withdrawn]').first()).toBeVisible({ timeout: 10_000 });
+  const t = page.locator('[data-withdrawn]').first();
+  await expect(t.locator('s')).toHaveCSS('text-decoration-line', 'line-through');
+  await expect(t).toContainText('withdrawn');
+  await expect(page.locator('.pill', { hasText: 'refunded' }).first()).toBeVisible();
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('competition page: tabs (mouse, keyboard, link), every field kept, a missing required field opens its tab', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page);
+  await page.goto('/admin/competitions/new');
+  const tabs = page.getByRole('tab');
+  await expect(tabs).toHaveText(['Details', 'Pricing', 'Photos', 'Draw', 'Entries']);
+  await expect(page.locator('#title')).toBeVisible();
+  await expect(page.locator('#price')).toBeHidden();
+
+  await page.getByRole('tab', { name: 'Pricing' }).click();
+  await expect(page.locator('#price')).toBeVisible();
+  await expect(page.locator('#title')).toBeHidden();
+  await page.keyboard.press('ArrowRight');
+  await expect(page.getByRole('tab', { name: 'Photos' })).toBeFocused();
+  await expect(page.getByRole('tab', { name: 'Photos' })).toHaveAttribute('aria-selected', 'true');
+  await page.keyboard.press('End');
+  await expect(page.locator('#postal-closes')).toBeVisible();
+
+  // Title is required and on Details: saving from another tab takes you to it.
+  await page.getByRole('button', { name: 'Create competition' }).click();
+  await expect(page.getByRole('tab', { name: 'Details' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('#title')).toBeVisible();
+
+  await page.goto('/admin/competitions/new#draw');
+  await expect(page.locator('#closes')).toBeVisible();
+  await expect(page.locator('input[name=drawMethod]')).toHaveCount(3);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

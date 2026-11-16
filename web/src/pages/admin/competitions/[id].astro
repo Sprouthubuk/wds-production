@@ -40,7 +40,14 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   <a slot="actions" class="btn btn--outline" href="/admin/competitions">Back</a>
   {!isNew ? <a slot="actions" class="btn btn--outline" href={`/competitions/${v.slug}`} target="_blank" rel="noopener">View on site ↗</a> : null}
 
+  <nav class="comp-tabs" role="tablist" aria-label="Competition sections" data-tabs>
+    {[['details', 'Details'], ['pricing', 'Pricing'], ['photos', 'Photos'], ['draw', 'Draw'], ['entries', 'Entries']].map(([k, label], i) => (
+      <button type="button" role="tab" id={`tabbtn-${k}`} aria-controls={`tab-${k}`} aria-selected={i === 0 ? 'true' : 'false'} tabindex={i === 0 ? 0 : -1} data-tab={k}>{label}</button>
+    ))}
+  </nav>
+
   <form class="stack" style="gap:20px" data-comp-form data-id={isNew ? '' : String(v.id)}>
+    <div role="tabpanel" id="tab-details" aria-labelledby="tabbtn-details" data-tabpanel="details" class="stack" style="gap:20px">
     <section class="panel">
       <h2>The prize</h2>
       <div class="stack" style="gap:14px">
@@ -60,22 +67,6 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     </section>
 
     <section class="panel">
-      <h2>Photos</h2>
-      <div class="row" style="gap:12px" data-images>
-        {v.images.map((img) => (
-          <figure class="stack" style="gap:6px;margin:0;width:180px" data-image>
-            <img src={img.src} alt="" style="width:180px;height:112px;object-fit:cover" />
-            <input value={img.alt} placeholder="Describe the photo" data-alt style="background:#000;border:1px solid var(--line-2);padding:6px 8px;font-size:12px" />
-            <input type="hidden" value={img.src} data-src />
-            <div class="row" style="gap:8px"><button type="button" class="adm-link" data-left>← Move</button><button type="button" class="adm-link" data-remove>Remove</button></div>
-          </figure>
-        ))}
-      </div>
-      <label class="btn btn--outline" style="margin-top:14px">Upload photos<input type="file" accept="image/*" multiple hidden data-upload /></label>
-      <p class="small muted" style="margin:8px 0 0">The first photo is the main image. Landscape photos at least 1600px wide look best.</p>
-    </section>
-
-    <section class="panel">
       <h2>Highlights</h2>
       <div class="stack" style="gap:8px" data-specs>
         {[...v.specs, { label: '', value: '' }].map((s) => <div class="row" style="gap:8px" data-spec><input placeholder="Label e.g. Gearbox" value={s.label} data-k style="flex:1;background:#000;border:1px solid var(--line-2);padding:9px 12px" /><input placeholder="Value e.g. ZF manual" value={s.value} data-v style="flex:2;background:#000;border:1px solid var(--line-2);padding:9px 12px" /></div>)}
@@ -83,6 +74,9 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <button type="button" class="adm-link" style="margin-top:10px" data-add-spec>+ Add highlight</button>
     </section>
 
+    </div>
+
+    <div role="tabpanel" id="tab-pricing" aria-labelledby="tabbtn-pricing" data-tabpanel="pricing" class="stack" style="gap:20px" hidden>
     <section class="panel">
       <h2>Tickets</h2>
       {locked ? <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published: the draw is locked in. Title, ticket price, total tickets, maximum per person and dates can't change.</p> : null}
@@ -99,18 +93,35 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <p class="small muted" style="margin:12px 0 0" data-odds></p>
     </section>
 
+    </div>
+
+    <div role="tabpanel" id="tab-photos" aria-labelledby="tabbtn-photos" data-tabpanel="photos" class="stack" style="gap:20px" hidden>
     <section class="panel">
-      <h2>Dates &amp; entry</h2>
+      <h2>Photos</h2>
+      <div class="row" style="gap:12px" data-images>
+        {v.images.map((img) => (
+          <figure class="stack" style="gap:6px;margin:0;width:180px" data-image>
+            <img src={img.src} alt="" style="width:180px;height:112px;object-fit:cover" />
+            <input value={img.alt} placeholder="Describe the photo" data-alt style="background:#000;border:1px solid var(--line-2);padding:6px 8px;font-size:12px" />
+            <input type="hidden" value={img.src} data-src />
+            <div class="row" style="gap:8px"><button type="button" class="adm-link" data-left>← Move</button><button type="button" class="adm-link" data-remove>Remove</button></div>
+          </figure>
+        ))}
+      </div>
+      <label class="btn btn--outline" style="margin-top:14px">Upload photos<input type="file" accept="image/*" multiple hidden data-upload /></label>
+      <p class="small muted" style="margin:8px 0 0">The first photo is the main image. Landscape photos at least 1600px wide look best.</p>
+    </section>
+
+    </div>
+
+    <div role="tabpanel" id="tab-draw" aria-labelledby="tabbtn-draw" data-tabpanel="draw" class="stack" style="gap:20px" hidden>
+    <section class="panel">
+      <h2>Dates &amp; draw</h2>
       <div class="form-grid">
         <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} disabled={locked} /></div>
         <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint" data-method-text={JSON.stringify(closesHint)}>{closesHint[methodNow] ?? closesHint.verity}</span></div>
-        <div class="field"><label for="postal-closes">Postal entries close</label><input id="postal-closes" name="postalClosesAt" type="datetime-local" value={localInput(v.postalClosesAtCustom ?? null)} /><span class="hint">Default: 48 hours before close. Leave empty to use it; envelopes received after this are rejected.</span></div>
         <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site. Can stay empty on a draft until it's confirmed; needed to publish.</span></div>
         <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status}</span></b><span class="hint">{locked ? (methodNow === 'verity' ? 'Follows the draw engine: it closes and draws on its own.' : 'Follows the draw engine: it closes and seals on its own; the winner is drawn live and recorded on Draws.') : 'A draft until you publish it below.'}</span></div>
-      </div>
-      <div class="row" style="gap:24px;margin-top:14px">
-        <label class="check"><input type="checkbox" name="postalEntryEnabled" checked={(c as any)?.postalEntryEnabled ?? true} />Free postal entry <span class="small muted">(paid competitions only)</span></label>
-        <label class="check"><input type="checkbox" name="eventSalesEnabled" checked={(c as any)?.eventSalesEnabled ?? false} />Event ticket sales</label>
       </div>
       <fieldset class="dm" disabled={locked}>
         <legend class="label">How it's drawn {locked ? <span class="small muted">(fixed at publish)</span> : null}</legend>
@@ -125,6 +136,21 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
         <span class="small muted" style="display:block">Either way the closing time is the backstop: entries close then if nobody presses the button.</span>
       </fieldset>
     </section>
+    </div>
+
+    <div role="tabpanel" id="tab-entries" aria-labelledby="tabbtn-entries" data-tabpanel="entries" class="stack" style="gap:20px" hidden>
+    <section class="panel">
+      <h2>Entries</h2>
+      {!isNew ? <p class="small" style="margin:0 0 14px;color:var(--muted-2)" data-entries-summary><strong>{v.ticketsSold.toLocaleString('en-GB')}</strong> of {v.totalTickets.toLocaleString('en-GB')} tickets sold. Log envelopes on <a href="/admin/postal">Postal entries</a>; sell at events on <a href="/admin/event-sales">Event sales</a>.</p> : null}
+      <div class="form-grid">
+        <div class="field"><label for="postal-closes">Postal entries close</label><input id="postal-closes" name="postalClosesAt" type="datetime-local" value={localInput(v.postalClosesAtCustom ?? null)} /><span class="hint">Default: 48 hours before close. Leave empty to use it; envelopes received after this are rejected.</span></div>
+      </div>
+      <div class="row" style="gap:24px;margin-top:14px">
+        <label class="check"><input type="checkbox" name="postalEntryEnabled" checked={(c as any)?.postalEntryEnabled ?? true} />Free postal entry <span class="small muted">(paid competitions only)</span></label>
+        <label class="check"><input type="checkbox" name="eventSalesEnabled" checked={(c as any)?.eventSalesEnabled ?? false} />Event ticket sales</label>
+      </div>
+    </section>
+    </div>
 
     <div class="row" style="gap:10px;position:sticky;bottom:0;background:#050505;padding:14px 0;border-top:1px solid var(--line)">
       <button class="btn" type="submit">{isNew ? 'Create competition' : 'Save changes'}</button>
@@ -141,7 +167,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     </section>
   ) : null}
   {!isNew && !locked ? (
-    <section class="panel" style="margin-top:20px" data-preview-panel>
+    <section class="panel" style="margin-top:20px" data-preview-panel data-tabpanel="details">
       <h2>Preview link</h2>
       <p class="small" style="margin:0 0 12px;color:var(--muted-2)">A private link for the client to see this draft on the real site as if it were live, with a "Preview: not live yet" banner. Entries stay disabled, and nothing is sent to the draw engine. The link works for 14 days and stops when you make a new one, revoke it, or publish.</p>
       {previewLink ? (
@@ -163,7 +189,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     </section>
   ) : null}
   {locked ? (
-    <section class="panel" style="margin-top:20px">
+    <section class="panel" style="margin-top:20px" data-tabpanel="draw" hidden>
       <h2>Draw</h2>
       <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published as <span class="mono">{v.verityRef}</span>. Draw status, the committed drand round and the audit trail are on <a href="/admin/draws">Draws</a>.</p>
       {['live', 'scheduled'].includes(v.status) ? (
@@ -181,6 +207,36 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     </section>
   ) : null}
 
+  <script>
+    // Tabs: Details, Pricing, Photos, Draw, Entries. Every field stays in the one form (saved together); a tab only
+    // hides the others. A required field on a hidden tab opens that tab when the form is checked.
+    const tabs = Array.from(document.querySelectorAll<HTMLButtonElement>('[data-tab]'));
+    const names = tabs.map((t) => t.dataset.tab!);
+    const show = (name: string, focus = false) => {
+      tabs.forEach((t) => {
+        const on = t.dataset.tab === name;
+        t.setAttribute('aria-selected', String(on));
+        t.tabIndex = on ? 0 : -1;
+        if (on && focus) t.focus();
+      });
+      document.querySelectorAll<HTMLElement>('[data-tabpanel]').forEach((p) => (p.hidden = p.dataset.tabpanel !== name));
+      history.replaceState(null, '', `#${name}`);
+    };
+    tabs.forEach((t, i) => {
+      t.addEventListener('click', () => show(t.dataset.tab!));
+      t.addEventListener('keydown', (e) => {
+        const to = e.key === 'ArrowRight' ? (i + 1) % tabs.length : e.key === 'ArrowLeft' ? (i - 1 + tabs.length) % tabs.length : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : -1;
+        if (to >= 0) { e.preventDefault(); show(names[to], true); }
+      });
+    });
+    document.querySelector('[data-comp-form]')?.addEventListener('invalid', (e) => {
+      const panel = (e.target as HTMLElement).closest<HTMLElement>('[data-tabpanel]');
+      if (panel?.hidden) show(panel.dataset.tabpanel!);
+    }, true);
+    const fromHash = () => { const h = location.hash.slice(1); if (names.includes(h)) show(h); };
+    fromHash();
+    window.addEventListener('hashchange', fromHash);
+  </script>
   <script>
   // External draw: the random number tool fields appear with the method.
   document.querySelectorAll<HTMLInputElement>('input[name=drawMethod]').forEach((r) => r.addEventListener('change', () => {
@@ -312,6 +368,15 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   </script>
 </AdminLayout>
 <style>
+  .comp-tabs { display: flex; gap: 4px; margin: 0 0 20px; border-bottom: 1px solid var(--line); overflow-x: auto; scrollbar-width: none; position: sticky; top: 72px; z-index: 5; background: #050505; }
+  .comp-tabs::-webkit-scrollbar { display: none; }
+  .comp-tabs button { flex: none; min-height: 44px; padding: 0 16px; background: none; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; color: var(--muted-2); font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; }
+  .comp-tabs button:hover { color: #fff; }
+  .comp-tabs button[aria-selected='true'] { color: #fff; border-bottom-color: #fff; }
+  .comp-tabs button:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
+  [data-tabpanel][hidden] { display: none !important; }
+  @media (max-width: 900px) { .comp-tabs { position: static; } }
+  @media (max-width: 480px) { .comp-tabs { gap: 0; } .comp-tabs button { padding: 0 11px; font-size: 13px; } }
   .dm { margin: 14px 0 0; border: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
   .dm label { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.4; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
   .dm input[type='radio'] { width: 18px; height: 18px; min-height: 0; flex: none; margin: 1px 0 0; padding: 0; accent-color: #fff; }
