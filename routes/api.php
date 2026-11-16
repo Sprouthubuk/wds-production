@@ -93,6 +93,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/orders/{order}', [Admin\OrderController::class, 'show']);
     Route::post('/orders/{order}/refunded', [Admin\OrderController::class, 'markRefunded']);
     Route::post('/orders/{order}/refund', [Admin\OrderController::class, 'refund']);
+    Route::post('/orders/{order}/withdraw-tickets', [Admin\OrderController::class, 'withdrawTickets']);
 
     Route::get('/customers', [Admin\CustomerController::class, 'index']);
     Route::get('/customers/{user}', [Admin\CustomerController::class, 'show']);

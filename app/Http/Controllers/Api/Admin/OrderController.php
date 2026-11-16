@@ -7,10 +7,12 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\Money;
 use App\Http\Resources\OrderResource;
 use App\Mail\OrderRefunded;
+use App\Mail\OrderTicketsWithdrawn;
 use App\Models\Order;
 use App\Models\Ticket;
 use App\Services\CreditCardCap;
 use App\Services\Draws\VerityDrawEngine;
+use App\Services\Payments\PaymentLog;
 use App\Services\Payments\PaymentRedactor;
 use App\Services\RefundService;
 use Illuminate\Support\Facades\DB;
@@ -42,6 +44,7 @@ class OrderController extends Controller
     {
         $order->load(['paymentEvents' => fn ($q) => $q->orderBy('id'), 'refunds' => fn ($q) => $q->orderBy('id'), 'refunds.staff']);
         $countsAsCredit = $order->paid_at && CreditCardCap::countsAsCredit($order->card_type, $order->payment_provider);
+        $inDraw = $this->ticketsInDraw($order);
 
         return (new OrderResource($order))->additional([
             'customer' => [
@@ -66,6 +69,10 @@ class OrderController extends Controller
                 'refunded' => Money::pounds((int) $order->refunded_pence),
                 'refundable' => Money::pounds($order->refundablePence()),
                 'refundNeeded' => $order->status === 'cancelled' && $order->paid_at !== null,
+                // Refunded in full but its tickets are still in the draw: Admin warns, and offers to take them out while open.
+                'ticketsInDraw' => $inDraw,
+                'refundedButInDraw' => $order->status === 'refunded' && $inDraw > 0,
+                'canWithdrawTickets' => $order->status === 'refunded' && $inDraw > 0 && $this->closedCompetition($order) === null,
                 'history' => $order->paymentEvents->map(fn ($e) => [
                     'at' => $e->created_at?->toIso8601String(), 'kind' => $e->kind, 'status' => $e->status,
                     // Redacted again on the way out: rows stored before a redaction rule existed are masked too.
@@ -96,6 +103,10 @@ class OrderController extends Controller
         $left = $order->refundablePence();
         $amount = isset($data['amount']) ? (int) round($data['amount'] * 100) : $left;
         $full = $amount >= $left && $left > 0;
+        if ($request->boolean('void_tickets') && ! $full && $left > 0) {
+            // Never drop the box silently: a partial refund keeps the tickets in the draw.
+            abort(422, 'Tickets can only be taken out of the draw with a full refund of everything left (£'.number_format($left / 100, 2).'). Untick "Take the tickets out of the draw" to make a partial refund.');
+        }
         $void = $full && $request->boolean('void_tickets') && $order->status === 'paid';
         if ($void) {
             $this->assertCanVoid($order, $verity);
@@ -112,10 +123,10 @@ class OrderController extends Controller
 
         $order->refresh();
         if ($order->refundablePence() === 0) {
-            DB::transaction(function () use ($order, $void, $verity) {
+            DB::transaction(function () use ($order, $void, $verity, $request) {
                 $order->update(['status' => 'refunded']);
                 if ($void) {
-                    $this->voidTickets($order, $verity);
+                    $this->voidTickets($order, $verity, $request->user()?->name);
                 }
             });
         }
@@ -133,22 +144,64 @@ class OrderController extends Controller
 
     private function assertCanVoid(Order $order, VerityDrawEngine $verity): void
     {
-        foreach ($order->lines()->with('competition')->get() as $line) {
-            $c = $line->competition;
-            if ($c->isPublished() && ! $verity->isOpen($c)) {
-                abort(422, "{$c->title} has closed, so its entries are frozen and these tickets stay in the draw. You can still refund the money: untick \"Take the tickets out of the draw\".");
-            }
+        if ($title = $this->closedCompetition($order, $verity)) {
+            abort(422, "{$title} has closed, so its entries are frozen and these tickets stay in the draw. You can still refund the money: untick \"Take the tickets out of the draw\".");
         }
     }
 
-    private function voidTickets(Order $order, VerityDrawEngine $verity): void
+    /** The first of the order's competitions whose entries are frozen (closed, sealed or drawn), if any. */
+    private function closedCompetition(Order $order, ?VerityDrawEngine $verity = null): ?string
     {
+        $verity ??= app(VerityDrawEngine::class);
+        foreach ($order->lines()->with('competition')->get() as $line) {
+            $c = $line->competition;
+            if ($c->isPublished() && ! $verity->isOpen($c)) {
+                return $c->title;
+            }
+        }
+
+        return null;
+    }
+
+    private function ticketsInDraw(Order $order): int
+    {
+        return $order->tickets()->whereNull('tickets.withdrawn_at')->count();
+    }
+
+    /** Takes the order's tickets out of the draw (Verity withdraws its entries) and records it in the order's history. */
+    private function voidTickets(Order $order, VerityDrawEngine $verity, ?string $by): void
+    {
+        $count = $this->ticketsInDraw($order);
         foreach ($order->lines()->with('competition')->get() as $line) {
             if ($line->competition->isPublished()) {
                 $verity->withdraw(VerityDrawEngine::hostRef(['order_line_id' => $line->id]), "Refunded (order {$order->reference})");
             }
             Ticket::where('order_line_id', $line->id)->whereNull('withdrawn_at')->update(['withdrawn_at' => now()]);
         }
+        if ($count > 0) {
+            PaymentLog::record($order, 'tickets', 'Withdrawn', "{$count} ".($count === 1 ? 'ticket' : 'tickets').' taken out of the draw'.($by ? " by {$by}" : ''));
+        }
+    }
+
+    /**
+     * For an order refunded in full whose tickets are still in the draw (the box wasn't ticked, or the money went back
+     * another way): takes them out while every competition is still open. Never after close or seal. The customer
+     * was last told their tickets stay in the draw, so they get a short note that they've now been taken out.
+     */
+    public function withdrawTickets(Request $request, Order $order, VerityDrawEngine $verity)
+    {
+        if ($order->status !== 'refunded') {
+            abort(422, 'Only an order refunded in full can have its tickets taken out of the draw here.');
+        }
+        if ($this->ticketsInDraw($order) === 0) {
+            abort(422, "This order's tickets are already out of the draw.");
+        }
+        $this->assertCanVoid($order, $verity);
+
+        DB::transaction(fn () => $this->voidTickets($order, $verity, $request->user()?->name));
+        Mail::to($order->email)->queue(new OrderTicketsWithdrawn($order));
+
+        return response()->json(['message' => "The tickets on {$order->reference} are out of the draw. The customer has been told."]);
     }
 
     /**
@@ -173,16 +226,10 @@ class OrderController extends Controller
             }
         }
 
-        DB::transaction(function () use ($order, $lines, $request, $verity) {
+        DB::transaction(function () use ($order, $request, $verity) {
             $order->update(['status' => 'refunded']);
-            if (! $request->boolean('void_tickets')) {
-                return;
-            }
-            foreach ($lines as $line) {
-                if ($line->competition->isPublished()) {
-                    $verity->withdraw(VerityDrawEngine::hostRef(['order_line_id' => $line->id]), "Refunded (order {$order->reference})");
-                }
-                Ticket::where('order_line_id', $line->id)->whereNull('withdrawn_at')->update(['withdrawn_at' => now()]);
+            if ($request->boolean('void_tickets')) {
+                $this->voidTickets($order, $verity, $request->user()?->name);
             }
         });
         // Marking an order refunded a second time (to take its tickets out later) doesn't email the customer again.

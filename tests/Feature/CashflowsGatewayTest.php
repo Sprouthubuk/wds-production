@@ -441,7 +441,7 @@ class CashflowsGatewayTest extends TestCase
         $this->assertSame(['JOB1', 'PAY1', 'debit', 'gateway'], [$panel['paymentJobReference'], $panel['paymentReference'], $panel['cardType'], $panel['cardTypeSource']]);
         $this->assertEquals([30, 30, 0], [$panel['total'], $panel['refunded'], $panel['refundable']]);
         $this->assertSame([['R1', 5, 'completed'], ['R2', 25, 'completed']], array_map(fn ($r) => [substr($r['number'], -2), (int) $r['amount'], $r['status']], $panel['refunds']));
-        $this->assertSame(['created', 'status', 'refund', 'refund'], array_column($panel['history'], 'kind'));
+        $this->assertSame(['created', 'status', 'refund', 'refund', 'tickets'], array_column($panel['history'], 'kind'));
     }
 
     public function test_cashflows_refund_errors_become_clear_admin_messages(): void

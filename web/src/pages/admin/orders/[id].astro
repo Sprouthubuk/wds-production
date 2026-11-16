@@ -10,6 +10,7 @@ interface Payment {
   paymentJobReference: string | null; paymentReference: string | null; paidAt: string | null; reservedUntil: string | null;
   cardType: string | null; cardTypeSource: string | null; countsAsCredit: boolean;
   total: number; refunded: number; refundable: number; refundNeeded: boolean;
+  ticketsInDraw: number; refundedButInDraw: boolean; canWithdrawTickets: boolean;
   history: HistoryRow[]; refunds: RefundRow[];
 }
 interface OrderView { reference: string; status: string; message: string | null; total: number; createdAt: string; lines: { competition: string; qty: number; ticketNumbers: string[] }[] }
@@ -38,6 +39,13 @@ const pretty = (v: unknown) => JSON.stringify(v, null, 2);
       <div><dt>Total</dt><dd>{gbp(o.total)}</dd></div>
       <div><dt>Created</dt><dd>{when(o.createdAt)}</dd></div>
     </dl>
+    {p.refundedButInDraw ? (
+      <div class="alert alert--error" role="alert" style="margin:12px 0 0" data-refunded-in-draw data-error-host>
+        <p style="margin:0"><strong>Refunded in full but tickets are still in the draw.</strong> {p.ticketsInDraw} ticket{p.ticketsInDraw === 1 ? '' : 's'} on this order can still win.{p.canWithdrawTickets ? '' : ' The competition has closed, so its entries are frozen and they stay in the draw.'}</p>
+        {p.canWithdrawTickets ? <p style="margin:10px 0 0"><button class="btn" data-admin-action={`/api/admin/orders/${p.id}/withdraw-tickets`} data-reload
+          data-confirm={`Take the ${p.ticketsInDraw} ticket${p.ticketsInDraw === 1 ? '' : 's'} on ${o.reference} out of the draw? This can't be undone, and the customer is emailed that their tickets have been taken out.`}>Take tickets out of the draw</button></p> : null}
+      </div>
+    ) : null}
     {o.message ? <p class="small muted" style="margin:12px 0 0">Shown to the customer: “{o.message}”</p> : null}
     <div class="stack" style="gap:8px;margin-top:14px">
       {o.lines.map((l) => <div class="small"><strong>{l.competition}</strong> · {l.qty} ticket{l.qty === 1 ? '' : 's'}{l.ticketNumbers.length ? `: ${l.ticketNumbers.map(ticket).join(', ')}` : ''}</div>)}
