@@ -6,23 +6,21 @@ was changed.
 
 ## Top 5 things to know
 
-1. **Four draft PRs need your decision (money and compliance).** Each has a regression test and is explained
-   below:
-   - **#72:** site credit could be spent twice.
-   - **#69:** a payment for the wrong amount was taken but left unrefundable.
-   - **#71:** self-excluded or closed accounts could still enter by post.
-   - **#77:** a one-use discount code could be used by several checkouts at once.
-2. **Security hole closed (#61).** Production runs `PAYMENT_DRIVER=fake` until Cashflows goes live. Until now,
+1. **Security hole closed (#61).** Production runs `PAYMENT_DRIVER=fake` until Cashflows goes live. Until now,
    anyone could `POST /api/payments/webhook {"order":"WDS-…"}` and have their own order marked paid. That endpoint
-   now only exists off production with the fake driver. #68 also makes a mistyped driver an error instead of a
-   silent fake gateway.
-3. **Spend limits reset at the wrong time in summer (#70, fixed).** Daily, weekly and monthly limits used UTC days,
-   so in summer a customer could spend a second day's limit between midnight and 1am UK time. They now run on UK
-   time, like the site-wide cap.
-4. **Photos (#63, #75).** Uploaded prize photos would all have been broken images (#63). They also get a 720px
-   copy for cards and thumbnails now (#75), so phones don't download full-size originals.
-5. **Production must switch to `PAYMENT_DRIVER=cashflows` before launch.** With `fake` there, checkout sends
-   customers to the fake payment page, which correctly 404s on production.
+   now only exists off production with the fake driver. #68 also makes a mistyped driver an error.
+2. **Money fixes, approved by Jason and merged:**
+   - **#72:** site credit could be spent twice by two checkouts at once.
+   - **#69:** a payment for the wrong amount is now "refund needed" instead of a silent failure.
+   - **#77:** discount code usage limits count unpaid orders still holding the code.
+3. **Responsible play:**
+   - **#70:** spend limits now run on UK days, not UTC ones.
+   - **#71:** postal entries from closed, suspended, self-excluded or paused accounts are rejected. The entrant's
+     email gives a neutral reason and Admin sees the specific one.
+4. **Photos (#63, #75).** Uploaded prize photos would all have been broken images (#63). They now also get a 720px
+   copy for cards and thumbnails (#75).
+5. **Production must switch to `PAYMENT_DRIVER=cashflows` before launch,** and Forge's PHP needs `gd` for the photo
+   copies. It normally has it.
 
 **Scheduled `verity:check` "exit 1" on staging:** explained by Jason. It's the deliberate local-randomness test
 draw WDST-PT11VI on staging, which the check correctly flags. No code change is needed. Its output is kept in
@@ -30,88 +28,92 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 
 ## Baseline → now
 
-| | Baseline (main @ 6be81a3) | Now (main @ 364a55a) |
+| | Baseline (main @ 6be81a3) | Now (main @ 846b7f1) |
 |---|---|---|
-| PHP tests | 186 (184 passed, 2 skipped) | 198 (196 passed, 2 skipped), plus 4 more in the draft PRs |
+| PHP tests | 186 (184 passed, 2 skipped) | 202 (200 passed, 2 skipped) |
 | Web tests (node) | 19/19 | 23/23 |
 | Website build | OK | OK, plus `astro check` (strict): 0 errors |
-| Larastan | not installed | level 5, 227 pre-existing findings in a baseline, 0 new |
+| Larastan | not installed | level 5, 0 new errors. Pre-existing findings are in a baseline, which shrank in #71 when one false positive was fixed. |
 | `composer audit` / `npm audit` | clean / clean | clean / clean |
-| End-to-end (Playwright, local fakes) | none | 39 tests, all passing (`cd web && npm run build && npm run e2e`) |
+| End-to-end (Playwright, local fakes) | none | 41 tests, all passing (`cd web && npm run build && npm run e2e`) |
 
 ## Merged PRs
 
-- **#59:** Larastan (level 5 + baseline) and `astro check` (strict) in CI. Fixed the sample data's types, and its
-  BMW draw time is now 19:30.
-- **#60:** the scheduled `verity:check` keeps its output in a log, with a test.
+- **#59:** Larastan and strict `astro check` in CI. Sample data types fixed.
+- **#60:** the scheduled `verity:check` keeps its output in a log.
 - **#61:** security: the fake payment webhook is locked to non-production, with the fake driver only.
-- **#62:** an authorization sweep over every API route (guests, customers, staff, other customers' orders). All
-  passed.
-- **#63:** uploaded photos no longer turn into broken `-720` links, and there's no empty `<img src>`.
-- **#64:** the Playwright end-to-end harness (local fakes only) and the Admin dashboard fix (it scrolled sideways
-  on phones).
-- **#65:** this report.
-- **#66:** competition page: on phones under 420px the enter and free postal buttons stack.
+- **#62:** an authorization sweep over every API route.
+- **#63:** uploaded photos no longer turn into broken `-720` links.
+- **#64:** the Playwright end-to-end harness, and the Admin dashboard no longer scrolls sideways on phones.
+- **#65, #76, #78 and this PR:** this report.
+- **#66:** the enter and free postal buttons stack on narrow phones.
 - **#67:** a branded 500 page instead of a blank one.
 - **#68:** an unknown `PAYMENT_DRIVER` is an error.
+- **#69:** a paid-but-wrong-amount order shows as "refund needed", with no tickets and a critical log. There's no
+  automatic refund, as agreed.
 - **#70:** spend limits run on UK days, weeks and months.
-- **#73:** the account **Orders** tab widened the page to 640px on a 375px phone. A hidden header label escaped
-  the table's scroll box. Fixed. A new end-to-end spec checks the paid order page and all 7 account tabs at 5 widths.
-- **#74:** the banner link, breadcrumbs and footer links are now at least 24px tap targets (WCAG 2.2), with nothing
-  moving visually.
-- **#75:** uploaded competition and winner photos get a 720px JPEG copy, which the cards use.
+- **#71:** postal entries refuse closed, suspended, self-excluded and paused accounts. The entrant's email says only
+  "We couldn't accept this postal entry because of the status of the account linked to this email address. If you
+  think this is a mistake, contact us." Admin shows the specific reason, and the test checks that neither email
+  reveals it.
+- **#72:** credit already on another unpaid order is held back, so it can't be spent twice.
+- **#73:** the account Orders tab no longer widens the page on phones.
+- **#74:** small text links are 24px tap targets.
+- **#75:** uploaded photos get a 720px copy for cards and thumbnails.
+- **#77:** discount code usage limits count pending, unexpired orders holding the code.
+- **#79:** on phones, the selected account tab is centred in the tab strip on load, on a click, after a resize and
+  on a hash change (e.g. `/account#limits`), which didn't switch tabs before. Also a colour contrast check for the
+  countdown with animations stopped.
 
 ## Draft PRs needing your decision
 
-- **#69, payment for the wrong amount.** If the provider reports a payment that doesn't match the order total, the
-  order was only marked "failed". The money was taken, Admin showed an ordinary failed order, and the Refund button
-  had nothing to refund. Now the order shows as **"refund needed"**, with a note giving both amounts and a critical
-  log. The judgement call: no automatic refund, because the amount taken is the thing in doubt.
-- **#71, postal entries from blocked accounts.** Free online entry refuses closed, suspended, self-excluded and
-  paused accounts; postal entry didn't look. Now those postal entries are logged as rejected with a reason, which
-  is also shown in the entrant's email. Please check that this is wanted on the free route, and the wording.
-- **#72, site credit spent twice.** Credit only comes off the balance once an order is paid. Two checkouts started
-  together (two tabs) each used the same £20, leaving the balance at −£20 once both were paid. Now credit on
-  another unpaid order is held back. Not covered: a payment that arrives late for an expired order whose credit
-  was reused in the meantime. The PR suggests an option.
-- **#77, discount code usage limits.** `times_used` only goes up when an order is paid, so a code limited to one use
-  could go on several checkouts at once, and all of them could be paid. Unpaid, unexpired orders holding the code
-  now count towards the limit.
+None.
 
 ## Bugs found but not fixed
 
 - **Waiting on your decision: max per person and limits are per email address.** A guest can use
   `name+1@gmail.com` to get round them. Unchanged, as asked.
-- **Low: postal date with no time.** A date-only "received" value via the API counts from midnight UTC, which is
-  01:00 in summer. Admin always sends a date and time, so this doesn't affect normal use.
-- **Low: account tab strip on phones.** The selected tab, for example "Responsible play", can be scrolled out of
-  view in the tab strip. Suggested fix: scroll the active tab into view.
-- **Low: ESLint not added.** `typescript-eslint` brings in a minimatch version with a moderate advisory; strict
+- **Low: a late payment for an expired order.** If the customer reused that order's credit or discount use on a new
+  order in the meantime, the late payment is still honoured and uses them again. The credit balance can go
+  negative, or a code can go one past its limit. Rare: it needs a payment to arrive after the reservation ended.
+  Suggested fix: on that late-payment path, refuse and refund if the credit or code is no longer available.
+- **Low: postal date with no time.** A date-only "received" value via the API counts from midnight UTC. Admin
+  always sends a date and time, so this doesn't affect normal use.
+- **Low: ESLint not added**, because of a moderate advisory in a `typescript-eslint` dependency. Strict
   `astro check` covers types instead.
+
+## Checked and found fine
+
+- **Countdown contrast (axe `.roll`):** a false positive. Each digit rolls in from opacity 0, and axe caught it
+  mid-fade. With animations running and stopped, six samples showed no failure. #79 adds a check with animations
+  stopped, so a real failure would show.
+- **Payments:** notification, reconcile, late payment, the credit card cap, and full and partial refunds are
+  covered by tests.
+- **Allocation under concurrency:** covered by `TicketAllocationRaceTest`.
+- **Draw lifecycle:** flow, forfeit and redraw, reveal, verify, postpone, and seal without auto-draw are covered.
+- **Authorization:** checked over every route (#62).
 
 ## Needs Forge / .env / Cashflows / Resend changes from you
 
 - **Production, before launch:** `PAYMENT_DRIVER=cashflows` with the live account, after the go-live checklist in
   `docs/cashflows-testing.md`.
-- **Forge PHP needs the `gd` extension** for the 720px photo copies (#75). It's normally installed. Without it,
-  uploads still work, just without the copy.
+- **Forge PHP needs the `gd` extension** for the 720px photo copies. Without it, uploads still work, just without
+  the copy.
 - **Cashflows:** the questions on card funding type are in `docs/cashflows-testing.md`.
 
 ## Screenshot review (qa/screenshots, at 375/390/768/1280/1920)
 
-- **Every public page, the paid order page and every account tab:** no sideways scroll at any width (after #73) and
-  no console errors. Every page has a title, description, canonical, OG title and favicon, all internal links
-  resolve, and 404 and 500 pages are branded.
+- **Every public page, the paid order page and every account tab:** no sideways scroll at any width and no console
+  errors. Every page has a title, description, canonical, OG title and favicon, all internal links resolve, and
+  404 and 500 pages are branded.
 - **Admin:** every page opens for an admin with no console errors, and none scrolls sideways at 390 or 1440.
-- **axe:** one serious contrast hit on the free competition's countdown (`.roll`). It's most likely the digit-roll
-  animation caught mid-fade, a false positive; worth a look.
 - **Full-page screenshots:** blank areas below the fold are the scroll-reveal animations, which don't run in a
   full-page capture.
 
 ## Copy and consistency
 
 - **Postal deadline:** reads "Tuesday 22 December 2026, 7:00pm" everywhere. Close is 24 Dec 19:00 and the draw
-  19:30. No lorem ipsum or visible TODOs.
+  19:30.
 - **Legal pages:** they show "Draft for legal review" and "Last updated [DATE]". This is deliberate until the legal
   text is approved, so it's flagged, not rewritten.
 - **Instagram handle, two variants:**
@@ -124,40 +126,18 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 2. **Instagram:** is the competitions account `@wds_competitions` or `@wds_originals`?
 3. Bundle prices show whole pounds ("£40") but single tickets show pence ("£14.95"). Is that intended?
 4. When will the legal pages' final text and "last updated" date be ready?
-5. Draft PRs #69, #71, #72 and #77: see above.
-
-## Decisions made
-
-- No ESLint, because of the advisory above.
-- The end-to-end suite isn't in CI, because it needs PHP plus Chrome on one runner. Run it locally.
-- Larastan runs at level 5 with a baseline.
-- The fake webhook is locked rather than deleted: local development and tests use it.
-- Money and compliance fixes (#69, #71, #72, #77) are drafts. Bug fixes that are clearly correct and only tighten a
-  rule (#70) were merged.
+5. Should the late-payment edge case above be fixed? If yes, a payment arriving for an expired order would be
+   refused and refunded when its credit or code use is no longer available.
 
 ## Next session starts here
 
-**State:** main @ 364a55a is green. Open PRs: #25 (leave alone) and drafts #69, #71, #72 and #77 (waiting for Jason).
-The working tree is clean, and no local servers are running.
+**State:** main @ 846b7f1 is green. The only open PR is #25 (leave alone). The working tree is clean and no local
+servers are running. The overnight QA list is finished.
 
-**Phase 7 coverage so far:**
-
-| Area | Status |
-|---|---|
-| Payments: notification, reconcile, late payment, refunds | Read and reasoned through. Found #69. Existing tests cover idempotency, late payment, the credit card cap and partial or full refunds. |
-| Allocation under concurrency | Covered by `TicketAllocationRaceTest`. |
-| Spend limits, pause, suspension, closure | Found #70 (UTC days). Guest checkout follows the account. |
-| Postal entries | Found #71. |
-| Credit | Found #72. |
-| Draw lifecycle | Already well tested (flow, forfeit/redraw, reveal, verify, postpone, seal without auto-draw). No changes, as asked. |
-| Mobile customer pages | All covered by end-to-end tests at 5 widths. |
-
-**Still to do:**
-1. Scroll the active account tab into view on phones.
-2. Look into the axe `.roll` contrast hit.
-3. If Jason approves #72 and #77, extend them to cover a late payment for an expired order.
-4. Once Jason decides, merge or adjust #69, #71, #72 and #77 (update each branch with main first). #72 and #77
-   both edit `CheckoutService::start`; merge one, then update the other.
+**Possible next work, waiting on Jason:**
+1. The late-payment edge case (question 5).
+2. The guest and email spend-limit design.
+3. The copy questions 1–4.
 
 **How to run:**
 - PHP: `php artisan test` (PowerShell).
