@@ -10,7 +10,7 @@ interface Payment {
   paymentJobReference: string | null; paymentReference: string | null; paidAt: string | null; reservedUntil: string | null;
   cardType: string | null; cardTypeSource: string | null; countsAsCredit: boolean;
   total: number; refunded: number; refundable: number; refundNeeded: boolean;
-  ticketsInDraw: number; refundedButInDraw: boolean; canWithdrawTickets: boolean;
+  ticketsInDraw: number; refundedButInDraw: boolean; canWithdrawTickets: boolean; withdrawnTickets?: string[];
   history: HistoryRow[]; refunds: RefundRow[];
 }
 interface OrderView { reference: string; status: string; message: string | null; total: number; createdAt: string; lines: { competition: string; qty: number; ticketNumbers: string[] }[] }
@@ -27,81 +27,112 @@ const cardText = !p.cardType ? '—'
   : `${p.cardType[0].toUpperCase()}${p.cardType.slice(1)}${p.cardTypeSource ? `, ${sourceText[p.cardTypeSource] ?? p.cardTypeSource}` : ''}`;
 const canRefund = p.refundable > 0;
 const pretty = (v: unknown) => JSON.stringify(v, null, 2);
+const withdrawn = new Set(p.withdrawnTickets ?? []);
+const ticketCount = o.lines.reduce((n, l) => n + l.qty, 0);
+const provider = p.provider === 'cashflows' ? 'Cashflows' : 'the payment provider';
 ---
 <AdminLayout title={`Order ${o.reference}`} active="orders">
-  <p class="small"><a href="/admin/orders">← Orders</a></p>
+  <a slot="actions" class="btn btn--outline" href="/admin/orders">← All orders</a>
 
-  <section class="panel">
-    <h2>Order</h2>
+  <section class="panel ord-summary" aria-label="Order summary" data-order-summary>
+    <div class="ord-head">
+      <div>
+        <span class="label">Order</span>
+        <h2 class="ord-ref">{o.reference}</h2>
+        <div class="row" style="gap:6px;margin-top:8px"><span class={`pill pill--${o.status}`}>{o.status}</span>{p.refundNeeded ? <span class="pill pill--refund-needed">refund needed</span> : null}</div>
+      </div>
+      <div class="ord-total"><span class="label">Total</span><b class="num">{gbp(o.total)}</b>{p.refunded > 0 ? <span class="small muted">{gbp(p.refunded)} refunded</span> : null}</div>
+    </div>
     <dl class="facts">
-      <div><dt>Status</dt><dd><span class={`pill pill--${o.status}`}>{o.status}</span>{p.refundNeeded ? <span class="pill pill--failed" style="margin-left:6px">refund needed</span> : null}</dd></div>
       <div><dt>Customer</dt><dd>{customer.name}<div class="small muted">{customer.email}{customer.phone ? ` · ${customer.phone}` : ''}</div></dd></div>
-      <div><dt>Total</dt><dd>{gbp(o.total)}</dd></div>
+      <div><dt>Tickets</dt><dd>{ticketCount}{withdrawn.size ? <span class="small muted"> · {withdrawn.size} withdrawn</span> : null}</dd></div>
       <div><dt>Created</dt><dd>{when(o.createdAt)}</dd></div>
+      <div><dt>Paid</dt><dd>{when(p.paidAt)}</dd></div>
     </dl>
     {p.refundedButInDraw ? (
-      <div class="alert alert--error" role="alert" style="margin:12px 0 0" data-refunded-in-draw data-error-host>
+      <div class="alert alert--error" role="alert" style="margin:16px 0 0" data-refunded-in-draw data-error-host>
         <p style="margin:0"><strong>Refunded in full but tickets are still in the draw.</strong> {p.ticketsInDraw} ticket{p.ticketsInDraw === 1 ? '' : 's'} on this order can still win.{p.canWithdrawTickets ? '' : ' The competition has closed, so its entries are frozen and they stay in the draw.'}</p>
-        {p.canWithdrawTickets ? <p style="margin:10px 0 0"><button class="btn" data-admin-action={`/api/admin/orders/${p.id}/withdraw-tickets`} data-reload
+        {p.canWithdrawTickets ? <p style="margin:10px 0 0"><button class="btn btn--danger" data-admin-action={`/api/admin/orders/${p.id}/withdraw-tickets`} data-reload
           data-confirm={`Take the ${p.ticketsInDraw} ticket${p.ticketsInDraw === 1 ? '' : 's'} on ${o.reference} out of the draw? This can't be undone, and the customer is emailed that their tickets have been taken out.`}>Take tickets out of the draw</button></p> : null}
       </div>
     ) : null}
-    {o.message ? <p class="small muted" style="margin:12px 0 0">Shown to the customer: “{o.message}”</p> : null}
-    <div class="stack" style="gap:8px;margin-top:14px">
-      {o.lines.map((l) => <div class="small"><strong>{l.competition}</strong> · {l.qty} ticket{l.qty === 1 ? '' : 's'}{l.ticketNumbers.length ? `: ${l.ticketNumbers.map(ticket).join(', ')}` : ''}</div>)}
-    </div>
+    {o.message ? <p class="small muted" style="margin:14px 0 0">Shown to the customer: “{o.message}”</p> : null}
   </section>
 
-  <section class="panel" data-payment-panel>
-    <h2>Payment</h2>
-    <dl class="facts">
-      <div><dt>Provider</dt><dd>{p.provider ?? (p.channel === 'event' ? 'Event sale' : '—')}{p.method ? <span class="small muted"> · {p.method}</span> : null}</dd></div>
-      <div><dt>Payment job</dt><dd class="mono">{p.paymentJobReference ?? '—'}</dd></div>
-      <div><dt>Payment</dt><dd class="mono">{p.paymentReference ?? '—'}</dd></div>
-      <div><dt>Paid</dt><dd>{when(p.paidAt)}</dd></div>
-      <div><dt>Card type</dt><dd>{cardText}</dd></div>
-      <div><dt>Refunded</dt><dd>{gbp(p.refunded)} of {gbp(p.total)}{canRefund ? <span class="small muted"> · {gbp(p.refundable)} refundable</span> : null}</dd></div>
-    </dl>
-
-    {canRefund ? (
-      <form class="stack refund" style="gap:12px" data-admin-form={`/api/admin/orders/${p.id}/refund`} data-reload
-        data-confirm={`Refund through ${p.provider === 'cashflows' ? 'Cashflows' : 'the payment provider'}? Money goes back to the customer's card.`}>
-        <h3 class="small" style="margin:0;text-transform:uppercase;letter-spacing:.08em">Refund</h3>
-        <div class="form-grid">
-          <div class="field"><label for="ra">Amount (£)</label><input id="ra" name="amount" type="number" data-type="number" step="0.01" min="0.01" max={p.refundable} placeholder={`${p.refundable.toFixed(2)} (all that's left)`} /><span class="hint">Leave empty to refund everything left ({gbp(p.refundable)}). Less than that is a partial refund: the order stays paid and its tickets stay in the draw.</span></div>
-          <div class="field"><label for="rr">Reason (kept on the refund)</label><input id="rr" name="reason" required minlength="3" maxlength="300" placeholder="e.g. Customer asked by email" /></div>
+  <div class="ord-grid">
+    <div class="ord-main">
+      <section class="panel" aria-labelledby="t-h">
+        <h2 id="t-h">Tickets</h2>
+        <div class="stack" style="gap:16px">
+          {o.lines.map((l) => (
+            <div class="ord-line" data-order-line>
+              <div class="small"><strong>{l.competition}</strong> · {l.qty} ticket{l.qty === 1 ? '' : 's'}</div>
+              {l.ticketNumbers.length ? <ul class="tix">{l.ticketNumbers.map((n) => withdrawn.has(n)
+                ? <li class="tix-out" data-withdrawn><s>{ticket(n)}</s><span class="pill">withdrawn</span></li>
+                : <li>{ticket(n)}</li>)}</ul> : <p class="small muted" style="margin:6px 0 0">No ticket numbers yet.</p>}
+            </div>
+          ))}
         </div>
-        {o.status === 'paid' ? <label class="small row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" name="void_tickets" style="margin-top:2px" /> Take the tickets out of the draw (full refund only, while the competition is open)</label> : null}
-        <div><button class="btn" type="submit">Refund</button></div>
-      </form>
-    ) : null}
+      </section>
 
-    {p.refunds.length ? (
-      <div class="tbl-wrap" style="margin-top:18px"><table class="tbl">
-        <thead><tr><th>Refund</th><th>Amount</th><th>Status</th><th>Reason</th><th>By</th><th>When</th></tr></thead>
-        <tbody>{p.refunds.map((r) => (
-          <tr>
-            <td class="mono small">{r.number}{r.reference ? <div class="muted">{r.reference}</div> : null}</td>
-            <td>{gbp(r.amount)}</td>
-            <td><span class={`pill pill--${r.status === 'completed' ? 'paid' : r.status === 'failed' ? 'failed' : ''}`}>{r.status}</span>{r.error ? <div class="small muted" style="max-width:320px">{r.errorCode ? `${r.errorCode}: ` : ''}{r.error}</div> : null}</td>
-            <td class="small">{r.reason}</td>
-            <td class="small">{r.automatic ? 'Automatic' : r.by ?? '—'}</td>
-            <td class="small muted">{when(r.at)}</td>
-          </tr>
-        ))}</tbody>
-      </table></div>
-    ) : null}
+      <section class="panel" data-payment-panel aria-labelledby="p-h">
+        <h2 id="p-h">Payment</h2>
+        <dl class="facts">
+          <div><dt>Provider</dt><dd>{p.provider ?? (p.channel === 'event' ? 'Event sale' : '—')}{p.method ? <span class="small muted"> · {p.method}</span> : null}</dd></div>
+          <div><dt>Payment job</dt><dd class="mono">{p.paymentJobReference ?? '—'}</dd></div>
+          <div><dt>Payment</dt><dd class="mono">{p.paymentReference ?? '—'}</dd></div>
+          <div><dt>Paid</dt><dd>{when(p.paidAt)}</dd></div>
+          <div><dt>Card type</dt><dd>{cardText}</dd></div>
+          <div><dt>Refunded</dt><dd>{gbp(p.refunded)} of {gbp(p.total)}{canRefund ? <span class="small muted"> · {gbp(p.refundable)} refundable</span> : null}</dd></div>
+        </dl>
+      </section>
 
-    <h3 class="small" style="margin:20px 0 8px;text-transform:uppercase;letter-spacing:.08em">History</h3>
-    {p.history.length ? (
-      <ol class="history">{p.history.map((h) => (
-        <li>
-          <div class="small"><span class="muted">{when(h.at)}</span> · <strong>{h.kind}</strong>{h.status ? ` · ${h.status}` : ''}{h.summary ? ` · ${h.summary}` : ''}</div>
-          {h.payload ? <details><summary class="adm-link small">Raw (redacted)</summary><pre>{pretty(h.payload)}</pre></details> : null}
-        </li>
-      ))}</ol>
-    ) : <p class="small muted">No calls to the payment provider for this order.</p>}
-  </section>
+      {canRefund || p.refunds.length ? (
+        <section class="panel" aria-labelledby="r-h" data-refunds-panel>
+          <h2 id="r-h">Refunds</h2>
+          {canRefund ? (
+            <form class="stack refund" style="gap:12px" data-admin-form={`/api/admin/orders/${p.id}/refund`} data-reload
+              data-confirm={`Refund through ${provider}? Money goes back to the customer's card.`}>
+              <div class="form-grid">
+                <div class="field"><label for="ra">Amount (£)</label><input id="ra" name="amount" type="number" data-type="number" step="0.01" min="0.01" max={p.refundable} placeholder={`${p.refundable.toFixed(2)} (all that's left)`} /><span class="hint">Leave empty to refund everything left ({gbp(p.refundable)}). Less than that is a partial refund: the order stays paid and its tickets stay in the draw.</span></div>
+                <div class="field"><label for="rr">Reason (kept on the refund)</label><input id="rr" name="reason" required minlength="3" maxlength="300" placeholder="e.g. Customer asked by email" /></div>
+              </div>
+              {o.status === 'paid' ? <label class="small row" style="gap:8px;flex-wrap:nowrap;align-items:flex-start"><input type="checkbox" name="void_tickets" style="margin-top:2px" /> Take the tickets out of the draw (full refund only, while the competition is open)</label> : null}
+              <div><button class="btn btn--danger" type="submit">Refund</button></div>
+            </form>
+          ) : null}
+
+          {p.refunds.length ? (
+            <div class="tbl-wrap" style={canRefund ? 'margin-top:20px' : undefined}><table class="tbl">
+              <thead><tr><th>Refund</th><th class="num-r">Amount</th><th>Status</th><th>Reason</th><th>By</th><th>When</th></tr></thead>
+              <tbody>{p.refunds.map((r) => (
+                <tr>
+                  <td class="mono small">{r.number}{r.reference ? <div class="muted">{r.reference}</div> : null}</td>
+                  <td class="num-r">{gbp(r.amount)}</td>
+                  <td><span class={`pill pill--${r.status === 'completed' ? 'paid' : r.status === 'failed' ? 'failed' : 'pending'}`}>{r.status}</span>{r.error ? <div class="small muted" style="max-width:320px">{r.errorCode ? `${r.errorCode}: ` : ''}{r.error}</div> : null}</td>
+                  <td class="small">{r.reason}</td>
+                  <td class="small">{r.automatic ? 'Automatic' : r.by ?? '—'}</td>
+                  <td class="small muted">{when(r.at)}</td>
+                </tr>
+              ))}</tbody>
+            </table></div>
+          ) : null}
+        </section>
+      ) : null}
+    </div>
+
+    <section class="panel ord-history" aria-labelledby="h-h">
+      <h2 id="h-h">History</h2>
+      {p.history.length ? (
+        <ol class="history">{p.history.map((h) => (
+          <li>
+            <div class="small"><span class="muted">{when(h.at)}</span> · <strong>{h.kind}</strong>{h.status ? ` · ${h.status}` : ''}{h.summary ? ` · ${h.summary}` : ''}</div>
+            {h.payload ? <details><summary class="adm-link small">Raw (redacted)</summary><pre>{pretty(h.payload)}</pre></details> : null}
+          </li>
+        ))}</ol>
+      ) : <p class="small muted">No calls to the payment provider for this order.</p>}
+    </section>
+  </div>
 </AdminLayout>
 
 <style>
@@ -109,8 +140,21 @@ const pretty = (v: unknown) => JSON.stringify(v, null, 2);
   .facts dt { font-size: 12px; font-weight: 700; color: var(--muted-2); margin-bottom: 4px; }
   .facts dd { margin: 0; overflow-wrap: anywhere; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; }
-  .refund { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
-  .history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-  .history li { border-left: 2px solid var(--line-2); padding-left: 12px; }
+  .ord-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; padding-bottom: 18px; margin-bottom: 18px; border-bottom: 1px solid var(--line); }
+  .ord-ref { margin: 4px 0 0; font-size: clamp(22px, 3vw, 30px); letter-spacing: .02em; text-transform: none; }
+  .ord-total { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+  .ord-total b { font-size: 28px; }
+  .ord-grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .ord-history { position: sticky; top: 92px; }
+  .ord-line + .ord-line { border-top: 1px solid var(--line); padding-top: 16px; }
+  .tix { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+  .tix li { padding: 4px 10px; border: 1px solid var(--line-2); border-radius: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .tix li.tix-out { color: var(--muted); border-style: dashed; display: inline-flex; gap: 6px; align-items: center; }
+  .tix li.tix-out .pill { font-size: 10px; padding: 0 6px; }
+  .history { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+  .history li { border-left: 2px solid var(--line-2); padding-left: 12px; position: relative; }
+  .history li::before { content: ''; position: absolute; left: -5px; top: 6px; width: 8px; height: 8px; border-radius: 50%; background: var(--line-3); }
   pre { margin: 8px 0 0; padding: 12px; background: #000; border: 1px solid var(--line); overflow-x: auto; max-height: 360px; font-size: 12px; white-space: pre; }
+  @media (max-width: 1100px) { .ord-grid { grid-template-columns: minmax(0, 1fr); } .ord-history { position: static; } }
+  @media (max-width: 560px) { .ord-total { align-items: flex-start; } }
 </style>

@@ -102,14 +102,16 @@ class RefundWithdrawTicketsTest extends TestCase
         Mail::assertQueued(OrderRefunded::class, fn (OrderRefunded $m) => $m->full && in_array(OrderRefunded::TICKETS_STAY, $m->lines(), true));
 
         $p = $this->panel($order);
-        $this->assertSame([20, true, true], [$p['ticketsInDraw'], $p['refundedButInDraw'], $p['canWithdrawTickets']]);
+        $this->assertSame([20, true, true, []], [$p['ticketsInDraw'], $p['refundedButInDraw'], $p['canWithdrawTickets'], $p['withdrawnTickets']]);
 
         $this->actingAs($this->admin)->postJson("/api/admin/orders/{$order->id}/withdraw-tickets")->assertOk();
         $this->assertSame(0, $this->inDraw($order));
         $this->assertSame(0, Entry::count());
         $this->assertSame(['refunded', 25000], [$order->fresh()->status, $order->fresh()->refunded_pence], 'money unchanged');
         $this->assertTrue(PaymentEvent::where('order_id', $order->id)->where('kind', 'tickets')->where('status', 'Withdrawn')->exists());
-        $this->assertFalse($this->panel($order)['refundedButInDraw']);
+        $p = $this->panel($order);
+        $this->assertFalse($p['refundedButInDraw']);
+        $this->assertCount(20, $p['withdrawnTickets'], 'the order page lists the withdrawn numbers');
 
         // The tickets line changed (stay → out), so one short note; no second refund email.
         Mail::assertQueued(OrderRefunded::class, 2);   // one per refund, none for the clean-up
