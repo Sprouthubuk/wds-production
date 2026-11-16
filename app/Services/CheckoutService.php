@@ -122,7 +122,13 @@ class CheckoutService
                 // Site credit (online, signed-in customers)
                 $credit = 0;
                 if ($user && ! empty($input['useCredit'])) {
-                    $credit = min($total, $user->creditBalancePence());
+                    // Credit is only taken off the balance once an order is paid, so credit already put on another
+                    // order that is still awaiting payment isn't available again (two tabs, two checkouts at once).
+                    // The user row lock makes two simultaneous checkouts by one customer take turns.
+                    User::whereKey($user->id)->lockForUpdate()->first();
+                    $onHold = (int) Order::where('user_id', $user->id)->where('status', 'pending')
+                        ->where('reserved_until', '>', now())->sum('credit_used_pence');
+                    $credit = min($total, max(0, $user->creditBalancePence() - $onHold));
                     $total -= $credit;
                 }
 
