@@ -37,7 +37,7 @@ const nav = [
 </head>
 <body class="adm">
   <aside class="adm-side">
-    <a href="/admin" class="adm-logo"><img src="/images/wds-logo.png" alt="WDS Competitions" width="120" height="40" /></a>
+    <a href="/admin" class="adm-logo"><img src="/images/wds-logo.png" alt="WDS Competitions" width="120" height="17" /></a>
     <nav aria-label="Admin">
       {nav.filter(([, , , adminOnly]) => admin.isAdmin || !adminOnly).map(([key, label, href]) => (
         <a href={href} class:list={['adm-nav', { on: key === active }]} aria-current={key === active ? 'page' : undefined}>{label}</a>

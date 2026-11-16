@@ -100,6 +100,15 @@ export interface SiteSettings {
   drawsYoutubeUrl: string | null;
   siteSpendCapEnabled?: boolean;
   siteSpendCapMonthly?: number | null;
+  /** Footer config (config/wds.php). Optional so an older API still renders a footer. */
+  footer?: FooterConfig;
+}
+
+export interface FooterConfig {
+  instagram: { handle: string; url: string };
+  youtube: { name: string; url: string };
+  icoNumber: string | null;
+  poweredBy: boolean;
 }
 
 export interface BasketLine {
