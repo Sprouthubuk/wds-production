@@ -12,7 +12,11 @@
         <tr><td style="border-top:1px solid #222;padding:16px 0;font-size:16px;line-height:1.5">
           <div style="font-size:18px;font-weight:700;padding-bottom:6px">{{ $competition->title }}</div>
           Your postal entry received on {{ $entry->receivedMoment()->timezone('Europe/London')->format('j F Y') }} was not entered into the draw.<br>
+          @if ($entry->isAccountRejection())
+          {{ \App\Models\PostalEntry::NEUTRAL_ACCOUNT_REASON }}
+          @else
           Reason: <strong>{{ $entry->rejection_reason }}</strong>.
+          @endif
         </td></tr>
       @endif
       @if ($deadline)

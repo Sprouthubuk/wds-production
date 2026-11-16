@@ -67,12 +67,6 @@ parameters:
 			path: app/Http/Controllers/Api/Admin/CustomerController.php
 
 		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Controllers/Api/Admin/CustomerController.php
-
-		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$day\.$#'
 			identifier: property.notFound
 			count: 1
@@ -421,24 +415,6 @@ parameters:
 			path: app/Http/Controllers/Api/MeController.php
 
 		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/Api/MeController.php
-
-		-
-			message: '#^Cannot call method gt\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/Api/MeController.php
-
-		-
-			message: '#^Cannot call method lt\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/Api/MeController.php
-
-		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -577,21 +553,9 @@ parameters:
 			path: app/Http/Resources/CompetitionTeaser.php
 
 		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Http/Resources/MeResource.php
-
-		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
-			path: app/Http/Resources/MeResource.php
-
-		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
 			path: app/Http/Resources/MeResource.php
 
 		-
@@ -823,12 +787,6 @@ parameters:
 			path: app/Models/Setting.php
 
 		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 3
-			path: app/Models/User.php
-
-		-
 			message: '#^Cannot call method copy\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -1037,18 +995,6 @@ parameters:
 			identifier: nullsafe.neverNull
 			count: 1
 			path: app/Services/ReportService.php
-
-		-
-			message: '#^Cannot call method format\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Services/ResponsiblePlay.php
-
-		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 2
-			path: app/Services/ResponsiblePlay.php
 
 		-
 			message: '#^Empty array passed to foreach\.$#'

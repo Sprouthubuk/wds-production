@@ -11,7 +11,11 @@ We couldn't accept your entry.
 
 {!! $competition->title !!}
 Your postal entry received on {!! $entry->receivedMoment()->timezone('Europe/London')->format('j F Y') !!} was not entered into the draw.
+@if ($entry->isAccountRejection())
+{!! \App\Models\PostalEntry::NEUTRAL_ACCOUNT_REASON !!}
+@else
 Reason: {!! $entry->rejection_reason !!}.
+@endif
 @endif
 @if ($deadline)
 
