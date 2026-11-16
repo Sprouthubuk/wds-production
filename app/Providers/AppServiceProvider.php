@@ -32,5 +32,10 @@ class AppServiceProvider extends ServiceProvider
 
             return (new AccountPasswordLink($user, $url, newAccount: ! $user->tokens()->exists()))->to($user->email);
         });
+
+        // Replies to any email go to the contact address, whatever the sending address (MAIL_FROM_ADDRESS) is.
+        // An email that sets its own Reply-To (a contact form enquiry: the customer) replaces this.
+        // (Config, not Mail::alwaysReplyTo, so every mailer gets it, however late it's resolved.)
+        config(['mail.reply_to' => ['address' => (string) config('wds.contact_email'), 'name' => (string) config('mail.from.name')]]);
     }
 }

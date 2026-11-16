@@ -11,13 +11,11 @@ final class SettingsPayload
         'legalName' => 'WDS Originals Limited',
         'companyNumber' => '13330886',
         'registeredOffice' => 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
-        'supportEmail' => 'competitions@wdsoriginals.com',
         // One line per row: "WDS Competitions – Free Entry, Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY, United Kingdom".
         'postalEntryAddress' => ['WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'],
         'drawsInstagram' => 'wds_originals',
         'socials' => [
             ['label' => 'Instagram @wds_originals', 'url' => 'https://instagram.com/wds_originals'],
-            ['label' => 'Instagram @wds_competitions', 'url' => 'https://instagram.com/wds_competitions'],
         ],
         'youtubeUrl' => 'https://youtube.com/@wdsoriginals',
         // Optional YouTube channel for live draws. Instagram stays the primary channel; with both set
@@ -31,7 +29,8 @@ final class SettingsPayload
 
     public static function get(): array
     {
-        return array_merge(self::DEFAULTS, Setting::get('site', []) ?? []);
+        // The contact address comes from config('wds.contact_email') only, whatever an older saved setting says.
+        return ['supportEmail' => (string) config('wds.contact_email')] + array_merge(self::DEFAULTS, Setting::get('site', []) ?? []);
     }
 
     /** Where draws are streamed, to finish "Drawn live on …": "our socials" or "Instagram @wds_originals". */

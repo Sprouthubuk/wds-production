@@ -21,7 +21,6 @@ class SettingsController extends Controller
             'legalName' => ['sometimes', 'string', 'max:120'],
             'companyNumber' => ['sometimes', 'string', 'max:20'],
             'registeredOffice' => ['sometimes', 'string', 'max:255'],
-            'supportEmail' => ['sometimes', 'email'],
             'postalEntryAddress' => ['sometimes', 'array', 'max:8'], 'postalEntryAddress.*' => ['string', 'max:120'],
             'drawsInstagram' => ['sometimes', 'string', 'max:60'],
             'socials' => ['sometimes', 'array'], 'socials.*.label' => ['required', 'string'], 'socials.*.url' => ['required', 'url'],
