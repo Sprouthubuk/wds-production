@@ -8,6 +8,12 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
+/**
+ * Larastan reads these timestamp columns as strings; the casts below make them dates.
+ *
+ * @property \Illuminate\Support\Carbon|null $break_until
+ * @property \Illuminate\Support\Carbon|null $self_excluded_until
+ */
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable;

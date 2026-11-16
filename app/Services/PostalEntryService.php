@@ -90,6 +90,22 @@ class PostalEntryService
         if (! ResponsiblePlay::isAdult($data['date_of_birth'])) {
             return 'Entrant under 18';
         }
+        // As with free online entry: an account that is closed, suspended, self-excluded or on a break can't enter
+        // by post either (matched on the email, as guest checkout is). Spend limits don't apply: postal entry is free.
+        // These reasons are for Admin only: the entrant's email gives a neutral one (PostalEntry::isAccountRejection).
+        $account = User::where('email', TicketAllocator::normaliseEmail($data['email']))->first();
+        if ($account?->closed_at) {
+            return PostalEntry::ACCOUNT_REASON_PREFIX.'closed';
+        }
+        if ($account?->suspended_at) {
+            return PostalEntry::ACCOUNT_REASON_PREFIX.'suspended';
+        }
+        if ($account?->self_excluded_until?->isFuture()) {
+            return PostalEntry::ACCOUNT_REASON_PREFIX.'self-excluded until '.$account->self_excluded_until->format('j M Y');
+        }
+        if ($account?->break_until?->isFuture()) {
+            return PostalEntry::ACCOUNT_REASON_PREFIX.'on a break until '.$account->break_until->format('j M Y, H:i');
+        }
         if ($competition->max_per_person !== null && $this->allocator->heldBy($competition, $data['email']) >= $competition->max_per_person) {
             return 'Maximum entries per person reached';
         }
