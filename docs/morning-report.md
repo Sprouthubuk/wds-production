@@ -13,6 +13,7 @@ was changed.
    - **#72:** site credit could be spent twice by two checkouts at once.
    - **#69:** a payment for the wrong amount is now "refund needed" instead of a silent failure.
    - **#77:** discount code usage limits count unpaid orders still holding the code.
+   - **#81:** a late payment whose credit or code use has since gone on another order is refused and refunded.
 3. **Responsible play:**
    - **#70:** spend limits now run on UK days, not UTC ones.
    - **#71:** postal entries from closed, suspended, self-excluded or paused accounts are rejected. The entrant's
@@ -28,9 +29,9 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 
 ## Baseline → now
 
-| | Baseline (main @ 6be81a3) | Now (main @ 846b7f1) |
+| | Baseline (main @ 6be81a3) | Now (main @ c56cfa8) |
 |---|---|---|
-| PHP tests | 186 (184 passed, 2 skipped) | 202 (200 passed, 2 skipped) |
+| PHP tests | 186 (184 passed, 2 skipped) | 205 (203 passed, 2 skipped) |
 | Web tests (node) | 19/19 | 23/23 |
 | Website build | OK | OK, plus `astro check` (strict): 0 errors |
 | Larastan | not installed | level 5, 0 new errors. Pre-existing findings are in a baseline, which shrank in #71 when one false positive was fixed. |
@@ -61,6 +62,11 @@ draw WDST-PT11VI on staging, which the check correctly flags. No code change is 
 - **#74:** small text links are 24px tap targets.
 - **#75:** uploaded photos get a 720px copy for cards and thumbnails.
 - **#77:** discount code usage limits count pending, unexpired orders holding the code.
+- **#81:** a payment arriving after its order expired is refused and refunded in full if that order's site credit
+  or discount-code use has since gone on another order. The customer gets a plain email: "Your payment arrived
+  after your order had expired, and the credit or discount it used had already been applied to another order, so
+  we've refunded it in full. You're welcome to enter again." Admin's payment history gives the specific reason.
+  All other late payments are unchanged. Tests cover a credit clash, a code clash and a late payment with no clash.
 - **#79:** on phones, the selected account tab is centred in the tab strip on load, on a click, after a resize and
   on a hash change (e.g. `/account#limits`), which didn't switch tabs before. Also a colour contrast check for the
   countdown with animations stopped.
@@ -73,10 +79,6 @@ None.
 
 - **Waiting on your decision: max per person and limits are per email address.** A guest can use
   `name+1@gmail.com` to get round them. Unchanged, as asked.
-- **Low: a late payment for an expired order.** If the customer reused that order's credit or discount use on a new
-  order in the meantime, the late payment is still honoured and uses them again. The credit balance can go
-  negative, or a code can go one past its limit. Rare: it needs a payment to arrive after the reservation ended.
-  Suggested fix: on that late-payment path, refuse and refund if the credit or code is no longer available.
 - **Low: postal date with no time.** A date-only "received" value via the API counts from midnight UTC. Admin
   always sends a date and time, so this doesn't affect normal use.
 - **Low: ESLint not added**, because of a moderate advisory in a `typescript-eslint` dependency. Strict
@@ -126,18 +128,15 @@ None.
 2. **Instagram:** is the competitions account `@wds_competitions` or `@wds_originals`?
 3. Bundle prices show whole pounds ("£40") but single tickets show pence ("£14.95"). Is that intended?
 4. When will the legal pages' final text and "last updated" date be ready?
-5. Should the late-payment edge case above be fixed? If yes, a payment arriving for an expired order would be
-   refused and refunded when its credit or code use is no longer available.
 
 ## Next session starts here
 
-**State:** main @ 846b7f1 is green. The only open PR is #25 (leave alone). The working tree is clean and no local
+**State:** main @ c56cfa8 is green. The only open PR is #25 (leave alone). The working tree is clean and no local
 servers are running. The overnight QA list is finished.
 
 **Possible next work, waiting on Jason:**
-1. The late-payment edge case (question 5).
-2. The guest and email spend-limit design.
-3. The copy questions 1–4.
+1. The guest and email spend-limit design.
+2. The copy questions 1–4.
 
 **How to run:**
 - PHP: `php artisan test` (PowerShell).
