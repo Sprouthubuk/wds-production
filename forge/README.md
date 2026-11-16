@@ -199,11 +199,10 @@ QUEUE_CONNECTION=database
 FILESYSTEM_DISK=local
 
 MAIL_MAILER=resend                       # section 7, Email (Resend)
-RESEND_API_KEY=<from Resend, sending access, this domain only>
-MAIL_FROM_ADDRESS=competitions@wdsoriginals.com
+RESEND_API_KEY=<from Resend, sending access>
+MAIL_FROM_ADDRESS=noreply@wdscompetitions.co.uk
 MAIL_FROM_NAME="WDS Competitions"
-CONTACT_EMAIL=sales@wdsoriginals.com      # the customer contact address everywhere; contact form goes here
-NOREPLY_ADDRESS=noreply@wdscompetitions.co.uk   # contact form enquiries are sent from this
+# CONTACT_EMAIL: leave unset on production (defaults to sales@wdsoriginals.com); a developer address on staging.
 
 RAFFLE_RESERVATION_MINUTES=15
 PAYMENT_DRIVER=fake                      # cashflows after the go-live checklist in docs/cashflows-testing.md
@@ -429,29 +428,28 @@ Customer email (order confirmations with ticket numbers, postal entries, passwor
 the Verity alerts go through **Resend** (`MAIL_MAILER=resend`, package `resend/resend-php`). Every email
 has a plain-text part and the company footer; links open the website (`FRONTEND_URL`).
 
-**Go-live, once** (production and staging can share the Resend account; use one API key per site):
-1. Resend → Domains → **Add domain** `wdsoriginals.com` (the from address is `competitions@wdsoriginals.com`).
-   Region: EU (Ireland). If the root domain's DNS is busy with other mail, add a subdomain instead
-   (e.g. `send.wdsoriginals.com`) and change `MAIL_FROM_ADDRESS` to match.
-2. Add the DNS records Resend shows at the domain's DNS host: the **DKIM** TXT record(s), the **SPF**
-   MX + TXT records for the `send` subdomain, and (recommended) a **DMARC** record such as
-   `_dmarc.wdsoriginals.com TXT "v=DMARC1; p=none; rua=mailto:<a mailbox you read>"`. Don't replace an
-   existing SPF or DMARC record: merge with it (one SPF record per name).
-3. Wait until Resend shows the domain as **Verified**.
-4. Resend → API keys → **Create**: permission *Sending access*, domain `wdsoriginals.com` only. Copy it once.
-5. Forge → Site → Environment: `MAIL_MAILER=resend`, `RESEND_API_KEY=<the key>`,
-   `MAIL_FROM_ADDRESS=competitions@wdsoriginals.com`, `MAIL_FROM_NAME="WDS Competitions"`. Never put the key
-   in git, chat or tickets.
-6. Commands: `php8.5 artisan config:cache`, `php8.5 artisan queue:restart` (emails are queued), then
-   `php8.5 artisan wds:mail-test <your email>`. It prints the mailer and sender; check the email arrives, isn't
-   in spam, and that "show original" says SPF, DKIM and DMARC **pass**.
-7. Every email has Reply-To `CONTACT_EMAIL` (`sales@wdsoriginals.com`), so customer replies go there, not to
-   the sending address. Make sure that mailbox receives them.
-8. Contact form enquiries are emailed to `CONTACT_EMAIL` **from `NOREPLY_ADDRESS`** (`noreply@wdscompetitions.co.uk`),
-   with Reply-To the customer. That's a second domain: add and verify `wdscompetitions.co.uk` in Resend too
-   (steps 1–3), and give the API key access to it (or use an all-domains sending key). Until then Resend refuses
-   those emails; the enquiry is still saved in the database. Check with a test message on the contact page.
+**Set up:** `wdscompetitions.co.uk` is verified in Resend, and email is sent from `noreply@wdscompetitions.co.uk`
+(staging already sends from it: password, order and refund emails deliver).
 
-Staging: its own API key, the same verified domain, and the same `wds:mail-test` check. Locally use
-`MAIL_MAILER=log` (emails go to `storage/logs`).
+| Forge → Site → Environment | Production | Staging |
+|---|---|---|
+| `MAIL_MAILER` | `resend` | `resend` |
+| `RESEND_API_KEY` | set (its own key) | set (its own key) |
+| `MAIL_FROM_ADDRESS` | `noreply@wdscompetitions.co.uk` | `noreply@wdscompetitions.co.uk` |
+| `MAIL_FROM_NAME` | `"WDS Competitions"` | `"WDS Competitions"` |
+| `CONTACT_EMAIL` | **leave unset** (defaults to `sales@wdsoriginals.com`) | a developer address |
+
+Never put the API key in git, chat or tickets.
+
+- `CONTACT_EMAIL` (`config('wds.contact_email')`) is the customer contact address shown on the site, in policies
+  and in every email footer. Every email has Reply-To set to it, so customer replies reach it and not the
+  no-reply sender. On staging it points at a developer, so test replies and enquiries don't reach sales@.
+- Contact form enquiries go to `CONTACT_EMAIL`, sent from `NOREPLY_ADDRESS` (default
+  `noreply@wdscompetitions.co.uk`; leave unset) with Reply-To the customer. The customer gets a short
+  acknowledgement.
+- After changing any of these: `php8.5 artisan config:cache`, `php8.5 artisan queue:restart` (emails are queued),
+  then `php8.5 artisan wds:mail-test <your email>`. It prints the mailer and sender; check the email arrives, isn't
+  in spam, and that "show original" says SPF, DKIM and DMARC **pass**.
+
+Locally use `MAIL_MAILER=log` (emails go to `storage/logs`).
 
