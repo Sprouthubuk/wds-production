@@ -109,6 +109,12 @@ class CheckoutService
                     if (! $code || ! $code->isUsable()) {
                         throw new EntryException('That discount code isn\'t valid.');
                     }
+                    // times_used only goes up when an order is paid: unpaid orders still holding the code count too,
+                    // or a code limited to one use could go on several checkouts at once. (The code row is locked.)
+                    if ($code->usage_limit && $code->times_used + Order::where('discount_code_id', $code->id)->where('status', 'pending')
+                        ->where('reserved_until', '>', now())->count() >= $code->usage_limit) {
+                        throw new EntryException('That discount code has been fully used.');
+                    }
                     $base = $code->competition_id
                         ? collect($lines)->where('competition_id', $code->competition_id)->sum('line_total_pence')
                         : $total;
