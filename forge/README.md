@@ -202,7 +202,8 @@ MAIL_MAILER=resend                       # section 7, Email (Resend)
 RESEND_API_KEY=<from Resend, sending access>
 MAIL_FROM_ADDRESS=noreply@wdscompetitions.co.uk
 MAIL_FROM_NAME="WDS Competitions"
-# CONTACT_EMAIL: leave unset on production (defaults to sales@wdsoriginals.com); a developer address on staging.
+# CONTACT_EMAIL: unset on production and staging (defaults to sales@wdsoriginals.com).
+# ENQUIRY_EMAIL: unset on production (enquiries go to CONTACT_EMAIL); a developer address on staging.
 
 RAFFLE_RESERVATION_MINUTES=15
 PAYMENT_DRIVER=fake                      # cashflows after the go-live checklist in docs/cashflows-testing.md
@@ -437,16 +438,19 @@ has a plain-text part and the company footer; links open the website (`FRONTEND_
 | `RESEND_API_KEY` | set (its own key) | set (its own key) |
 | `MAIL_FROM_ADDRESS` | `noreply@wdscompetitions.co.uk` | `noreply@wdscompetitions.co.uk` |
 | `MAIL_FROM_NAME` | `"WDS Competitions"` | `"WDS Competitions"` |
-| `CONTACT_EMAIL` | **leave unset** (defaults to `sales@wdsoriginals.com`) | a developer address |
+| `CONTACT_EMAIL` | **leave unset** (defaults to `sales@wdsoriginals.com`) | **leave unset** |
+| `ENQUIRY_EMAIL` | **leave unset** (enquiries go to `CONTACT_EMAIL`) | a developer address |
 
 Never put the API key in git, chat or tickets.
 
-- `CONTACT_EMAIL` (`config('wds.contact_email')`) is the customer contact address shown on the site, in policies
+- `CONTACT_EMAIL` (`config('wds.contact_email')`) is the public contact address shown on the site, in policies
   and in every email footer. Every email has Reply-To set to it, so customer replies reach it and not the
-  no-reply sender. On staging it points at a developer, so test replies and enquiries don't reach sales@.
-- Contact form enquiries go to `CONTACT_EMAIL`, sent from `NOREPLY_ADDRESS` (default
-  `noreply@wdscompetitions.co.uk`; leave unset) with Reply-To the customer. The customer gets a short
-  acknowledgement.
+  no-reply sender. It's the same on staging, so staging shows the real address.
+- `ENQUIRY_EMAIL` (`config('wds.enquiry_email')`) is only where contact form enquiry emails are delivered; it's
+  never shown to customers. Unset, enquiries go to `CONTACT_EMAIL`. On staging it points at a developer, so test
+  enquiries don't reach sales@.
+- Enquiries are sent from `NOREPLY_ADDRESS` (default `noreply@wdscompetitions.co.uk`; leave unset) with Reply-To
+  the customer. The customer gets a short acknowledgement.
 - After changing any of these: `php8.5 artisan config:cache`, `php8.5 artisan queue:restart` (emails are queued),
   then `php8.5 artisan wds:mail-test <your email>`. It prints the mailer and sender; check the email arrives, isn't
   in spam, and that "show original" says SPF, DKIM and DMARC **pass**.

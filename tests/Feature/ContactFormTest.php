@@ -121,6 +121,30 @@ class ContactFormTest extends TestCase
         $this->assertStringContainsString('instagram.com/wds_originals', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
     }
 
+    public function test_enquiries_go_to_the_contact_address_when_no_enquiry_address_is_set(): void
+    {
+        Mail::fake();
+        config(['wds.contact_email' => 'shown@example.com', 'wds.enquiry_email' => null]);
+        $this->postJson('/api/contact', self::FORM)->assertOk();
+        Mail::assertQueued(ContactEnquiry::class, fn (ContactEnquiry $m) => $m->hasTo('shown@example.com'));
+    }
+
+    public function test_an_enquiry_address_only_changes_where_enquiries_are_delivered(): void
+    {
+        config(['wds.enquiry_email' => 'dev@example.com']);
+        // Nothing customer-facing shows it: the site settings, the email footers and the Reply-To keep the contact address.
+        $this->assertStringNotContainsString('dev@example.com', json_encode($this->getJson('/api/settings')->json()));
+        $ack = $this->deliver('jo@example.com', new ContactAcknowledgement);
+        $this->assertSame(['sales@wdsoriginals.com'], array_map(fn ($a) => $a->getAddress(), $ack->getReplyTo()));
+        $this->assertStringNotContainsString('dev@example.com', $ack->getHtmlBody().$ack->getTextBody());
+
+        Mail::fake();
+        $this->postJson('/api/contact', self::FORM)->assertOk();
+        Mail::assertQueued(ContactEnquiry::class, fn (ContactEnquiry $m) => $m->hasTo('dev@example.com') && ! $m->hasTo('sales@wdsoriginals.com')
+            && $m->hasReplyTo('jo@example.com'));
+        Mail::assertQueued(ContactAcknowledgement::class, fn (ContactAcknowledgement $m) => $m->hasTo('jo@example.com'));
+    }
+
     public function test_an_unknown_topic_is_refused(): void
     {
         Mail::fake();

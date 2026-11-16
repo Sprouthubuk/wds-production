@@ -39,7 +39,7 @@ class EngagementController extends Controller
             'page' => $data['page'] ?? null,
         ]);
         // To the contact address (Reply-To: the customer), and a short acknowledgement to the customer. Both queued.
-        Mail::to(config('wds.contact_email'))->queue(new ContactEnquiry($contact));
+        Mail::to(config('wds.enquiry_email') ?: config('wds.contact_email'))->queue(new ContactEnquiry($contact));
         Mail::to($contact->email, $contact->name)->queue(new ContactAcknowledgement);
 
         return response()->json(['message' => 'Thanks — we\'ll reply within one working day.']);
