@@ -5,6 +5,11 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * Larastan reads these columns as strings; the casts make them dates/arrays.
+ *
+ * @property \Illuminate\Support\Carbon|null $drawn_at
+ */
 class Winner extends Model
 {
     protected $fillable = ['competition_id', 'draw_id', 'ticket_id', 'user_id', 'display_name', 'prize', 'image', 'verification', 'handover', 'show_on_site', 'drawn_at',

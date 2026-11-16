@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
  * Larastan reads this timestamp column as a string; the cast below makes it a date.
  *
  * @property \Illuminate\Support\Carbon|null $reserved_until
+ * @property \Illuminate\Support\Carbon|null $paid_at
  */
 class Order extends Model
 {

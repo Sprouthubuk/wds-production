@@ -110,3 +110,26 @@ test('staff see only their pages, and no quick search', async ({ page }) => {
   expect(links.map((t) => t.trim())).toEqual(['Event sales', 'Postal entries']);
   await expect(page.locator('#adm-q')).toHaveCount(0);
 });
+
+test('dashboard: KPIs, needs attention, chart, live competitions and recent orders, at 1440 and 375', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page);
+  const ref = await paidOrder(page, 'dash@e2e.test');
+  await page.goto('/admin');
+  const kpis = page.getByRole('region', { name: 'Key figures' });
+  for (const label of ['Revenue today', 'Last 7 days', 'This month', 'Tickets sold today', 'New customers', 'Average order']) await expect(kpis).toContainText(label);
+  await expect(page.locator('[data-attention]')).toBeVisible();
+  await expect(page.getByRole('img', { name: /Daily sales for the last 30 days/ })).toBeVisible();
+  await expect(page.locator('.chart-svg rect')).toHaveCount(30);
+  const bmw = page.locator('.live-card', { hasText: 'E2E BMW E46' });
+  await expect(bmw.getByRole('progressbar')).toBeVisible();
+  await expect(bmw).toContainText('Verity (drand)');
+  await expect(bmw.locator('[data-countdown]')).toHaveText(/\d+d \d+h|\d+h \d+m|\d+m/);
+  await page.getByRole('link', { name: ref }).click();
+  await page.waitForURL(/\/admin\/orders\/\d+$/);
+
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.goto('/admin');
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});

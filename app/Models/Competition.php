@@ -6,6 +6,13 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+/**
+ * Larastan reads these columns as strings; the casts make them dates/arrays.
+ *
+ * @property \Illuminate\Support\Carbon|null $closes_at
+ * @property \Illuminate\Support\Carbon|null $draw_at
+ * @property array<int, array{src?: string, alt?: string}>|null $images
+ */
 class Competition extends Model
 {
     protected $fillable = [

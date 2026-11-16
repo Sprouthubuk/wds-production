@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const ADMIN = { id: 1, firstName: 'Jo', lastName: 'Admin', email: 'jo@example.com', isAdmin: true, isStaff: true };
 const STAFF = { ...ADMIN, id: 2, isAdmin: false };
 const CUSTOMER = { ...ADMIN, id: 3, isAdmin: false, isStaff: false };
-const DASH = { revenueToday: 0, ordersToday: 0, revenueTotal: 0, customers: 0, postalThisWeek: 0, idToReview: 0, refundsNeeded: 0, daily: [], live: [], recentOrders: [] };
+const DASH = { kpis: { revenueToday: 0, ordersToday: 0, revenue7Days: 0, revenueMonth: 0, ticketsToday: 0, newCustomers7Days: 0, newCustomersToday: 0, averageOrderMonth: null }, daily: [], live: [], attention: [], recentOrders: [] };
 
 // Tokens: admin, staff, customer are valid; stale passes /me but is rejected by the admin API (expired mid-session).
 const users = { 'Bearer admin': ADMIN, 'Bearer staff': STAFF, 'Bearer customer': CUSTOMER, 'Bearer stale': ADMIN };

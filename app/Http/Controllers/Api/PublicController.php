@@ -140,7 +140,7 @@ class PublicController extends Controller
             'redraws' => (int) Winner::where('draw_id', $d->id)->whereNotNull('redraw_number')->count(),
         ]);
 
-        return response()->json(['data' => $upcoming->concat($past)->values()]);
+        return response()->json(['data' => array_merge($upcoming->all(), $past->all())]);
     }
 
     /**

@@ -6,6 +6,11 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /** A customer flagged for responsible-play review (HarmMonitor). Staff add notes and act on it. */
+/**
+ * Larastan reads these columns as strings; the casts make them dates/arrays.
+ *
+ * @property \Illuminate\Support\Carbon|null $created_at
+ */
 class HarmFlag extends Model
 {
     public const REASONS = [
