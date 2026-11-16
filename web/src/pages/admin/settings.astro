@@ -13,7 +13,7 @@ const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).d
         <div class="field"><label for="tn">Trading name</label><input id="tn" name="tradingName" value={s.tradingName} /></div>
         <div class="field"><label for="ln">Company name</label><input id="ln" name="legalName" value={s.legalName} /></div>
         <div class="field"><label for="cn">Company number</label><input id="cn" name="companyNumber" value={s.companyNumber} /></div>
-        <div class="field"><label for="se">Support email</label><input id="se" name="supportEmail" type="email" value={s.supportEmail} /></div>
+        <div class="field"><label for="se">Contact email</label><input id="se" type="email" value={s.supportEmail} readonly aria-describedby="se-h" /><span class="hint" id="se-h">Set on the server (CONTACT_EMAIL). Contact form messages go here.</span></div>
       </div>
       <div class="field" style="margin-top:14px"><label for="ro">Registered office</label><input id="ro" name="registeredOffice" value={s.registeredOffice} /></div>
     </section>

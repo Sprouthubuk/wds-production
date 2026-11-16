@@ -202,6 +202,8 @@ MAIL_MAILER=resend                       # section 7, Email (Resend)
 RESEND_API_KEY=<from Resend, sending access, this domain only>
 MAIL_FROM_ADDRESS=competitions@wdsoriginals.com
 MAIL_FROM_NAME="WDS Competitions"
+CONTACT_EMAIL=sales@wdsoriginals.com      # the customer contact address everywhere; contact form goes here
+NOREPLY_ADDRESS=noreply@wdscompetitions.co.uk   # contact form enquiries are sent from this
 
 RAFFLE_RESERVATION_MINUTES=15
 PAYMENT_DRIVER=fake                      # cashflows after the go-live checklist in docs/cashflows-testing.md
@@ -443,7 +445,12 @@ has a plain-text part and the company footer; links open the website (`FRONTEND_
 6. Commands: `php8.5 artisan config:cache`, `php8.5 artisan queue:restart` (emails are queued), then
    `php8.5 artisan wds:mail-test <your email>`. It prints the mailer and sender; check the email arrives, isn't
    in spam, and that "show original" says SPF, DKIM and DMARC **pass**.
-7. Make sure `competitions@wdsoriginals.com` can **receive** replies (customers reply to it).
+7. Every email has Reply-To `CONTACT_EMAIL` (`sales@wdsoriginals.com`), so customer replies go there, not to
+   the sending address. Make sure that mailbox receives them.
+8. Contact form enquiries are emailed to `CONTACT_EMAIL` **from `NOREPLY_ADDRESS`** (`noreply@wdscompetitions.co.uk`),
+   with Reply-To the customer. That's a second domain: add and verify `wdscompetitions.co.uk` in Resend too
+   (steps 1–3), and give the API key access to it (or use an all-domains sending key). Until then Resend refuses
+   those emails; the enquiry is still saved in the database. Check with a test message on the contact page.
 
 Staging: its own API key, the same verified domain, and the same `wds:mail-test` check. Locally use
 `MAIL_MAILER=log` (emails go to `storage/logs`).

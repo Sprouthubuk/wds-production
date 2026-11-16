@@ -39,7 +39,7 @@ class CustomerEmailsTest extends TestCase
             $this->assertStringContainsString('WDS Originals Limited trading as WDS Competitions', $body);
             $this->assertStringContainsString('company no. 13330886', $body);
             $this->assertStringContainsString('Knoll House', $body);
-            $this->assertStringContainsString('competitions@wdsoriginals.com', $body);
+            $this->assertStringContainsString('sales@wdsoriginals.com', $body);
             $this->assertStringContainsString('https://wdscompetitions.co.uk/responsible-play', $body);
         }
         $this->assertStringNotContainsString('<td', $text);

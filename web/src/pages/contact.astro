@@ -3,6 +3,8 @@ import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getSettings } from '../lib/api';
 const s = await getSettings();
+// The same list as config('wds.contact_topics').
+const TOPICS = ['A competition', 'My order', 'Free postal entry', 'Draws and winners', 'My account', 'Something else'];
 ---
 <Layout title="Contact">
   <PageHero eyebrow="Contact" title="Get in touch" intro="Questions about a competition, your order or a draw? Send us a message." />
@@ -12,6 +14,10 @@ const s = await getSettings();
         <div class="form-grid">
           <div class="field"><label for="c-n">Name</label><input id="c-n" name="name" required autocomplete="name" /></div>
           <div class="field"><label for="c-e">Email</label><input id="c-e" name="email" type="email" required autocomplete="email" /></div>
+        </div>
+        <div class="form-grid">
+          <div class="field"><label for="c-t">What's it about?</label><select id="c-t" name="topic">{TOPICS.map((t) => <option value={t}>{t}</option>)}</select></div>
+          <div class="field"><label for="c-p">Phone (optional)</label><input id="c-p" name="phone" type="tel" autocomplete="tel" /></div>
         </div>
         <div class="field"><label for="c-o">Order number (if relevant)</label><input id="c-o" name="order" /></div>
         <div class="field"><label for="c-m">Message</label><textarea id="c-m" name="message" required rows="7"></textarea></div>
@@ -37,7 +43,7 @@ const s = await getSettings();
   document.querySelectorAll<HTMLFormElement>('[data-contact]').forEach((form) => form.addEventListener('submit', async (e) => {
     e.preventDefault();
     const msg = form.querySelector<HTMLElement>('[data-msg]')!;
-    const body = Object.fromEntries(new FormData(form).entries());
+    const body = { ...Object.fromEntries(new FormData(form).entries()), page: location.href };
     try {
       const res = await fetch('/api/contact', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       msg.textContent = res.ok ? "Thanks, we've got your message and will reply by email." : 'Sorry, that didn’t send. Please email us instead.';

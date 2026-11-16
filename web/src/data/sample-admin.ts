@@ -55,7 +55,7 @@ export const sampleAdmin: Record<string, unknown> = {
   '/promotions': [{ id: 1, code: 'XMAS10', type: 'percent', value: 10, competition_id: null, usage_limit: 200, times_used: 37, expires_at: '2026-12-20T23:59:00Z', active: true }],
   '/settings': { data: {
     tradingName: 'WDS Competitions', legalName: 'WDS Originals Limited', companyNumber: '13330886',
-    registeredOffice: 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY', supportEmail: 'competitions@wdsoriginals.com',
+    registeredOffice: 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY', supportEmail: 'sales@wdsoriginals.com',
     postalEntryAddress: ['WDS Competitions — Free Entry', '[POSTAL ADDRESS LINE 1]', '[TOWN] [POSTCODE]'], drawsInstagram: 'wds_originals',
     socials: [{ label: 'Instagram @wds_originals', url: 'https://instagram.com/wds_originals' }], youtubeUrl: 'https://youtube.com/@wdsoriginals',
   } },
