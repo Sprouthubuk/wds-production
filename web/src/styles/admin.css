@@ -56,7 +56,7 @@
 .pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px; border: 1px solid var(--line-3); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; white-space: nowrap; }
 .pill::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; opacity: .85; }
 .pill--paid, .pill--live, .pill--allocated, .pill--approved, .pill--delivered, .pill--published { background: #fff; color: #000; border-color: #fff; }
-.pill--pending, .pill--to_review, .pill--scheduled, .pill--open, .pill--prepared { color: var(--amber); border-color: #5a4313; background: #1c1507; }
+.pill--pending, .pill--to_review, .pill--scheduled, .pill--coming_soon, .pill--open, .pill--prepared { color: var(--amber); border-color: #5a4313; background: #1c1507; }
 .pill--failed, .pill--rejected, .pill--denied, .pill--cancelled, .pill--void, .pill--forfeited { color: var(--red); border-color: #5a2a2a; background: #1a0b0b; }
 .pill--refunded, .pill--closed, .pill--drawn, .pill--draft { color: #cfcfcf; border-color: #3a3a3a; background: #141414; }
 .pill--refund-needed { background: var(--amber); color: #000; border-color: var(--amber); }

@@ -73,6 +73,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
   .lines :global(.step span) { min-width: 48px; text-align: center; font-size: 18px; font-weight: 700; }
   .lines :global(.price) { flex: 0 0 120px; text-align: right; display: flex; flex-direction: column; gap: 2px; }
   .lines :global(.price b) { font-size: 20px; }
+  .lines :global(.line-warn) { color: var(--amber, #f0b429); font-weight: 700; }
   .lines :global(.remove) { background: none; border: 0; padding: 0; color: var(--muted); font-size: 13px; text-decoration: underline; cursor: pointer; align-self: flex-start; }
   @media (max-width: 900px) { .summary { position: static; } }
 </style>
@@ -110,6 +111,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
       total += lineTotal; saving += lineSave; count += l.qty;
       const div = document.createElement('div');
       div.className = 'line';
+      div.dataset.cid = String(l.competitionId);
       div.innerHTML = `
         <img src="${esc(thumb(l.image))}" alt="" />
         <div class="info"><strong>${esc(l.title)}</strong><span class="small muted">${money(l.ticketPrice)} each · <span data-o></span></span><button type="button" class="remove" data-remove>Remove</button></div>
@@ -125,6 +127,42 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
       <div><span>${count} ticket${count === 1 ? '' : 's'}</span><span>${money(total + saving)}</span></div>
       <div><span>Bundle saving</span><span>−${money(saving)}</span></div>
       <div><span>Total</span><span>${money(total)}</span></div>`;
+    void checkOpen();
+  }
+
+  // The API's price/availability check: a competition that isn't open yet (coming soon) or has closed
+  // can't be checked out, whatever this page thinks (checkout refuses it too).
+  let checkSeq = 0;
+  async function checkOpen() {
+    const lines = readBasket();
+    const seq = ++checkSeq;
+    if (!lines.length) return;
+    try {
+      const res = await fetch('/api/basket/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: lines.map((l) => ({ competitionId: l.competitionId, qty: l.qty })) }) });
+      if (!res.ok || seq !== checkSeq) return;
+      const { data } = await res.json() as { data: { competitionId: number; open: boolean; message: string | null }[] };
+      const blocked = data.filter((q) => !q.open);
+      linesEl.querySelectorAll('[data-line-warn]').forEach((el) => el.remove());
+      for (const q of blocked) {
+        const info = linesEl.querySelector<HTMLElement>(`[data-cid="${q.competitionId}"] .info`);
+        if (!info) continue;
+        const warn = document.createElement('span');
+        warn.className = 'small line-warn';
+        warn.dataset.lineWarn = '';
+        warn.textContent = q.message ?? 'This competition is not open for entries.';
+        info.appendChild(warn);
+      }
+      submit.disabled = blocked.length > 0;
+      if (blocked.length) {
+        errorEl.textContent = 'Remove the competitions marked above to continue: they are not open for entries right now.';
+        errorEl.hidden = false;
+      } else if (errorEl.textContent?.startsWith('Remove the competitions')) {
+        errorEl.hidden = true;
+      }
+    } catch {
+      /* offline: checkout still checks everything */
+    }
   }
 
   form.addEventListener('submit', async (e) => {

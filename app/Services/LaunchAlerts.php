@@ -69,9 +69,9 @@ class LaunchAlerts
                 return [$row, false];
             }
             $fresh = [
-                'email' => $email, 'competition_id' => $competition?->id, 'user_id' => $user?->id ?? User::where('email', $email)->value('id'),
+                'email' => $email, 'competition_id' => $competition?->id, 'user_id' => $user->id ?? User::where('email', $email)->value('id'),
                 'consent_at' => now(), 'consent_text' => NewsletterSubscriber::CONSENT_TEXT, 'source' => $source,
-                'unsubscribe_token' => $row?->unsubscribe_token ?? NewsletterSubscriber::newToken(), 'list_key' => $key, 'unsubscribed_at' => null,
+                'unsubscribe_token' => $row->unsubscribe_token ?? NewsletterSubscriber::newToken(), 'list_key' => $key, 'unsubscribed_at' => null,
             ];
             if ($row) {
                 $row->update($fresh);

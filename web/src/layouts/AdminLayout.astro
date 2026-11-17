@@ -13,11 +13,11 @@ const admin = Astro.locals.admin ?? (await currentAdmin(Astro.cookies));
 if (!admin) return Astro.redirect(signInUrl(Astro.url.pathname + Astro.url.search));
 if (!admin.isAdmin && !staffOk) return Astro.redirect('/admin/event-sales');
 
-type Key = 'dashboard' | 'competitions' | 'orders' | 'customers' | 'event-sales' | 'promotions' | 'draws' | 'winners' | 'postal' | 'responsible-play' | 'reports' | 'settings';
+type Key = 'dashboard' | 'competitions' | 'launch-alerts' | 'orders' | 'customers' | 'event-sales' | 'promotions' | 'draws' | 'winners' | 'postal' | 'responsible-play' | 'reports' | 'settings';
 // [key, label, href, adminOnly]; staff see only the pages open to them (event sales, postal entries).
 const groups: [string, [Key, string, string, boolean][]][] = [
   ['Overview', [['dashboard', 'Dashboard', '/admin', true]]],
-  ['Sales', [['competitions', 'Competitions', '/admin/competitions', true], ['orders', 'Orders', '/admin/orders', true], ['customers', 'Customers', '/admin/customers', true], ['event-sales', 'Event sales', '/admin/event-sales', false], ['promotions', 'Promotions', '/admin/promotions', true]]],
+  ['Sales', [['competitions', 'Competitions', '/admin/competitions', true], ['orders', 'Orders', '/admin/orders', true], ['customers', 'Customers', '/admin/customers', true], ['event-sales', 'Event sales', '/admin/event-sales', false], ['promotions', 'Promotions', '/admin/promotions', true], ['launch-alerts', 'Launch alerts', '/admin/launch-alerts', true]]],
   ['Draws', [['draws', 'Draws', '/admin/draws', true], ['winners', 'Winners', '/admin/winners', true], ['postal', 'Postal entries', '/admin/postal', false]]],
   ['Compliance', [['responsible-play', 'Responsible play', '/admin/responsible-play', true], ['reports', 'Reports', '/admin/reports', true]]],
   ['Settings', [['settings', 'Settings', '/admin/settings', true]]],

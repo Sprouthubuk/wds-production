@@ -9,8 +9,12 @@ import type { CompetitionTeaser } from '../lib/types';
 import { countdownParts } from '../lib/countdown';
 import { launchCountdown } from '../lib/prelaunch';
 import SignupForm from './SignupForm.astro';
-interface Props { teaser: CompetitionTeaser; chip?: string }
-const { teaser, chip = 'Coming soon' } = Astro.props;
+/**
+ * headline: the home page passes "Launching 1st December" (the site-wide launch); the teaser's title then
+ * becomes "First up: …". Without it (a draft's "Launching soon" page) the title is the headline.
+ */
+interface Props { teaser: CompetitionTeaser; chip?: string; headline?: string | null }
+const { teaser, chip = 'Coming soon', headline = null } = Astro.props;
 const drawLabel = teaser.drawAt
   ? new Date(teaser.drawAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: 'numeric', minute: '2-digit', hour12: true, timeZone: 'Europe/London' }).replace(' at ', ', ')
   : null;
@@ -26,7 +30,9 @@ const opensLabel = target?.label === 'Entries open in'
   <div class="container launch-inner">
     <div class="launch-copy launch-anim">
       <span class="chip chip--line launch-chip"><span class="dot"></span>{chip}</span>
-      <h1 class="display display--xl launch-title">{teaser.title}</h1>
+      {headline
+        ? <><h1 class="display display--xl launch-title">{headline}</h1><p class="lead launch-lead launch-first">First up: <strong>{teaser.title}</strong></p></>
+        : <h1 class="display display--xl launch-title">{teaser.title}</h1>}
       {drawLabel ? <p class="lead launch-lead">Live draw {drawLabel}</p> : null}
       {opensLabel ? <p class="lead launch-lead launch-opens">Entries open {opensLabel}</p> : null}
       {cd && target ? (
@@ -44,7 +50,7 @@ const opensLabel = target?.label === 'Entries open in'
     <div class="launch-card" id="first-access">
       <span class="label">Get first access</span>
       <p class="body">Be first to know when entries open. One email at launch, then live draw reminders. No spam.</p>
-      <SignupForm id="launch-email" />
+      <SignupForm id="launch-email" source="home" />
       <a href="/free-postal-entry" class="link-caps small">Free postal entry on every paid competition →</a>
     </div>
   </div>
@@ -64,6 +70,7 @@ const opensLabel = target?.label === 'Entries open in'
   .launch-title { overflow-wrap: break-word; margin: 0; }
   .launch-lead { color: #d6d6d6; margin: 0; }
   .launch-opens { margin-top: -14px; }
+  .launch-first { color: #fff; }
   .cd-wrap { display: flex; flex-direction: column; gap: 10px; }
   .cd-label { font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: #fff; }
   .cd { display: grid; grid-template-columns: repeat(4, minmax(0, 92px)); gap: 8px; }

@@ -12,6 +12,19 @@ use Illuminate\Support\Str;
  * A launch alert sign-up ("Notify me when it's live" / "Get first access"). One row per email per list:
  * competition_id null = the site-wide list, otherwise that competition's list. Unsubscribing stops every
  * list for that email (LaunchAlerts::unsubscribe).
+ *
+ * @property int $id
+ * @property string $email
+ * @property int|null $competition_id
+ * @property int|null $user_id
+ * @property \Illuminate\Support\Carbon|null $consent_at
+ * @property string|null $consent_text
+ * @property string|null $source
+ * @property string|null $unsubscribe_token
+ * @property string|null $list_key
+ * @property \Illuminate\Support\Carbon|null $unsubscribed_at
+ * @property \Illuminate\Support\Carbon $created_at
+ * @property-read Competition|null $competition
  */
 class NewsletterSubscriber extends Model
 {
@@ -30,6 +43,7 @@ class NewsletterSubscriber extends Model
         return ['consent_at' => 'datetime', 'unsubscribed_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<Competition, $this> */
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
 
     public function scopeSubscribed(Builder $q): Builder

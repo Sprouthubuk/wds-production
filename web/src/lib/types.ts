@@ -10,7 +10,8 @@ export interface Spec {
   value: string;
 }
 
-export type CompetitionStatus = 'draft' | 'scheduled' | 'live' | 'closed' | 'drawn';
+/** draft: hidden · coming_soon: published, visible, not enterable until opensAt · live · closed · drawn. */
+export type CompetitionStatus = 'draft' | 'coming_soon' | 'live' | 'closed' | 'drawn';
 
 export interface Competition {
   /** A draft seen through a preview link: shown as live, entries disabled. */
@@ -34,6 +35,8 @@ export interface Competition {
   postponement?: { at: string; from: string | null; reason: string | null } | null;
   bundles: Bundle[];
   opensAt: string | null;
+  /** Why it can't be entered yet (coming soon), or null. While set the site shows "Notify me when it's live". */
+  notOpenYet?: string | null;
   closesAt: string | null;
   /** Postal entries must be received by then (default: 48 hours before closesAt). */
   postalClosesAt: string | null;

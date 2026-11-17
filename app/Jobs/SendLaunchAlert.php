@@ -38,7 +38,7 @@ class SendLaunchAlert implements ShouldQueue
 
             return;
         }
-        $token = $subscriber?->unsubscribe_token
+        $token = $subscriber->unsubscribe_token
             ?? NewsletterSubscriber::where('email', $send->email)->whereNull('unsubscribed_at')->value('unsubscribe_token');
 
         try {

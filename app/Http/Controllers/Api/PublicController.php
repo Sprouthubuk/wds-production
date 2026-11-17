@@ -38,7 +38,7 @@ class PublicController extends Controller
         if (! $c && $preview && $preview->competition->slug === $slug) {
             $c = $preview->competition;
         }
-        abort_unless($c, 404);
+        abort_unless($c !== null, 404);
 
         return self::noStoreIfPreview((new CompetitionResource(self::markPreview(collect([$c]), $preview)->first()))->response(), $preview);
     }
@@ -47,7 +47,7 @@ class PublicController extends Controller
     public function preview(string $token)
     {
         $link = PreviewLink::findValid($token);
-        abort_unless($link, 404, 'This preview link has expired or been revoked.');
+        abort_unless($link !== null, 404, 'This preview link has expired or been revoked.');
 
         return response()->json(['data' => [
             'slug' => $link->competition->slug,

@@ -355,15 +355,9 @@ parameters:
 			path: app/Http/Controllers/Api/MeController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/PublicController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 2
 			path: app/Http/Controllers/Api/PublicController.php
 
 		-
@@ -391,18 +385,6 @@ parameters:
 			path: app/Http/Controllers/Api/PublicController.php
 
 		-
-			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\PreviewLink\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/PublicController.php
-
-		-
-			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/PublicController.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Draw\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -411,7 +393,7 @@ parameters:
 		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 5
+			count: 4
 			path: app/Http/Resources/CompetitionResource.php
 
 		-
@@ -425,12 +407,6 @@ parameters:
 			identifier: offsetAccess.notFound
 			count: 1
 			path: app/Http/Resources/CompetitionResource.php
-
-		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Resources/CompetitionTeaser.php
 
 		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
@@ -601,12 +577,6 @@ parameters:
 			path: app/Mail/WinnerNotified.php
 
 		-
-			message: '#^Cannot call method isPast\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/Competition.php
-
-		-
 			message: '#^Cannot call method isFuture\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -617,18 +587,6 @@ parameters:
 			identifier: method.nonObject
 			count: 1
 			path: app/Models/PostalEntry.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/PreviewLink.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublished\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/PreviewLink.php
 
 		-
 			message: '#^Cannot call method isFuture\(\) on string\.$#'
@@ -724,12 +682,6 @@ parameters:
 			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:drawsPhysically\(\)\.$#'
 			identifier: method.notFound
 			count: 2
-			path: app/Services/Draws/VerityDrawEngine.php
-
-		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
 			path: app/Services/Draws/VerityDrawEngine.php
 
 		-

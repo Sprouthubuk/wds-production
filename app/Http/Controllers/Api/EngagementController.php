@@ -30,8 +30,8 @@ class EngagementController extends Controller
         ]);
         $competition = null;
         if (! empty($data['competitionId'])) {
-            $competition = Competition::find($data['competitionId']);
-            abort_unless($competition, 422, 'That competition was not found.');
+            $competition = Competition::whereKey($data['competitionId'])->first();
+            abort_unless($competition !== null, 422, 'That competition was not found.');
         }
         $email = $data['email'] ?? $user?->email;
         try {

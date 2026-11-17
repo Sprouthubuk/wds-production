@@ -24,6 +24,7 @@ class PreviewLink extends Model
         return ['expires_at' => 'datetime', 'revoked_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<Competition, $this> */
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
 
     /** A new link for the competition; any earlier link for it is revoked. */

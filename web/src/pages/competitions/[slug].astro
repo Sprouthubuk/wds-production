@@ -5,6 +5,8 @@ import { POSTAL_HOURS_BEFORE_CLOSE, hasPostalRoute, postalBy, postalDeadlineSent
 import Layout from '../../layouts/Layout.astro';
 import EntryPanel from '../../components/EntryPanel.astro';
 import FreeEntryPanel from '../../components/FreeEntryPanel.astro';
+import NotifyPanel from '../../components/NotifyPanel.astro';
+import { isComingSoon, opensLabel } from '../../lib/coming-soon';
 import { api } from '../../lib/api';
 import { currentUser, getToken } from '../../lib/session';
 import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
@@ -22,8 +24,10 @@ if (!c) {
 const ch = drawChannels(settings);
 // A free competition (£0): one online entry per verified account, no basket. The panel depends on who's looking.
 const free = c.ticketPrice === 0;
-const me = free ? await currentUser(Astro.cookies) : null;
-const entered = free && me
+// Coming soon: shown with its terms and a countdown, "Notify me when it's live" instead of Enter (the API refuses entries).
+const soon = isComingSoon(c);
+const me = free || soon ? await currentUser(Astro.cookies) : null;
+const entered = free && !soon && me
   ? await api<{ data: { slug: string; online: string[] }[] }>('/me/entries', { token: getToken(Astro.cookies) })
     .then((r) => r.data.find((e) => e.slug === c.slug)?.online ?? null).catch(() => null)
   : null;
@@ -68,7 +72,7 @@ const jsonLd = {
         <div class="main-img" data-swipe>
           <img src={c.images[0]?.src} alt={c.images[0]?.alt} data-main width="1024" height="768" fetchpriority="high" style={`view-transition-name: comp-${c.id}`} />
           {c.images.length > 1 ? <><button type="button" class="nav-btn prev" data-nav="-1" aria-label="Previous photo">←</button><button type="button" class="nav-btn next" data-nav="1" aria-label="Next photo">→</button></> : null}
-          <span class="chip chip--solid live"><span class="dot"></span>Live now</span>
+          <span class="chip chip--solid live"><span class="dot"></span>{soon ? 'Coming soon' : 'Live now'}</span>
           <span class="count" data-count>1 / {c.images.length}</span>
         </div>
         <div class="thumbs">
@@ -82,7 +86,7 @@ const jsonLd = {
         <div class="main-img empty" role="img" aria-label={`Photos of the ${c.title} coming soon`}>
           <img src="/images/wds-logo.png" alt="" width="150" height="21" class="empty-logo" />
           <span class="small">Photos coming soon</span>
-          <span class="chip chip--solid live"><span class="dot"></span>Live now</span>
+          <span class="chip chip--solid live"><span class="dot"></span>{soon ? 'Coming soon' : 'Live now'}</span>
         </div>
       </div>
       )}
@@ -104,6 +108,7 @@ const jsonLd = {
       <section class="stack block" data-reveal>
         <span class="eyebrow">Draw details</span>
         <div class="details">
+          {soon && c.opensAt ? <div><span class="label">Entries open</span><b>{opensLabel(c.opensAt)}</b><span class="small muted">UK time</span></div> : null}
           <div><span class="label">Closes</span><b>{closesLabel}</b></div>
           {postalLabel ? <div><span class="label">Postal entries received by</span><b>{postalLabel}</b><span class="small muted">{c.postalClosesAtCustom ? 'UK time' : `${POSTAL_HOURS_BEFORE_CLOSE} hours before close, UK time`}</span></div> : null}
           <div><span class="label">Live draw</span><b>{drawLabel}</b></div>
@@ -134,14 +139,19 @@ const jsonLd = {
           <a href="/free-postal-entry" class="small">How to enter by post →</a>
         </div>
       ) : null}
-      {free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} />}
+      {soon ? <NotifyPanel competition={c} signedInAs={me?.email ?? null} />
+        : free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} />}
     </aside>
   </div>
 
   <div class="sticky-bar" slot="after">
     <div class="container">
-      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">{c.drawAt ? <>Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · </> : null}{percentSold(c.ticketsSold, c.totalTickets)}% sold</span></div>
-      {pre.on
+      <div class="stack sb-text"><strong>{c.title}</strong><span class="small muted num">{soon
+        ? <>{c.opensAt ? <>Opens in <span data-countdown={c.opensAt} data-countdown-text>{countdownParts(c.opensAt).text}</span> · </> : null}{c.totalTickets.toLocaleString('en-GB')} tickets</>
+        : <>{c.drawAt ? <>Draw in <span data-countdown={c.drawAt} data-countdown-text>{countdownParts(c.drawAt).text}</span> · </> : null}{percentSold(c.ticketsSold, c.totalTickets)}% sold</>}</span></div>
+      {soon
+        ? <div class="sb-btns"><a href="#notify" class="btn" data-scroll-panel>Notify me when it's live</a></div>
+        : pre.on
         ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
         : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a>{postal ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}</div>}
     </div>

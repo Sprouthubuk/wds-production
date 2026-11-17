@@ -22,10 +22,10 @@ class LaunchAlertController extends Controller
         $competitions = Competition::whereIn('status', ['draft', 'coming_soon', 'live'])->orderBy('sort_order')->get(['id', 'title', 'status']);
 
         return response()->json([
-            'data' => collect($rows->items())->map(fn (NewsletterSubscriber $s) => [
+            'data' => $rows->getCollection()->map(fn (NewsletterSubscriber $s) => [
                 'id' => $s->id, 'email' => $s->email,
-                'list' => $s->competition?->title ?? 'Site-wide',
-                'source' => $s->source, 'consentAt' => ($s->consent_at ?? $s->created_at)?->toIso8601String(),
+                'list' => $s->competition->title ?? 'Site-wide',
+                'source' => $s->source, 'consentAt' => ($s->consent_at ?? $s->created_at)->toIso8601String(),
                 'unsubscribedAt' => $s->unsubscribed_at?->toIso8601String(),
             ]),
             'meta' => ['page' => $rows->currentPage(), 'lastPage' => $rows->lastPage(), 'total' => $rows->total()],
@@ -58,7 +58,7 @@ class LaunchAlertController extends Controller
             fputcsv($out, ['Email', 'List', 'Source', 'Consent (UK)', 'Consent wording', 'Unsubscribed (UK)'], escape: '');
             foreach ($rows as $s) {
                 fputcsv($out, array_map([ReportController::class, 'cell'], [
-                    $s->email, $s->competition?->title ?? 'Site-wide', $s->source, $uk($s->consent_at ?? $s->created_at), $s->consent_text, $uk($s->unsubscribed_at),
+                    $s->email, $s->competition->title ?? 'Site-wide', $s->source, $uk($s->consent_at ?? $s->created_at), $s->consent_text, $uk($s->unsubscribed_at),
                 ]), escape: '');
             }
             fclose($out);

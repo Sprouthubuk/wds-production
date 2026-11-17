@@ -281,7 +281,7 @@ class CheckoutService
                 // Too late (the competition closed, or its tickets went while the reservation was over): the money
                 // goes straight back, and the order page says why.
                 Log::warning('Paid order could not be fulfilled: refunding', ['order' => $order->reference, 'reason' => $e->getMessage()]);
-                $notOpen = $order->lines()->with('competition')->get()->first(fn ($l) => $l->competition?->notOpenYetReason());
+                $notOpen = Competition::whereIn('id', $order->lines()->pluck('competition_id'))->get()->first(fn (Competition $c) => $c->notOpenYetReason() !== null);
                 $this->refuseAndRefund($order, $result, $cardType, $notOpen
                     ? "Your tickets couldn't be issued because the competition isn't open for entries yet ({$e->getMessage()}). We've refunded your payment in full and no tickets were issued."
                     : "Your payment arrived after your tickets' reservation had ended and they could no longer be issued ({$e->getMessage()}). We've refunded your payment in full and no tickets were issued.");

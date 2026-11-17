@@ -126,6 +126,7 @@ class Competition extends Model
     public function orderLines(): HasMany { return $this->hasMany(OrderLine::class); }
     public function postalEntries(): HasMany { return $this->hasMany(PostalEntry::class); }
     public function draws(): HasMany { return $this->hasMany(Draw::class); }
+    /** @return HasMany<CompetitionEvent, $this> */
     public function events(): HasMany { return $this->hasMany(CompetitionEvent::class); }
 
     /**
