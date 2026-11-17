@@ -52,7 +52,7 @@ class PostalBeforeOpeningTest extends TestCase
             'slug' => 'coilovers', 'title' => 'BC Racing coilovers', 'category' => 'parts', 'status' => 'draft',
             'images' => [['src' => '/images/e46-clubsport-34.jpg', 'alt' => 'Coilovers']],
             'ticket_price_pence' => 500, 'bundles' => [['qty' => 5, 'price_pence' => 2000]], 'total_tickets' => 495, 'max_per_person' => null,
-            'opens_at' => '2026-12-01 19:00:00', 'closes_at' => '2026-12-24 19:00:00', 'draw_at' => '2026-12-24 19:30:00',
+            'opens_at' => '2026-12-01 09:00:00', 'closes_at' => '2026-12-24 19:00:00', 'draw_at' => '2026-12-24 19:30:00',
             'draw_method' => Competition::DRAW_PHYSICAL, 'postal_entry_enabled' => true,
         ], $overrides)));
     }
@@ -80,7 +80,7 @@ class PostalBeforeOpeningTest extends TestCase
 
         $this->logPostal($c, 'sam@example.com', '2026-11-20T09:15:00Z')->assertCreated()
             ->assertJsonPath('status', 'held')
-            ->assertJsonPath('message', fn ($m) => str_contains($m, 'held') && str_contains($m, 'Tuesday 1 December 2026, 7:00pm'));
+            ->assertJsonPath('message', fn ($m) => str_contains($m, 'held') && str_contains($m, 'Tuesday 1 December 2026, 9:00am'));
 
         $entry = PostalEntry::sole();
         $this->assertSame('held', $entry->status);
@@ -95,7 +95,7 @@ class PostalBeforeOpeningTest extends TestCase
 
             return $m->entry->is($entry) && $m->hasTo('sam@example.com')
                 && $m->envelope()->subject === "We've received your postal entry: BC Racing coilovers"
-                && str_contains($text, 'Entries open <strong>Tuesday 1 December 2026, 7:00pm</strong> (UK time)')
+                && str_contains($text, 'Entries open <strong>Tuesday 1 December 2026, 9:00am</strong> (UK time)')
                 && str_contains($text, "we'll email you your ticket number");
         });
 
@@ -104,7 +104,7 @@ class PostalBeforeOpeningTest extends TestCase
         $this->assertSame('held', $entry->fresh()->status);
 
         // At the opening time: online entry opens and the held envelope gets its number in the same step.
-        Carbon::setTestNow('2026-12-01 19:00:20');
+        Carbon::setTestNow('2026-12-01 09:00:20');
         $this->artisan('competitions:open-due')->assertSuccessful();
         $this->assertSame('live', $c->fresh()->status);
         $entry->refresh();
@@ -163,7 +163,7 @@ class PostalBeforeOpeningTest extends TestCase
     public function test_an_envelope_received_before_opening_but_logged_after_is_accepted_up_to_the_postal_deadline(): void
     {
         $c = $this->comingSoon();
-        Carbon::setTestNow('2026-12-01 19:00:20');
+        Carbon::setTestNow('2026-12-01 09:00:20');
         $this->artisan('competitions:open-due')->assertSuccessful();
         Carbon::setTestNow('2026-12-03 10:00:00');
 
@@ -181,7 +181,7 @@ class PostalBeforeOpeningTest extends TestCase
     {
         $draft = Competition::create([
             'slug' => 'secret', 'title' => 'Secret', 'category' => 'cars', 'status' => 'draft', 'images' => [],
-            'ticket_price_pence' => 500, 'total_tickets' => 100, 'opens_at' => '2026-12-01 19:00:00',
+            'ticket_price_pence' => 500, 'total_tickets' => 100, 'opens_at' => '2026-12-01 09:00:00',
             'closes_at' => '2026-12-24 19:00:00', 'draw_at' => '2026-12-24 19:30:00', 'postal_entry_enabled' => true,
         ]);
         $this->actingAs($this->admin)->getJson('/api/admin/postal/competitions')->assertOk()->assertJsonCount(0, 'data');

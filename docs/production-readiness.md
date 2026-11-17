@@ -87,12 +87,12 @@ The real domain isn't pointed yet (`docs/dns-cutover.md`).
 | No test competitions | **PASS** | `/api/competitions` is empty (nothing published). The BMW draft is teased via `/api/upcoming`. |
 | No test orders or users | CAN'T VERIFY | Admin → Orders and Admin → Customers: empty, or only your own admin. |
 | Winners page | **CHECK** | Shows "Mark Robinson, Alpina D3 Coupé" (from the seeder). Confirm with Jason that this is a real past winner who agreed to be shown; if not, untick *Show on site* in Admin → Winners. |
-| BMW draft's `opens_at` | **FAIL → fixed by this PR** | The BMW draft has `opens_at` 11 Nov 2026 20:41 (in the past) and the other two none. Publishing would have opened them at once. After merge, `wds:client-drafts --apply` sets all three to the placeholder 1 Dec 2026 19:00 UK, and publishing now refuses a past opening time unless an admin confirms "open immediately". |
+| BMW draft's `opens_at` | **FAIL → fixed by this PR** | The BMW draft has `opens_at` 11 Nov 2026 20:41 (in the past) and the other two none. Publishing would have opened them at once. After merge, `wds:client-drafts --apply` sets all three to the confirmed opening time, Tue 1 Dec 2026 9:00am UK, and publishing now refuses a past opening time unless an admin confirms "open immediately". |
 
 ## Before you publish on production
 
 1. Every row above is PASS or done.
-2. The opening time is confirmed by Jason (placeholder 19:00 UK in `App\Support\ClientDrafts::OPENS_AT`). If it
-   changes, change the constant in a PR, then run `wds:client-drafts --apply` again.
+2. The opening time is confirmed by Jason: Tue 1 Dec 2026, 9:00am UK (`App\Support\ClientDrafts::OPENS_AT`). If it
+   ever changes, change the constant in a PR, then run `wds:client-drafts --apply` again (unpublished drafts only).
 3. The witness is set (`VERITY_ANCHOR_EMAILS`).
 4. You've read the per-competition table of what publishing locks (in the PR description).

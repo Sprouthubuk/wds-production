@@ -146,7 +146,7 @@ class Competition extends Model
         return $this->status === 'coming_soon';
     }
 
-    /** The opening time in words (UK time), e.g. "Tuesday 1 December 2026, 7:00pm". */
+    /** The opening time in words (UK time), e.g. "Tuesday 1 December 2026, 9:00am". */
     public function opensLabel(): ?string
     {
         return $this->opens_at ? self::ukDeadline($this->opens_at) : null;

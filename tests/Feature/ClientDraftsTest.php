@@ -8,6 +8,7 @@ use App\Services\Draws\VerityDrawEngine;
 use App\Exceptions\EntryException;
 use App\Support\ClientDrafts;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 /** wds:client-drafts, and drafts saved before their dates are confirmed. */
@@ -55,6 +56,20 @@ class ClientDraftsTest extends TestCase
         $this->artisan('wds:client-drafts --apply')->expectsOutputToContain('already up to date')->assertSuccessful();
         $this->assertSame('Edited in Admin', $bc->fresh()->title);
         $this->assertSame(1, Competition::where('slug', 'like', 'bc-racing%')->count());
+    }
+
+    public function test_the_confirmed_opening_time_is_9am_uk_on_1_december_and_is_worded_from_opens_at(): void
+    {
+        // Confirmed by the client: Tuesday 1 December 2026, 09:00 Europe/London (GMT then, so 09:00 UTC).
+        $this->assertTrue(Carbon::parse(ClientDrafts::OPENS_AT, 'UTC')->equalTo(Carbon::parse('2026-12-01 09:00', 'Europe/London')));
+
+        $this->mainEvent();
+        $this->artisan('wds:client-drafts --apply')->assertSuccessful();
+        foreach ([ClientDrafts::MAIN_EVENT, ClientDrafts::COILOVERS, ClientDrafts::ENGINE_TABLE] as $slug) {
+            $c = Competition::where('slug', $slug)->firstOrFail();
+            $this->assertSame('2026-12-01 09:00', $c->opens_at->utc()->format('Y-m-d H:i'), $slug);
+            $this->assertSame('Tuesday 1 December 2026, 9:00am', $c->opensLabel(), $slug);
+        }
     }
 
     public function test_a_published_main_event_is_never_changed(): void

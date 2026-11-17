@@ -10,14 +10,14 @@ const COMP = {
   id: 9, slug: 'bmw-e46-330ci-clubsport', title: 'BMW E46 330Ci Clubsport', strapline: 'Estoril Blue', category: 'cars', badge: 'Main event', status: 'coming_soon',
   images: [{ src: '/images/e46-clubsport-34.jpg', alt: 'BMW' }], description: ['A Clubsport.'], specs: [],
   ticketPrice: 14.95, totalTickets: 750, ticketsSold: 0, maxPerPerson: null, bundles: [{ qty: 3, price: 40 }, { qty: 10, price: 125 }],
-  opensAt: '2026-12-01T19:00:00+00:00', notOpenYet: "BMW E46 330Ci Clubsport isn't open yet: entries open Tuesday 1 December 2026, 7:00pm (UK time).",
+  opensAt: '2026-12-01T09:00:00+00:00', notOpenYet: "BMW E46 330Ci Clubsport isn't open yet: entries open Tuesday 1 December 2026, 9:00am (UK time).",
   closesAt: '2026-12-24T19:00:00+00:00', postalClosesAt: '2026-12-22T19:00:00+00:00', postalClosesAtCustom: null,
   drawAt: '2026-12-24T19:30:00+00:00', postalEntryEnabled: true, eventSalesEnabled: false, cashAlternative: 5000, buildVideoUrl: null,
   verityRef: 'VTY-SOON01', drawMethod: 'physical', postponement: null,
 };
 
 const ADMIN = { id: 1, firstName: 'Jo', lastName: 'Admin', email: 'jo@example.com', isAdmin: true, isStaff: true };
-const EARLY = 'Entries open Tuesday 1 December 2026, 7:00pm (UK time). Envelopes received before then are counted once entries open.';
+const EARLY = 'Entries open Tuesday 1 December 2026, 9:00am (UK time). Envelopes received before then are counted once entries open.';
 
 const send = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 let api, site, base;
@@ -57,14 +57,14 @@ test('the competition page: badge, countdown, odds, prices and Notify me instead
   const html = await page(`/competitions/${COMP.slug}`);
   assert.ok(html.includes('Coming soon'), 'badge');
   assert.ok(html.includes('Entries open in'), 'countdown');
-  assert.ok(html.includes('data-countdown="2026-12-01T19:00:00+00:00"'), 'counts to opensAt');
+  assert.ok(html.includes('data-countdown="2026-12-01T09:00:00+00:00"'), 'counts to opensAt');
   assert.ok(html.includes('1 in 750'), 'odds');
   assert.ok(html.includes('£14.95') && html.includes('£40<') && html.includes('£125<'), 'price and bundles');
   assert.ok(html.includes("Notify me when it&#39;s live") || html.includes("Notify me when it's live"), 'notify button');
   assert.ok(html.includes('Email me when WDS Competitions launch. Unsubscribe anytime.'), 'consent line');
   assert.ok(html.includes(`data-competition="${COMP.id}"`), 'the sign-up is for this competition');
   assert.ok(!html.includes('data-entry-panel'), 'no entry panel / Add to basket');
-  assert.ok(html.includes('Tuesday 1 December 2026, 7:00pm'), 'opening time in UK time');
+  assert.ok(html.includes('Tuesday 1 December 2026, 9:00am'), 'opening time in UK time');
 });
 
 test('the home page: Launching 1st December, site-wide sign-up, and a coming-soon card with odds', async () => {
@@ -97,6 +97,6 @@ test('postal entry before opening: the competition page and the Free Postal Entr
 test('admin postal logging: a coming-soon competition can be chosen and the hint says the entry is held', async () => {
   const html = await page('/admin/postal', 'wds_admin=admin');
   assert.ok(html.includes('BMW E46 330Ci Clubsport (coming soon)'), 'offered, marked coming soon');
-  assert.ok(html.includes('this entry is held and gets its ticket number when entries open (Tuesday 1 December 2026, 7:00pm)'), 'the hint');
+  assert.ok(html.includes('this entry is held and gets its ticket number when entries open (Tuesday 1 December 2026, 9:00am)'), 'the hint');
   assert.ok(html.includes('pill--held'), 'held shows in the list');
 });

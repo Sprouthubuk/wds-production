@@ -30,7 +30,7 @@ class ComingSoonTest extends TestCase
 {
     use RefreshDatabase, VerityFakes;
 
-    private const OPENS = '2026-12-01 19:00:00';
+    private const OPENS = '2026-12-01 09:00:00';
 
     private User $admin;
 
@@ -121,7 +121,7 @@ class ComingSoonTest extends TestCase
             ->assertJsonPath('data.totalTickets', 750)
             ->assertJsonPath('data.ticketPrice', 14.95)
             ->assertJsonPath('data.opensAt', Carbon::parse(self::OPENS)->toIso8601String())
-            ->assertJsonPath('data.notOpenYet', "Soon car isn't open yet: entries open Tuesday 1 December 2026, 7:00pm (UK time).");
+            ->assertJsonPath('data.notOpenYet', "Soon car isn't open yet: entries open Tuesday 1 December 2026, 9:00am (UK time).");
         $this->getJson('/api/competitions/secret')->assertNotFound();
         // The draft keeps only its teaser; a coming-soon competition has its full page instead.
         $this->getJson('/api/upcoming/secret')->assertOk();
@@ -133,7 +133,7 @@ class ComingSoonTest extends TestCase
     {
         $c = $this->comingSoon();
         $free = $this->comingSoon(['slug' => 'free-soon', 'ticket_price_pence' => 0, 'bundles' => [], 'total_tickets' => 500, 'max_per_person' => 1, 'postal_entry_enabled' => false]);
-        $notOpen = "isn't open yet: entries open Tuesday 1 December 2026, 7:00pm (UK time).";
+        $notOpen = "isn't open yet: entries open Tuesday 1 December 2026, 9:00am (UK time).";
 
         // The basket's price/availability check.
         $this->postJson('/api/basket/quote', ['items' => [['competitionId' => $c->id, 'qty' => 3]]])->assertOk()
@@ -197,7 +197,7 @@ class ComingSoonTest extends TestCase
         $this->artisan('competitions:open-due')->assertSuccessful();
         $this->assertSame('coming_soon', $c->fresh()->status, 'not before its time');
 
-        Carbon::setTestNow('2026-12-01 19:00:30');
+        Carbon::setTestNow('2026-12-01 09:00:30');
         $this->artisan('competitions:open-due')->expectsOutputToContain('Opened Soon car')->assertSuccessful();
         $c->refresh();
         $this->assertSame('live', $c->status);
@@ -224,7 +224,7 @@ class ComingSoonTest extends TestCase
         $c->refresh();
         $this->assertTrue($c->isOpen());
         $this->assertTrue($c->opens_at->equalTo(now()), 'the real opening time');
-        $this->assertStringContainsString('was due to open Tuesday 1 December 2026, 7:00pm', CompetitionEvent::where('action', 'opened_now')->value('summary'));
+        $this->assertStringContainsString('was due to open Tuesday 1 December 2026, 9:00am', CompetitionEvent::where('action', 'opened_now')->value('summary'));
         // A live competition can't be opened again.
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/open", ['confirm' => true])->assertStatus(422);
     }
