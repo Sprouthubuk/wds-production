@@ -2,7 +2,7 @@ import { getCompetitions, getUpcoming } from './api';
 import type { CompetitionTeaser } from './types';
 
 export interface Prelaunch {
-  /** True while no competition is live: entry buttons become "Get first access". */
+  /** True while no competition is live (coming soon counts as not live): entry buttons become "Get first access". */
   on: boolean;
   /** The featured draft being teased, if any. */
   upcoming: CompetitionTeaser | null;
@@ -17,7 +17,9 @@ export async function prelaunchState(locals: object): Promise<Prelaunch> {
     const [competitions, upcoming] = await Promise.all([getCompetitions().catch(() => null), getUpcoming()]);
     // If the API can't be reached, keep the normal buttons rather than guess.
     const on = competitions !== null && !competitions.some((c) => c.status === 'live');
-    return { on, upcoming: on ? upcoming : null, href: on && upcoming ? '/#first-access' : '/#notify' };
+    // The home page hero (with #first-access) shows for a coming-soon competition or a draft teaser.
+    const hero = on && (upcoming !== null || competitions!.some((c) => c.status === 'coming_soon'));
+    return { on, upcoming: on ? upcoming : null, href: hero ? '/#first-access' : '/#notify' };
   })();
   return store.__prelaunch;
 }

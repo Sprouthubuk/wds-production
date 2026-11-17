@@ -79,7 +79,7 @@ class TicketAllocationRaceTest extends TestCase
                 'slug' => 'race', 'title' => 'Race car', 'category' => 'cars', 'status' => 'draft',
                 'ticket_price_pence' => 1495, 'bundles' => [], 'total_tickets' => 10_000, 'max_per_person' => 10_000,
                 'closes_at' => now()->addDays(6), 'draw_at' => now()->addWeek(), 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
-            ]));
+            ]), openNow: true);
         } finally {
             config(['database.default' => $default]);
         }

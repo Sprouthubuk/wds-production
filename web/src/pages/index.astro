@@ -12,17 +12,30 @@ import { money, odds, percentSold } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
 import { drawChannels } from '../lib/channels';
 import { launchCountdown } from '../lib/prelaunch';
+import { isComingSoon, launchDay, nextOpening } from '../lib/coming-soon';
+import type { CompetitionTeaser } from '../lib/types';
 
 const [competitions, settings, winners, upcoming] = await Promise.all([getCompetitions(), getSettings(), getWinners(), getUpcoming()]);
 const ch = drawChannels(settings);
-// Pre-launch: nothing is live, so the home page teases the featured draft (title, image, draw date
-// only) with a countdown and the "Get first access" sign-up, and never shows prices or entry.
-const prelaunch = !competitions.some((c) => c.status === 'live') && upcoming ? upcoming : null;
+// Pre-launch: nothing is live. The hero says "Launching 1st December" with the site-wide sign-up and a
+// countdown, featuring the first coming-soon competition (or, before anything is published, the draft
+// teaser: title, image and draw date only). Coming-soon cards below show their odds, tickets and price.
+const noneLive = !competitions.some((c) => c.status === 'live');
+const soonList = competitions.filter(isComingSoon);
+const heroSoon = soonList.find((c) => c.badge) ?? soonList[0];
+const teaser: CompetitionTeaser | null = heroSoon
+  ? { slug: heroSoon.slug, title: heroSoon.title, image: heroSoon.images[0] ?? null, opensAt: heroSoon.opensAt, drawAt: heroSoon.drawAt }
+  : upcoming;
+const prelaunch = noneLive && teaser ? teaser : null;
+const launchAt = nextOpening(competitions) ?? (upcoming?.opensAt && Date.parse(upcoming.opensAt) > Date.now() ? upcoming.opensAt : null);
+const headline = launchAt ? `Launching ${launchDay(launchAt)}` : 'Launching soon';
+// The draft teaser card only while nothing is published yet (a coming-soon card shows the real terms).
+const draftCard = prelaunch && !heroSoon ? prelaunch : null;
 const featured = prelaunch ? undefined : competitions.find((c) => c.badge) ?? competitions[0];
 const latestWinner = winners[0];
-const placeholders = Math.max(0, 3 - competitions.length - (prelaunch ? 1 : 0));
+const placeholders = Math.max(0, 3 - competitions.length - (draftCard ? 1 : 0));
 const ticker = prelaunch
-  ? [`Coming soon: ${prelaunch.title}`, 'Get first access', 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
+  ? [headline, `Coming soon: ${prelaunch.title}`, ...(heroSoon ? [`${odds(heroSoon.totalTickets)} odds`] : []), 'Get first access', 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
   : featured
   ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
   : ['Free postal entry on every paid competition', ch.drawnLive, '18+ UK only'];
@@ -37,7 +50,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
     <div class="track">{[...ticker, ...ticker].map((t) => <span>{t}<i></i></span>)}</div>
   </div>
 
-  {prelaunch ? <LaunchHero teaser={prelaunch} /> : null}
+  {prelaunch ? <LaunchHero teaser={prelaunch} headline={headline} /> : null}
 
   {featured ? (
     <section class="hero">
@@ -99,9 +112,9 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
         <a href="/competitions" class="link-caps">View all competitions →</a>
       </div>
       <div class="grid grid--cards cards" data-reveal-group>
-        {prelaunch ? <LaunchCard teaser={prelaunch} id="grid-email" /> : null}
+        {draftCard ? <LaunchCard teaser={draftCard} id="grid-email" /> : null}
         {competitions.map((c) => <CompetitionCard competition={c} />)}
-        {Array.from({ length: placeholders }, (_, i) => <ComingSoonCard n={competitions.length + (prelaunch ? 1 : 0) + i + 1} />)}
+        {Array.from({ length: placeholders }, (_, i) => <ComingSoonCard n={competitions.length + (draftCard ? 1 : 0) + i + 1} />)}
       </div>
     </div>
   </section>
@@ -166,8 +179,8 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
   <section class="section section--tight" id="notify">
     <div class="container split" style="align-items: center" data-reveal>
-      <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">Get first access</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
-      <div style="flex: 1 1 460px"><SignupForm id="nl-email" label="Sign me up" /></div>
+      <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">{prelaunch ? headline : 'Get first access'}</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
+      <div style="flex: 1 1 460px"><SignupForm id="nl-email" label="Sign me up" source="home" /></div>
     </div>
   </section>
 

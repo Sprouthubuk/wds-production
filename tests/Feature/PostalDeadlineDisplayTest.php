@@ -60,7 +60,7 @@ class PostalDeadlineDisplayTest extends TestCase
         $this->assertSame("Postal entries must be received at least 48 hours before close: by {$expected} (UK time).", $c->postalDeadlineSentence());
 
         // Published: the public API gives the same moment to the competition page and the Free Postal Entry page.
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$id}/publish")->assertOk();
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$id}/publish", ['openNow' => true])->assertOk();
         $this->app['auth']->forgetGuards();
         $public = $this->getJson("/api/competitions/{$c->fresh()->slug}")->assertOk()->json('data');
         $this->assertSame('2026-12-22T19:00:00+00:00', $public['postalClosesAt']);

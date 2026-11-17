@@ -1,4 +1,4 @@
-@include('mail.partials.head', ['title' => $competition->title, 'preheader' => $entry->status === 'allocated' ? 'Your free postal entry is in the draw.' : "We couldn't accept your postal entry."])
+@include('mail.partials.head', ['title' => $competition->title, 'preheader' => match ($entry->status) { 'allocated' => 'Your free postal entry is in the draw.', 'held' => "We've received your postal entry. It's counted when entries open.", default => "We couldn't accept your postal entry." }])
       <tr><td style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#9a9a9a;padding-top:24px">{{ $settings['tradingName'] }} · Free postal entry</td></tr>
       @if ($entry->status === 'allocated')
         <tr><td style="font-size:36px;font-weight:700;padding:8px 0 16px">You're in, {{ strtok($entry->name, ' ') }}.</td></tr>
@@ -6,6 +6,14 @@
           <div style="font-size:18px;font-weight:700">{{ $competition->title }}</div>
           <div style="color:#9a9a9a;font-size:14px;padding:4px 0 10px">Drawn {{ $competition->draw_at->timezone('Europe/London')->format('l j F, g:ia') }}. Same draw, same chance of winning as online entries.</div>
           <div style="font-size:16px;font-family:Menlo,monospace"><span style="display:inline-block;border:1px dashed #666;padding:4px 8px">#{{ $ticket }}</span></div>
+        </td></tr>
+      @elseif ($entry->status === 'held')
+        <tr><td style="font-size:36px;font-weight:700;padding:8px 0 16px">We've got it, {{ strtok($entry->name, ' ') }}.</td></tr>
+        <tr><td style="border-top:1px solid #222;padding:16px 0;font-size:16px;line-height:1.5">
+          <div style="font-size:18px;font-weight:700;padding-bottom:6px">{{ $competition->title }}</div>
+          Your postal entry received on {{ $entry->receivedMoment()->timezone('Europe/London')->format('j F Y') }} is logged.
+          Entries open <strong>{{ $competition->opensLabel() }}</strong> (UK time): it's counted then, and we'll email you your ticket number.
+          Same draw, same chance of winning as online entries.
         </td></tr>
       @else
         <tr><td style="font-size:32px;font-weight:700;padding:8px 0 16px">We couldn't accept your entry.</td></tr>

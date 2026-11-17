@@ -72,7 +72,7 @@ class ClientDrafts extends Command
         foreach ($wanted as $col => $value) {
             $current = $c->getAttribute($col);
             $a = $this->show($current);
-            $b = $this->show(in_array($col, ['closes_at', 'postal_closes_at', 'draw_at'], true) && $value !== null ? Carbon::parse($value, 'UTC') : $value);
+            $b = $this->show(in_array($col, ['opens_at', 'closes_at', 'postal_closes_at', 'draw_at'], true) && $value !== null ? Carbon::parse($value, 'UTC') : $value);
             if ($a !== $b) {
                 $out[$col] = [$a, $b];
             }

@@ -98,7 +98,7 @@ class ReportService
                 'competition' => $e->competition->title,
                 'name' => $e->name,
                 'email' => $e->email,
-                'status' => $e->status === 'allocated' ? 'accepted' : 'rejected',
+                'status' => match ($e->status) { 'allocated' => 'accepted', 'held' => 'held', default => 'rejected' }, // held: logged before opening, numbered when it opens
                 'ticket' => $e->ticket ? '#'.$e->ticket->display($e->competition->total_tickets) : null,
                 'reason' => $e->rejection_reason,
             ]);

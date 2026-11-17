@@ -3,6 +3,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 import { adminGet, localInput, when } from '../../lib/admin';
 import type { Competition } from '../../lib/types';
 import { postalBy } from '../../lib/postal';
+import { isComingSoon, opensLabel } from '../../lib/coming-soon';
 import Pager from '../../components/admin/Pager.astro';
 interface Row { id: number; competition: string; name: string; email: string; receivedOn: string; receivedAt: string; status: string; reason: string | null; ticket: string | null }
 const [page, comps] = await Promise.all([
@@ -12,15 +13,18 @@ const [page, comps] = await Promise.all([
 const nowLocal = localInput(new Date().toISOString());
 // "Tuesday 22 December 2026, 6:00pm": the competition's actual postal close (its own, or 48 hours before close).
 const deadline = (c: Competition) => postalBy(c) ?? '';
-const hint = (c?: Competition) => (c && deadline(c) ? `UK time. Must be on or before the postal deadline (${deadline(c)}).` : 'UK time. Must be on or before the postal deadline.');
+const base = (c?: Competition) => (c && deadline(c) ? `UK time. Must be on or before the postal deadline (${deadline(c)}).` : 'UK time. Must be on or before the postal deadline.');
+// Coming soon: the envelope is logged now and held; it gets its ticket number when entries open.
+const held = (c?: Competition) => (c && isComingSoon(c) && c.opensAt ? ` Coming soon: this entry is held and gets its ticket number when entries open (${opensLabel(c.opensAt)}).` : '');
+const hint = (c?: Competition) => base(c) + held(c);
 ---
 <AdminLayout title="Postal entries" active="postal" staffOk>
   <section class="panel">
     <h2>Log a postal entry</h2>
-    <p class="small muted" style="margin:0 0 14px">Type in each envelope as it arrives. Valid entries get the next ticket number straight away, in the same draw as paid entries, and the entrant is emailed. Envelopes received after the competition's postal deadline, under-18s and people over the max are rejected automatically.</p>
+    <p class="small muted" style="margin:0 0 14px">Type in each envelope as it arrives. Valid entries get the next ticket number straight away, in the same draw as paid entries, and the entrant is emailed. Envelopes received after the competition's postal deadline, under-18s and people over the max are rejected automatically. For a coming-soon competition, log envelopes as they arrive too: they're <strong>held</strong> and get their ticket numbers, earliest received first, the moment entries open.</p>
     <form class="stack" style="gap:14px" data-admin-form="/api/admin/postal" data-reset data-reload>
       <div class="form-grid">
-        <div class="field"><label for="pc">Competition</label><select id="pc" name="competitionId" data-type="number" required data-postal-select>{comps.data.map((c) => <option value={c.id} data-hint={hint(c)}>{c.title}</option>)}</select></div>
+        <div class="field"><label for="pc">Competition</label><select id="pc" name="competitionId" data-type="number" required data-postal-select>{comps.data.map((c) => <option value={c.id} data-hint={hint(c)}>{c.title}{isComingSoon(c) ? ' (coming soon)' : ''}</option>)}</select></div>
         <div class="field"><label for="pr">Received (date and time)</label><input id="pr" name="receivedOn" type="datetime-local" data-type="uk-datetime" value={nowLocal} max={nowLocal} required /><span class="hint" data-postal-hint>{hint(comps.data[0])}</span></div>
       </div>
       <div class="form-grid">

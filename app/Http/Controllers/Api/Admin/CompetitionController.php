@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Http\Resources\CompetitionResource;
 use App\Http\Resources\Money;
 use App\Models\Competition;
+use App\Models\CompetitionEvent;
+use App\Services\CompetitionLauncher;
 use App\Mail\CompetitionPostponed;
 use App\Services\Draws\VerityDrawEngine;
 use Illuminate\Support\Carbon;
@@ -61,23 +63,59 @@ class CompetitionController extends Controller
             }
             unset($data['status']);
         } elseif (isset($data['status']) && $data['status'] !== 'draft') {
-            abort(422, 'Use Publish to put a competition live: publishing locks the draw in.');
+            abort(422, 'Use Publish to make a competition coming soon or live: publishing locks the draw in.');
         }
         $competition->update($data);
 
         return new CompetitionResource($competition);
     }
 
-    /** One way: publishes on Verity, fixes the terms and the drand round. */
-    public function publish(Competition $competition, VerityDrawEngine $verity)
+    /**
+     * One way: publishes on Verity, fixes the terms and the drand round. With a future opening time it becomes
+     * "coming soon" (shown, not enterable) and opens on its own at that time. Without one, it opens at once,
+     * and only if the admin confirmed that (openNow), which is recorded in the competition's history.
+     */
+    public function publish(Request $request, Competition $competition, VerityDrawEngine $verity)
     {
+        $openNow = $request->boolean('openNow');
         // The competition page, the cards and the reveal screen all need a photo of the prize.
         if (! collect($competition->images ?? [])->filter(fn ($i) => ! empty($i['src']))->count()) {
             throw new \App\Exceptions\EntryException('Upload at least one photo of the prize (Photos, then Save) before publishing.');
         }
-        $competition = $verity->publish($competition);
+        $wasDue = $competition->opens_at?->toIso8601String();
+        $competition = $verity->publish($competition, $openNow);
+        $comingSoon = $competition->status === 'coming_soon';
+        CompetitionEvent::record($competition, $request->user(), $comingSoon ? 'published' : 'published_open_now',
+            $comingSoon
+                ? "Published as {$competition->verity_ref} by {$request->user()->email}: coming soon, opens {$competition->opensLabel()} (UK time)."
+                : "Published as {$competition->verity_ref} and opened for entries immediately by {$request->user()->email} (confirmed).",
+            ['verity_ref' => $competition->verity_ref, 'opens_at' => $competition->opens_at?->toIso8601String(), 'opens_at_before' => $wasDue, 'confirmed_open_now' => $openNow]);
 
-        return (new CompetitionResource($competition))->additional(['message' => "Published as {$competition->verity_ref}. The draw is locked in: it runs on the drand round after closing."]);
+        return (new CompetitionResource($competition))->additional(['message' => $comingSoon
+            ? "Published as {$competition->verity_ref}: coming soon. It opens for entries on its own at {$competition->opensLabel()} (UK time). The draw is locked in."
+            : "Published as {$competition->verity_ref} and open for entries now. The draw is locked in."]);
+    }
+
+    /** "Open now": a coming-soon competition opens for entries early (confirmed), and its launch email is queued. */
+    public function open(Request $request, Competition $competition, CompetitionLauncher $launcher)
+    {
+        $request->validate(['confirm' => ['accepted']], ['confirm.accepted' => 'Confirm that you want to open entries now.']);
+        $r = $launcher->open($competition, $request->user());
+
+        return (new CompetitionResource($r['competition']))->additional([
+            'message' => "Open for entries now. The launch email is queued for {$r['queued']} ".Str::plural('person', $r['queued']).'.',
+        ]);
+    }
+
+    /** Admin's history for the competition (newest first). */
+    public function history(Competition $competition)
+    {
+        return response()->json(['data' => $competition->events()->with('user:id,email')->latest('id')->limit(100)->get()->map(fn ($e) => [
+            'at' => $e->created_at->toIso8601String(),
+            'action' => $e->action,
+            'summary' => $e->summary,
+            'by' => $e->user?->email,
+        ])]);
     }
 
     /**
@@ -148,7 +186,7 @@ class CompetitionController extends Controller
             'category' => [$existing ? 'sometimes' : 'required', Rule::in(['cars', 'parts', 'cash', 'merch'])],
             'badge' => ['nullable', 'string', 'max:40'],
             // Not needed on create: a new competition is always a draft (store()); it goes live only through publish().
-            'status' => ['sometimes', Rule::in($existing ? ['draft', 'scheduled', 'live', 'closed', 'drawn'] : ['draft'])],
+            'status' => ['sometimes', Rule::in($existing ? Competition::STATUSES : ['draft'])],
             'images' => ['array'], 'images.*.src' => ['required', 'string'], 'images.*.alt' => ['nullable', 'string', 'max:200'],
             'description' => ['array'], 'description.*' => ['string', 'max:3000'],
             'specs' => ['array'], 'specs.*.label' => ['required', 'string', 'max:60'], 'specs.*.value' => ['required', 'string', 'max:120'],

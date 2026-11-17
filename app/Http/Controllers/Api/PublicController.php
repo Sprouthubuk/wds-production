@@ -38,7 +38,7 @@ class PublicController extends Controller
         if (! $c && $preview && $preview->competition->slug === $slug) {
             $c = $preview->competition;
         }
-        abort_unless($c, 404);
+        abort_unless($c !== null, 404);
 
         return self::noStoreIfPreview((new CompetitionResource(self::markPreview(collect([$c]), $preview)->first()))->response(), $preview);
     }
@@ -47,7 +47,7 @@ class PublicController extends Controller
     public function preview(string $token)
     {
         $link = PreviewLink::findValid($token);
-        abort_unless($link, 404, 'This preview link has expired or been revoked.');
+        abort_unless($link !== null, 404, 'This preview link has expired or been revoked.');
 
         return response()->json(['data' => [
             'slug' => $link->competition->slug,
@@ -97,10 +97,49 @@ class PublicController extends Controller
         return response()->json(['data' => CompetitionTeaser::make(self::upcomingDrafts()->where('slug', $slug)->firstOrFail())]);
     }
 
-    /** Competitions not open yet (draft, or scheduled to open later), whose draw is still ahead. */
+    /**
+     * The basket's check (POST /basket/quote, items: [{competitionId, qty}]): each line's price and whether it
+     * can be entered right now. A coming-soon competition says "not open yet". Read only: checkout re-checks
+     * everything, so this can't be used to get round anything.
+     */
+    public function basketQuote(Request $request, \App\Services\PricingService $pricing)
+    {
+        $d = $request->validate([
+            'items' => ['required', 'array', 'max:20'],
+            'items.*.competitionId' => ['required', 'integer'],
+            'items.*.qty' => ['required', 'integer', 'min:1', 'max:100000'],
+        ]);
+        $competitions = Competition::whereIn('id', collect($d['items'])->pluck('competitionId'))->get()->keyBy('id');
+        $lines = collect($d['items'])->map(function ($item) use ($competitions, $pricing) {
+            $c = $competitions->get((int) $item['competitionId']);
+            if (! $c || $c->status === 'draft') {
+                return ['competitionId' => (int) $item['competitionId'], 'open' => false, 'state' => 'unavailable', 'message' => 'This competition is no longer available.'];
+            }
+            $why = $c->notOpenYetReason();
+            $state = $why ? 'not_open_yet' : ($c->isOpen() ? 'open' : 'closed');
+
+            return [
+                'competitionId' => $c->id,
+                'open' => $state === 'open',
+                'state' => $state,
+                'message' => $why ?? ($state === 'closed' ? "{$c->title} is closed for entries." : null),
+                'opensAt' => $c->opens_at?->toIso8601String(),
+                'qty' => (int) $item['qty'],
+                'total' => \App\Http\Resources\Money::pounds($pricing->forCompetition($c, (int) $item['qty'])),
+                'available' => $state === 'open' ? $c->available() : 0,
+            ];
+        })->values();
+
+        return response()->json(['data' => $lines])->header('Cache-Control', 'no-store');
+    }
+
+    /**
+     * Drafts whose draw is still ahead: teased (title, first image, draw date) until they're published. A
+     * published coming-soon competition has its full page instead.
+     */
     private static function upcomingDrafts()
     {
-        return Competition::query()->whereIn('status', ['draft', 'scheduled'])
+        return Competition::query()->where('status', 'draft')
             ->where(fn ($q) => $q->whereNull('draw_at')->orWhere('draw_at', '>', now()));
     }
 

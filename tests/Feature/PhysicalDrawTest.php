@@ -52,7 +52,7 @@ class PhysicalDrawTest extends TestCase
         ]);
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawMethod' => 'physical'])->assertOk()
             ->assertJsonPath('data.drawMethod', 'physical')->assertJsonPath('data.drawTool', Competition::PHYSICAL_TOOL);
-        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertOk();
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish", ['openNow' => true])->assertOk();
 
         $vc = app(VerityDrawEngine::class)->verityCompetition($c->fresh());
         $this->assertSame('external', $vc->draw_method);

@@ -67,7 +67,7 @@ trait VerityFakes
             'postal_entry_enabled' => true, 'event_sales_enabled' => true,
         ], $overrides));
 
-        return app(VerityDrawEngine::class)->publish($c);
+        return app(VerityDrawEngine::class)->publish($c, openNow: true);
     }
 
     /**

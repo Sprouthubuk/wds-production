@@ -37,7 +37,7 @@ class VerityDrawEngine
      * Publish = lock the draw in. Verity fixes the terms (closing time, ticket count, price, per-person
      * maximum), commits to the seed and plans the drand round. One way: there is no unpublish.
      */
-    public function publish(Competition $competition): Competition
+    public function publish(Competition $competition, bool $openNow = false): Competition
     {
         if ($competition->isPublished()) {
             throw new EntryException("{$competition->title} is already published (draw {$competition->verity_ref}).");
@@ -54,6 +54,18 @@ class VerityDrawEngine
         if ($competition->draw_at->lt($competition->closes_at)) {
             throw new EntryException('The live draw can\'t be before entries close.');
         }
+        // Coming soon: a future opening time publishes as a Verity draft (terms locked, nothing enterable) that
+        // opens at opens_at (competitions:open-due) or with Admin's "Open now". Without a future opening time the
+        // competition would open the moment it's published, so that needs the admin to say so ($openNow).
+        $comingSoon = (bool) $competition->opens_at?->isFuture();
+        if (! $comingSoon && ! $openNow) {
+            throw new EntryException($competition->opens_at
+                ? 'The opening time has passed, so publishing would open entries straight away. Set a future opening time, or confirm "Open for entries immediately".'
+                : 'Set the opening time first (Details → Opens), or confirm "Open for entries immediately": without one, publishing opens entries straight away.');
+        }
+        if ($comingSoon && $competition->opens_at->gte($competition->closes_at)) {
+            throw new EntryException('The opening time must be before entries close.');
+        }
         // A malformed VERITY_SEED_KEY would crash the publish half way ("Unsupported cipher or incorrect key length").
         if ($why = \App\Support\VerityKeyChecks::seedKeyProblem()) {
             throw new EntryException('Publishing is blocked: the server\'s VERITY_SEED_KEY is not a valid key ('.$why.') Fix it on the server, then run php artisan verity:check --strict.');
@@ -62,10 +74,13 @@ class VerityDrawEngine
             throw new EntryException('Name the random number tool for the external draw (and its https link) before publishing.');
         }
 
-        return DB::transaction(function () use ($competition) {
+        return DB::transaction(function () use ($competition, $comingSoon) {
             $locked = Competition::query()->whereKey($competition->id)->lockForUpdate()->firstOrFail();
             if ($locked->isPublished()) {
                 throw new EntryException("{$locked->title} is already published (draw {$locked->verity_ref}).");
+            }
+            if (! $comingSoon) {
+                $locked->opens_at = now(); // opened immediately, as the admin confirmed
             }
             try {
                 $vc = Verity::publish([
@@ -82,7 +97,7 @@ class VerityDrawEngine
                 ], endPrizes: [[
                     'name' => $locked->title,
                     'value_pence' => (int) ($locked->cash_alternative_pence ?? config('raffle.draws.default_prize_value_pence')),
-                ]]);
+                ]], live: ! $comingSoon);
             } catch (VerityException $e) {
                 throw new EntryException($e->getMessage());
             }
@@ -90,8 +105,39 @@ class VerityDrawEngine
                 'verity_ref' => $vc->ref,
                 'verity_status' => $vc->status,
                 'published_at' => now(),
-                'status' => $locked->opens_at?->isFuture() ? 'scheduled' : 'live',
+                'opens_at' => $locked->opens_at,
+                'status' => $comingSoon ? 'coming_soon' : 'live',
             ]);
+
+            return $locked;
+        });
+    }
+
+    /**
+     * Coming soon → live: Verity's draft goes live now (Verity records the real opening time on its audit
+     * chain). Used at opens_at by competitions:open-due and early by Admin's "Open now".
+     */
+    public function goLive(Competition $competition): Competition
+    {
+        return DB::transaction(function () use ($competition) {
+            $locked = Competition::query()->whereKey($competition->id)->lockForUpdate()->firstOrFail();
+            if (! in_array($locked->status, ['coming_soon', 'scheduled'], true) || ! $locked->isPublished()) {
+                throw new EntryException("{$locked->title} isn't coming soon (it's {$locked->status}), so there's nothing to open.");
+            }
+            $vc = $this->verityCompetition($locked);
+            if ($vc->status === 'draft') {
+                try {
+                    $vc = Verity::goLive($vc);
+                } catch (VerityException $e) {
+                    throw new EntryException($e->getMessage());
+                }
+            } elseif ($vc->status === 'live' && $vc->opens_at?->isFuture()) {
+                // Published before coming soon existed (live on Verity, opening later): it opens at its published time.
+                throw new EntryException("{$locked->title} opens at its published time ({$locked->opensLabel()}, UK time); it can't open earlier.");
+            } elseif ($vc->status !== 'live') {
+                throw new EntryException("{$locked->title} can't open: the draw engine has it as {$vc->status}.");
+            }
+            $locked->update(['status' => 'live', 'verity_status' => $vc->status, 'opens_at' => $vc->opens_at ?? now()]);
 
             return $locked;
         });

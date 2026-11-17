@@ -47,7 +47,7 @@ class DatabaseSeeder extends Seeder
             'total_tickets' => 750,
             'max_per_person' => null,
             'cash_alternative_pence' => 500000,
-            'opens_at' => now(),
+            'opens_at' => ClientDrafts::OPENS_AT, // coming soon until launch (wds:client-drafts sets the same)
             // Confirmed by the client: entries close Thu 24 Dec 2026 at 19:00 UK time (GMT, so UTC), live
             // draw at 19:30. Postal entries must be received 48 hours before closes_at
             // (Competition::postalClosesAt()): by 19:00 on Tue 22 Dec.

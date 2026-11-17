@@ -8,8 +8,8 @@ use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 
 /**
- * A private preview link for a draft competition (see the migration). Only a draft can be
- * previewed: once a competition is published the link stops working.
+ * A private preview link for a draft or coming-soon competition (see the migration): it shows the
+ * competition as it'll look when live. Once the competition opens the link stops working.
  */
 class PreviewLink extends Model
 {
@@ -24,6 +24,7 @@ class PreviewLink extends Model
         return ['expires_at' => 'datetime', 'revoked_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<Competition, $this> */
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
 
     /** A new link for the competition; any earlier link for it is revoked. */
@@ -62,7 +63,14 @@ class PreviewLink extends Model
     public function isValid(): bool
     {
         return ! $this->revoked_at && $this->expires_at->isFuture()
-            && $this->competition && ! $this->competition->isPublished() && $this->competition->status === 'draft';
+            && $this->competition && self::previewable($this->competition);
+    }
+
+    /** "Preview as live": a draft, or a coming-soon competition before it opens. The link stops once it's live. */
+    public static function previewable(Competition $competition): bool
+    {
+        return $competition->status === 'draft' && ! $competition->isPublished()
+            || $competition->status === 'coming_soon';
     }
 
     public function token(): string

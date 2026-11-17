@@ -1,0 +1,81 @@
+---
+/**
+ * Admin → Launch alerts: who asked to be emailed when a competition goes live ("Notify me when it's live")
+ * or when the site launches ("Get first access"). Counts, what each competition's launch email would reach,
+ * the list, a CSV export and "Send test launch email" (the real email, to one address, marked TEST).
+ */
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import Pager from '../../components/admin/Pager.astro';
+import { adminGet } from '../../lib/admin';
+
+interface Row { id: number; email: string; list: string; source: string | null; consentAt: string | null; unsubscribedAt: string | null }
+interface CompCount { id: number; title: string; status: string; ownList: number; launchAudience: number; sent: number; queued: number }
+interface Payload {
+  data: Row[];
+  meta: { page: number; lastPage: number; total: number };
+  counts: { subscribed: number; people: number; siteWide: number; unsubscribed: number; competitions: CompCount[] };
+}
+const page = Math.max(1, Number(Astro.url.searchParams.get('page') ?? 1) || 1);
+const list = Astro.url.searchParams.get('list') ?? '';
+const qs = new URLSearchParams({ page: String(page), ...(list !== '' ? { competitionId: list } : {}) });
+const res = await adminGet<Payload>(Astro.cookies, `/launch-alerts?${qs}`).catch(() => null);
+const counts = res?.counts ?? { subscribed: 0, people: 0, siteWide: 0, unsubscribed: 0, competitions: [] };
+const rows = res?.data ?? [];
+const when = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '');
+const exportHref = `/api/admin/launch-alerts/export${list !== '' ? `?competitionId=${encodeURIComponent(list)}` : ''}`;
+---
+<AdminLayout title="Launch alerts" active="launch-alerts">
+  <a slot="actions" class="btn btn--outline" href={exportHref} download>Export CSV</a>
+
+  <section class="kpis">
+    <div class="panel kpi"><span class="label">People signed up</span><b>{counts.people.toLocaleString('en-GB')}</b><span class="small muted">{counts.subscribed.toLocaleString('en-GB')} sign-ups across all lists</span></div>
+    <div class="panel kpi"><span class="label">Site-wide list</span><b>{counts.siteWide.toLocaleString('en-GB')}</b><span class="small muted">"Get first access": every launch email</span></div>
+    <div class="panel kpi"><span class="label">Unsubscribed</span><b>{counts.unsubscribed.toLocaleString('en-GB')}</b><span class="small muted">never emailed again</span></div>
+  </section>
+
+  <section class="panel" style="margin-top:20px">
+    <h2>Launch emails</h2>
+    <p class="small" style="margin:0 0 12px;color:var(--muted-2)">When a competition goes live (at its opening time, or with Open now) one email goes to its own list plus the site-wide list, once per person. Self-excluded, suspended and closed accounts are left out.</p>
+    <div class="tbl-wrap"><table class="tbl">
+      <thead><tr><th>Competition</th><th>Status</th><th>Own list</th><th>Launch email reaches</th><th>Sent</th><th>Queued / retrying</th></tr></thead>
+      <tbody>{counts.competitions.length ? counts.competitions.map((c) => (
+        <tr><td>{c.title}</td><td><span class={`pill pill--${c.status}`}>{c.status.replace('_', ' ')}</span></td><td>{c.ownList}</td><td><b>{c.launchAudience}</b></td><td>{c.sent}</td><td>{c.queued}</td></tr>
+      )) : <tr><td colspan="6" class="muted">No draft, coming-soon or live competitions.</td></tr>}</tbody>
+    </table></div>
+
+    <form class="row" style="gap:10px;flex-wrap:wrap;margin-top:16px;align-items:flex-end" data-admin-form="/api/admin/launch-alerts/test" data-confirm="Send the launch email for this competition to this one address? It's marked TEST and nobody on the list gets it.">
+      <div class="field" style="flex:1 1 220px"><label for="t-comp">Send test launch email</label>
+        <select id="t-comp" name="competitionId" data-type="number" required>{counts.competitions.map((c) => <option value={c.id}>{c.title}</option>)}</select></div>
+      <div class="field" style="flex:1 1 220px"><label for="t-email">To (empty: you)</label><input id="t-email" name="email" type="email" placeholder="you@example.com" /></div>
+      <button class="btn" type="submit" disabled={!counts.competitions.length}>Send test</button>
+    </form>
+  </section>
+
+  <section class="panel" style="margin-top:20px">
+    <div class="row" style="justify-content:space-between;gap:12px;flex-wrap:wrap">
+      <h2 style="margin:0">Sign-ups</h2>
+      <form method="get" class="row" style="gap:8px">
+        <label class="sr-only" for="f-list">List</label>
+        <select id="f-list" name="list" onchange="this.form.submit()">
+          <option value="" selected={list === ''}>All lists</option>
+          <option value="0" selected={list === '0'}>Site-wide</option>
+          {counts.competitions.map((c) => <option value={c.id} selected={list === String(c.id)}>{c.title}</option>)}
+        </select>
+      </form>
+    </div>
+    <div class="tbl-wrap" style="margin-top:12px"><table class="tbl">
+      <thead><tr><th>Email</th><th>List</th><th>Source</th><th>Consent (UK)</th><th>Status</th></tr></thead>
+      <tbody>{rows.length ? rows.map((r) => (
+        <tr><td class="mono">{r.email}</td><td>{r.list}</td><td>{r.source ?? ''}</td><td>{when(r.consentAt)}</td><td>{r.unsubscribedAt ? <span class="pill pill--closed">unsubscribed {when(r.unsubscribedAt)}</span> : <span class="pill pill--live">subscribed</span>}</td></tr>
+      )) : <tr><td colspan="5" class="muted">No sign-ups yet.</td></tr>}</tbody>
+    </table></div>
+    {res ? <Pager current={res.meta.page} last={res.meta.lastPage} total={res.meta.total} noun="sign-ups" url={Astro.url} /> : null}
+  </section>
+</AdminLayout>
+
+<style>
+  .kpis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+  .kpi { display: flex; flex-direction: column; gap: 6px; }
+  .kpi b { font-size: 32px; line-height: 1; }
+  @media (max-width: 700px) { .kpis { grid-template-columns: 1fr; } }
+</style>

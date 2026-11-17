@@ -18,8 +18,9 @@ const v = c ?? {
 } as Competition;
 // Published on Verity = the draw is locked in: the terms that are part of it can't change.
 const locked = !!v.verityRef;
-// A draft can have a private preview link for the client (14 days; regenerate or revoke at any time).
-const previewLink = !isNew && !locked && !usingSampleData
+// A draft or a coming-soon competition can have a private "Preview as live" link (14 days; regenerate or revoke at any time).
+const previewable = !isNew && (!locked || v.status === 'coming_soon');
+const previewLink = previewable && !usingSampleData
   ? (await adminGet<{ data: { url: string; expiresAt: string; createdAt: string } | null }>(Astro.cookies, `/competitions/${id}/preview-link`).catch(() => ({ data: null }))).data
   : null;
 // What closing means depends on the draw method: only a Verity draw is drawn automatically after the close.
@@ -34,6 +35,12 @@ const publishWhat: Record<string, string> = {
   physical: 'entries close and are sealed at the closing time, and the winner is drawn live by hand (numbered tokens, with a witness) at the live draw time; nothing is drawn automatically',
   external: 'entries close and are sealed at the closing time, and the winner is drawn live with the named random number generator at the live draw time; nothing is drawn automatically',
 };
+// Coming soon: a future opening time publishes it as coming soon (it opens on its own then); otherwise it opens at once.
+const opensFuture = !!v.opensAt && Date.parse(v.opensAt) > Date.now();
+const ukWhen = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : '');
+const history = !isNew && !usingSampleData
+  ? (await adminGet<{ data: { at: string; action: string; summary: string; by: string | null }[] }>(Astro.cookies, `/competitions/${id}/history`).catch(() => ({ data: [] }))).data
+  : [];
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 ---
 <AdminLayout title={isNew ? 'New competition' : v.title} active="competitions">
@@ -118,10 +125,10 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     <section class="panel">
       <h2>Dates &amp; draw</h2>
       <div class="form-grid">
-        <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} disabled={locked} /></div>
+        <div class="field"><label for="opens">Opens</label><input id="opens" name="opensAt" type="datetime-local" value={localInput(v.opensAt)} disabled={locked} /><span class="hint">UK time. Published before this, it shows as <b>coming soon</b> (visible, can't be entered) and opens on its own at this time, emailing everyone who asked to be told.</span></div>
         <div class="field"><label for="closes">Closes</label><input id="closes" name="closesAt" type="datetime-local" value={localInput(v.closesAt)} disabled={locked} /><span class="hint" data-method-text={JSON.stringify(closesHint)}>{closesHint[methodNow] ?? closesHint.verity}</span></div>
         <div class="field"><label for="draw">Live draw</label><input id="draw" name="drawAt" type="datetime-local" value={localInput(v.drawAt)} /><span class="hint">UK time. Shown as the countdown on the site. Can stay empty on a draft until it's confirmed; needed to publish.</span></div>
-        <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status}</span></b><span class="hint">{locked ? (methodNow === 'verity' ? 'Follows the draw engine: it closes and draws on its own.' : 'Follows the draw engine: it closes and seals on its own; the winner is drawn live and recorded on Draws.') : 'A draft until you publish it below.'}</span></div>
+        <div class="field"><label>Status</label><b><span class={`pill pill--${v.status}`}>{v.status.replace("_", " ")}</span></b><span class="hint">{v.status === "coming_soon" ? "Published and locked in; opens for entries on its own at the opening time." : locked ? (methodNow === 'verity' ? 'Follows the draw engine: it closes and draws on its own.' : 'Follows the draw engine: it closes and seals on its own; the winner is drawn live and recorded on Draws.') : 'A draft until you publish it below.'}</span></div>
       </div>
       <fieldset class="dm" disabled={locked}>
         <legend class="label">How it's drawn {locked ? <span class="small muted">(fixed at publish)</span> : null}</legend>
@@ -163,13 +170,30 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       <h2>Publish</h2>
       <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and <span data-method-text={JSON.stringify(publishWhat)}>{publishWhat[methodNow] ?? publishWhat.verity}</span>. Check everything above (and save) first.</p>
       {v.images.length ? null : <p class="alert alert--error" style="margin:0 0 12px">Upload at least one photo of the prize (Photos, then Save) before publishing.</p>}
-      <button class="btn" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title}? This locks the draw in: closing ${localInput(v.closesAt).replace('T', ' ')} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, ${v.maxPerPerson ? `max ${v.maxPerPerson} per person` : 'no per-person limit'}. ${methodNow === 'verity' ? 'The winner is drawn automatically about a minute after closing.' : 'Entries are sealed at closing; the winner is drawn live at the live draw time.'} It can't be undone.`} data-reload>Publish and lock the draw</button>
+      {opensFuture ? (
+        <>
+          <p class="small" style="margin:0 0 12px">Opens <strong>{ukWhen(v.opensAt)}</strong> UK time. Until then it shows as <strong>coming soon</strong>: visible with its odds and prices, "Notify me" instead of Enter, and nothing can be entered.</p>
+          <button class="btn" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title} as coming soon? This locks the draw in: opens ${ukWhen(v.opensAt)}, closes ${ukWhen(v.closesAt)} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, ${v.maxPerPerson ? `max ${v.maxPerPerson} per person` : 'no per-person limit'}. ${methodNow === 'verity' ? 'The winner is drawn automatically about a minute after closing.' : 'Entries are sealed at closing; the winner is drawn live at the live draw time.'} It opens for entries on its own at the opening time. It can't be undone.`} data-reload>Publish as coming soon</button>
+        </>
+      ) : (
+        <>
+          <p class="alert alert--error" style="margin:0 0 12px">{v.opensAt ? `The opening time (${ukWhen(v.opensAt)}) has passed` : 'There is no opening time'}, so publishing opens entries <strong>immediately</strong>. To publish as coming soon, set a future time in Details → Opens and save.</p>
+          <button class="btn btn--danger" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-body='{"openNow":true}' data-confirm={`Publish ${v.title} and OPEN IT FOR ENTRIES NOW? This locks the draw in (closes ${ukWhen(v.closesAt)} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}) and people can enter straight away. This is recorded in the competition's history and can't be undone.`} data-reload>Publish and open immediately</button>
+        </>
+      )}
     </section>
   ) : null}
-  {!isNew && !locked ? (
+  {v.status === 'coming_soon' ? (
+    <section class="panel" style="margin-top:20px">
+      <h2>Coming soon</h2>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published and locked in. It opens for entries on its own at <strong>{ukWhen(v.opensAt)}</strong> UK time (the scheduler checks every minute) and the launch email goes to everyone on its list and the site-wide list. Opening early does the same, now.</p>
+      <button type="button" class="btn btn--danger" data-admin-action={`/api/admin/competitions/${v.id}/open`} data-body='{"confirm":true}' data-confirm={`Open ${v.title} for entries NOW, before its opening time (${ukWhen(v.opensAt)})? People can enter straight away and the launch email is sent to everyone signed up. This is recorded in the competition's history and can't be undone.`} data-reload>Open now</button>
+    </section>
+  ) : null}
+  {previewable ? (
     <section class="panel" style="margin-top:20px" data-preview-panel data-tabpanel="details">
-      <h2>Preview link</h2>
-      <p class="small" style="margin:0 0 12px;color:var(--muted-2)">A private link for the client to see this draft on the real site as if it were live, with a "Preview: not live yet" banner. Entries stay disabled, and nothing is sent to the draw engine. The link works for 14 days and stops when you make a new one, revoke it, or publish.</p>
+      <h2>Preview as live</h2>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)">A private link to see this {v.status === 'coming_soon' ? 'coming-soon competition' : 'draft'} on the real site exactly as it'll look when live, with a "Preview: not live yet" banner. Entries stay disabled{locked ? '' : ', and nothing is sent to the draw engine'}. The link works for 14 days and stops when you make a new one, revoke it, or it opens.</p>
       {previewLink ? (
         <div class="stack" style="gap:12px">
           <div class="row" style="gap:8px;flex-wrap:wrap">
@@ -192,7 +216,7 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
     <section class="panel" style="margin-top:20px" data-tabpanel="draw" hidden>
       <h2>Draw</h2>
       <p class="small" style="margin:0 0 12px;color:var(--muted-2)">Published as <span class="mono">{v.verityRef}</span>. Draw status, the committed drand round and the audit trail are on <a href="/admin/draws">Draws</a>.</p>
-      {['live', 'scheduled'].includes(v.status) ? (
+      {['live', 'coming_soon'].includes(v.status) ? (
         <form class="stack" style="gap:10px" data-admin-form={`/api/admin/competitions/${v.id}/extend`} data-confirm={`Postpone ${v.title}? This is permanent and public: the reason goes on the draw's audit record, the competition page shows a notice, and every entrant is emailed the new time and the reason.`} data-reload>
           <h3 class="label" style="margin:0">Postpone (emergency only)</h3>
           <p class="small" style="margin:0;color:var(--muted-2)"><strong>Not for low sales: the terms forbid extending because of sales.</strong> Only for an emergency such as the site being down or the live stream being impossible. The live draw moves by the same amount.</p>
@@ -206,6 +230,21 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       ) : null}
     </section>
   ) : null}
+
+  {history.length ? (
+    <section class="panel" style="margin-top:20px" data-tabpanel="details">
+      <h2>History</h2>
+      <ul class="history">
+        {history.map((h) => <li><span class="small muted">{ukWhen(h.at)}</span><span>{h.summary}</span></li>)}
+      </ul>
+    </section>
+  ) : null}
+
+  <style>
+    .history { list-style: none; margin: 0; padding: 0; }
+    .history li { display: grid; grid-template-columns: minmax(150px, auto) 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--line-2); }
+    @media (max-width: 600px) { .history li { grid-template-columns: 1fr; gap: 4px; } }
+  </style>
 
   <script>
     // Tabs: Details, Pricing, Photos, Draw, Entries. Every field stays in the one form (saved together); a tab only

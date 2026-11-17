@@ -171,28 +171,69 @@ and for one session.**
 
 ## Go-live checklist (production)
 
-- [ ] The integration test matrix passes (or the live smoke test, with its refunds confirmed in the Portal).
-- [ ] Card type detection is confirmed from the `paid payment structure` log lines (or a BIN service is plugged into
-      `BinLookup`). Only then set `CASHFLOWS_UNKNOWN_CARD_AS_CREDIT=false`.
-- [ ] Production `.env`:
-  - `PAYMENT_DRIVER=cashflows`
-  - `CASHFLOWS_BASE_URL=https://gateway.cashflows.com`
-  - the production `CASHFLOWS_CONFIGURATION_ID` and `CASHFLOWS_API_KEY`
-  - a new `CASHFLOWS_WEBHOOK_TOKEN`
+Do these in order. You enter every credential yourself; none of it goes in git, chat, tickets or PRs. Production
+uses the **live** environment; staging stays on the **integration** environment throughout.
 
-  Then run `config:cache`. The values go in the password manager, never in git, chat or tickets.
-- [ ] **Rotate the API key** in portal.cashflows.com if the live key was used for staging or seen by anyone outside the
-      password manager. Update production's `.env` at the same moment.
-- [ ] Production Portal URLs:
-  - Success `https://wdscompetitions.co.uk/order/return?result=success`
-  - Failed `…?result=failed`
-  - Cancelled `…?result=cancelled`
-  - Notification `https://api.wdscompetitions.co.uk/api/payments/cashflows/notify?token=<production token>`
+**A. Before you touch production**
 
-  Enable notifications for status changes (Paid, Failed, Cancelled, Expired).
-- [ ] Portal: the payment page expiry default is about 15 minutes. Our jobs set their own expiry to the reservation end.
-- [ ] Optional: `CASHFLOWS_WEBHOOK_IPS=54.74.58.255,52.215.48.101`, once a notification has been seen arriving from
-      those IPs.
-- [ ] Send the completed **accreditation spreadsheet** to **implementations@cashflows.com**, and wait for Cashflows to
-      sign off the integration before taking real payments.
-- [ ] First real payments: watch Admin → Orders for "refund needed" and check the History on the first few orders.
+1. [ ] The integration test matrix above passes on staging (or the live £1 smoke test, with its refunds confirmed
+       in the Portal and staging put back afterwards).
+2. [ ] Cashflows has signed off the integration: the completed **accreditation spreadsheet** went to
+       **implementations@cashflows.com** and they've confirmed in writing that live payments can be taken.
+3. [ ] Card type detection is checked from the `Cashflows: paid payment structure (redacted)` log lines (see "Card
+       type" above). This decides step 9.
+
+**B. The live API key (portal.cashflows.com, live account)**
+
+4. [ ] **Rotate the live API key** (generate a new one). Whatever key existed before may have been seen during
+       setup or used on staging. Put the new key straight into the password manager.
+5. [ ] Note the live **Configuration ID** (password manager, next to the key).
+6. [ ] Generate production's own notification token on the server or your machine:
+       `php -r "echo bin2hex(random_bytes(24)), PHP_EOL;"`. It must differ from staging's. Password manager.
+
+**C. Production `.env` (Forge → production API site → Environment)**
+
+7. [ ] Set:
+       ```
+       PAYMENT_DRIVER=cashflows
+       CASHFLOWS_BASE_URL=https://gateway.cashflows.com
+       CASHFLOWS_CONFIGURATION_ID=<live configuration id>
+       CASHFLOWS_API_KEY=<the new live key from step 4>
+       CASHFLOWS_WEBHOOK_TOKEN=<the token from step 6>
+       CASHFLOWS_WEBHOOK_IPS=54.74.58.255,52.215.48.101
+       ```
+8. [ ] Check there's no `gateway-int`/`gateway-inta` URL and no integration ID or key anywhere in production's
+       `.env`, and no live value anywhere in staging's.
+9. [ ] `CASHFLOWS_UNKNOWN_CARD_AS_CREDIT=false` (agreed for production). With `false`, a card whose type can't be
+       read **doesn't** count towards the £250-a-month credit card cap. If step 3 showed card types as *Unknown*,
+       either get detection working first or accept that risk knowingly.
+10. [ ] Save, then run from Forge → Commands: `php8.5 artisan config:cache` and `php8.5 artisan queue:restart`.
+
+**D. Live Portal URLs (portal.cashflows.com, live account)**
+
+11. [ ] Success URL: `https://wdscompetitions.co.uk/order/return?result=success`
+12. [ ] Failed URL: `https://wdscompetitions.co.uk/order/return?result=failed`
+13. [ ] Cancelled URL: `https://wdscompetitions.co.uk/order/return?result=cancelled`
+14. [ ] Notification URL: `https://api.wdscompetitions.co.uk/api/payments/cashflows/notify?token=<production token>`
+15. [ ] Notifications enabled for status changes: **Paid, Failed, Cancelled, Expired**.
+16. [ ] Payment page expiry: leave the Portal default (about 15 minutes); each payment job sets its own expiry.
+
+    Until the DNS cutover (`docs/dns-cutover.md`) these domains don't reach production yet, so do steps 11–16 on
+    cutover day, after SSL is issued for them. The integration account's Portal keeps pointing at staging.
+
+**E. Check, without a real purchase**
+
+17. [ ] The notification URL with a wrong token is refused:
+        `curl -s -o /dev/null -w "%{http_code}
+" -X POST "https://api.wdscompetitions.co.uk/api/payments/cashflows/notify?token=wrong"`
+        should print `403` (not 200, not 500).
+18. [ ] `php8.5 artisan schedule:list` shows `payments:reconcile` every 5 minutes, and the queue worker is running.
+
+**F. First real payments (after the competitions open)**
+
+19. [ ] Watch Admin → Orders for the first few orders: each goes Pending → Paid, tickets issued, email sent; the
+        order's Payment → History shows the notification arriving from one of the two allowlisted IPs.
+20. [ ] If a notification is refused by the IP allowlist (History or the log shows a different IP), clear
+        `CASHFLOWS_WEBHOOK_IPS`, `config:cache`, and tell Cashflows. Reconcile still confirms payments every 5 minutes
+        in the meantime.
+21. [ ] Watch for "refund needed" in Admin → Orders during the first day.

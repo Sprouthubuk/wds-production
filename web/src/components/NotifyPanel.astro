@@ -1,0 +1,67 @@
+---
+/**
+ * Coming soon: in place of the entry panel. The odds (a USP), total tickets, price and bundles, a countdown
+ * to the opening, and "Notify me when it's live" for this competition. Nothing here can enter: the API
+ * refuses entries until it opens.
+ */
+import type { Competition } from '../lib/types';
+import { money, odds } from '../lib/pricing';
+import { countdownParts } from '../lib/countdown';
+import { opensLabel } from '../lib/coming-soon';
+import SignupForm from './SignupForm.astro';
+
+interface Props { competition: Competition; signedInAs?: string | null }
+const { competition: c, signedInAs = null } = Astro.props;
+const free = c.ticketPrice === 0;
+const cd = c.opensAt ? countdownParts(c.opensAt) : null;
+const bundles = [...c.bundles].sort((a, b) => a.qty - b.qty);
+---
+<div class="notify" id="notify">
+  <span class="chip chip--line soon-chip"><span class="dot"></span>Coming soon</span>
+  <div class="odds-strip">
+    <div><span>{free ? 'Odds per entry' : 'Odds per ticket'}</span><b class="num">{odds(c.totalTickets)}</b></div>
+    <div><span>Only</span><b class="num">{c.totalTickets.toLocaleString('en-GB')} <small>{free ? 'entries' : 'tickets'}</small></b></div>
+  </div>
+
+  {c.opensAt && cd ? (
+    <div class="opens">
+      <span class="label">Entries open in</span>
+      <div class="countdown" data-countdown={c.opensAt} role="timer" aria-label={`Countdown to entries opening, ${opensLabel(c.opensAt)} UK time`}>
+        <div><b data-unit="d">{cd.d}</b><small>Days</small></div>
+        <div><b data-unit="h">{cd.h}</b><small>Hrs</small></div>
+        <div><b data-unit="m">{cd.m}</b><small>Mins</small></div>
+        <div><b data-unit="s">{cd.s}</b><small>Secs</small></div>
+      </div>
+      <span class="small muted">{opensLabel(c.opensAt)} (UK time)</span>
+    </div>
+  ) : null}
+
+  <ul class="price-list">
+    <li><span>{free ? 'Entry' : '1 ticket'}</span><b>{free ? 'Free' : money(c.ticketPrice)}</b></li>
+    {bundles.map((b) => <li><span>{b.qty} tickets</span><b>{money(b.price)}</b></li>)}
+    <li><span>Per person</span><b>{c.maxPerPerson ? `Max ${c.maxPerPerson}` : 'No limit'}</b></li>
+  </ul>
+
+  <SignupForm id={`notify-${c.id}`} label="Notify me when it's live" competitionId={c.id} source="competition" signedInAs={signedInAs} />
+  <span class="foot">{free ? 'Free to enter online, one per account, once it opens.' : 'Entries open on the date above. Free postal entry on every paid competition.'}</span>
+</div>
+
+<style>
+  .notify { display: flex; flex-direction: column; gap: 18px; }
+  .soon-chip { align-self: flex-start; }
+  .odds-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--line-2); }
+  .odds-strip > div { padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; }
+  .odds-strip > div + div { border-left: 1px solid var(--line-2); }
+  .odds-strip span { font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-2); }
+  .odds-strip b { font-size: 28px; line-height: 1; }
+  .odds-strip small { font-size: 13px; font-weight: 400; color: var(--muted-2); }
+  .opens { display: flex; flex-direction: column; gap: 8px; }
+  .countdown { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .countdown > div { border: 1px solid var(--line-2); padding: 10px 4px 8px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .countdown b { font-size: 26px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .countdown small { font-size: 10px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted-2); }
+  .price-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line-2); }
+  .price-list li { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line-2); font-size: 15px; }
+  .price-list b { font-size: 17px; }
+  .foot { font-size: 12px; color: var(--muted-2); }
+</style>

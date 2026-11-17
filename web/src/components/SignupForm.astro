@@ -1,15 +1,24 @@
 ---
 /**
- * "Get first access" email sign-up (posts to /api/newsletter). Used by the newsletter strip and the
- * pre-launch hero, card and page. Several can sit on one page.
+ * Launch alert sign-up (posts to /api/newsletter): "Get first access" (site-wide) or, with competitionId,
+ * "Notify me when it's live" for one competition. Email only, no account needed. Signed in (signedInAs),
+ * it's one click with the account's address. Several can sit on one page.
  */
-interface Props { id: string; label?: string }
-const { id, label = 'Get first access' } = Astro.props;
+import { CONSENT_LINE } from '../lib/coming-soon';
+interface Props { id: string; label?: string; competitionId?: number; source?: string; signedInAs?: string | null; consent?: boolean }
+const { id, label = 'Get first access', competitionId, source = 'home', signedInAs = null, consent = true } = Astro.props;
 ---
-<form class="signup" data-signup>
-  <label for={id} class="sr-only">Email address</label>
-  <input id={id} name="email" type="email" required placeholder="Your email address" autocomplete="email" />
+<form class="signup" data-signup data-competition={competitionId ?? ''} data-source={source} data-signed-in={signedInAs ? '1' : ''}>
+  {signedInAs ? (
+    <p class="small signup-who">Signed in as <strong>{signedInAs}</strong>: one click and you're on the list.</p>
+  ) : (
+    <>
+      <label for={id} class="sr-only">Email address</label>
+      <input id={id} name="email" type="email" required placeholder="Your email address" autocomplete="email" />
+    </>
+  )}
   <button class="btn" type="submit">{label}</button>
+  {consent ? <p class="small muted signup-consent">{CONSENT_LINE}</p> : null}
   <p class="small" data-signup-msg role="status" aria-live="polite" hidden></p>
 </form>
 
@@ -19,6 +28,7 @@ const { id, label = 'Get first access' } = Astro.props;
   .signup input:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
   .signup .btn { min-height: 56px; }
   .signup p { flex: 1 1 100%; margin: 0; }
+  .signup-who { order: -1; }
   @media (max-width: 600px) { .signup .btn { flex: 1 1 100%; } }
 </style>
 
@@ -28,11 +38,17 @@ const { id, label = 'Get first access' } = Astro.props;
       e.preventDefault();
       const msg = form.querySelector<HTMLElement>('[data-signup-msg]')!;
       const btn = form.querySelector<HTMLButtonElement>('button')!;
-      const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+      const input = form.elements.namedItem('email') as HTMLInputElement | null;
+      const body: Record<string, unknown> = { source: form.dataset.source || 'home' };
+      if (input) body.email = input.value;
+      if (form.dataset.competition) body.competitionId = Number(form.dataset.competition);
       btn.disabled = true;
       try {
-        const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-        msg.textContent = res.ok ? "You're on the list. We'll email you the moment entries open." : 'Something went wrong, please try again.';
+        const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json().catch(() => ({}));
+        msg.textContent = res.ok
+          ? (data.message ?? "You're on the list. We'll email you the moment entries open.")
+          : (data.message ?? 'Something went wrong, please try again.');
         if (res.ok) form.reset();
       } catch {
         msg.textContent = 'Something went wrong, please try again.';

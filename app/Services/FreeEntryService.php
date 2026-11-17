@@ -43,8 +43,9 @@ class FreeEntryService
         $email = TicketAllocator::normaliseEmail($user->email);
         $order = DB::transaction(function () use ($user, $competition, $email, $marketingOptIn) {
             $c = Competition::whereKey($competition->id)->lockForUpdate()->firstOrFail();
-            if (! $c->isPublished() || $c->status === 'draft') {
-                throw new EntryException("{$c->title} isn't open for entries yet.");
+            // A draft (even one seen through a preview link) or a coming-soon competition is never enterable.
+            if ($why = $c->notOpenYetReason()) {
+                throw new EntryException($why);
             }
             if (! $c->isOpen()) {
                 throw new EntryException("{$c->title} is closed for entries.");

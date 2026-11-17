@@ -253,36 +253,6 @@ parameters:
 			path: app/Http/Controllers/Api/Admin/OrderController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Http/Controllers/Api/Admin/PostalController.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/Admin/PostalController.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
-			identifier: method.notFound
-			count: 2
-			path: app/Http/Controllers/Api/Admin/PostalController.php
-
-		-
-			message: '#^Cannot call method toDateString\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Controllers/Api/Admin/PostalController.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Pagination\\AbstractPaginator\<int,App\\Models\\PostalEntry\>\:\:through\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
-			count: 1
-			path: app/Http/Controllers/Api/Admin/PostalController.php
-
-		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
@@ -355,15 +325,9 @@ parameters:
 			path: app/Http/Controllers/Api/MeController.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 2
-			path: app/Http/Controllers/Api/PublicController.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
 			identifier: property.notFound
-			count: 3
+			count: 2
 			path: app/Http/Controllers/Api/PublicController.php
 
 		-
@@ -391,18 +355,6 @@ parameters:
 			path: app/Http/Controllers/Api/PublicController.php
 
 		-
-			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, App\\Models\\PreviewLink\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/PublicController.php
-
-		-
-			message: '#^Parameter \#1 \$boolean of function abort_unless expects bool, Illuminate\\Database\\Eloquent\\Model\|null given\.$#'
-			identifier: argument.type
-			count: 1
-			path: app/Http/Controllers/Api/PublicController.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Draw\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -411,7 +363,7 @@ parameters:
 		-
 			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
 			identifier: method.nonObject
-			count: 5
+			count: 4
 			path: app/Http/Resources/CompetitionResource.php
 
 		-
@@ -425,12 +377,6 @@ parameters:
 			identifier: offsetAccess.notFound
 			count: 1
 			path: app/Http/Resources/CompetitionResource.php
-
-		-
-			message: '#^Cannot call method toIso8601String\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Http/Resources/CompetitionTeaser.php
 
 		-
 			message: '#^Cannot call method toDateString\(\) on string\.$#'
@@ -541,36 +487,6 @@ parameters:
 			path: app/Http/Resources/WinnerResource.php
 
 		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$slug\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Mail/PostalEntryLogged.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Mail/PostalEntryLogged.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Mail/PostalEntryLogged.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Mail/PostalEntryLogged.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:postalDeadlineSentence\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Mail/PostalEntryLogged.php
-
-		-
 			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$cash_alternative_pence\.$#'
 			identifier: property.notFound
 			count: 1
@@ -601,34 +517,10 @@ parameters:
 			path: app/Mail/WinnerNotified.php
 
 		-
-			message: '#^Cannot call method isPast\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/Competition.php
-
-		-
 			message: '#^Cannot call method isFuture\(\) on string\.$#'
 			identifier: method.nonObject
 			count: 1
 			path: app/Models/DiscountCode.php
-
-		-
-			message: '#^Cannot call method copy\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Models/PostalEntry.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$status\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Models/PreviewLink.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:isPublished\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Models/PreviewLink.php
 
 		-
 			message: '#^Cannot call method isFuture\(\) on string\.$#'
@@ -727,12 +619,6 @@ parameters:
 			path: app/Services/Draws/VerityDrawEngine.php
 
 		-
-			message: '#^Cannot call method isFuture\(\) on string\.$#'
-			identifier: method.nonObject
-			count: 1
-			path: app/Services/Draws/VerityDrawEngine.php
-
-		-
 			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\Winner\>\:\:map\(\) contains unresolvable type\.$#'
 			identifier: argument.unresolvableType
 			count: 1
@@ -777,30 +663,6 @@ parameters:
 		-
 			message: '#^Access to an undefined property App\\Models\\Order\:\:\$total\.$#'
 			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$title\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportService.php
-
-		-
-			message: '#^Access to an undefined property Illuminate\\Database\\Eloquent\\Model\:\:\$total_tickets\.$#'
-			identifier: property.notFound
-			count: 1
-			path: app/Services/ReportService.php
-
-		-
-			message: '#^Call to an undefined method Illuminate\\Database\\Eloquent\\Model\:\:display\(\)\.$#'
-			identifier: method.notFound
-			count: 1
-			path: app/Services/ReportService.php
-
-		-
-			message: '#^Parameter \#1 \$callback of method Illuminate\\Database\\Eloquent\\Collection\<int,App\\Models\\PostalEntry\>\:\:map\(\) contains unresolvable type\.$#'
-			identifier: argument.unresolvableType
 			count: 1
 			path: app/Services/ReportService.php
 

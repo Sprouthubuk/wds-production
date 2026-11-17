@@ -27,6 +27,9 @@ class CompetitionResource extends JsonResource
             'maxPerPerson' => $this->max_per_person,
             'bundles' => collect($this->bundles ?? [])->map(fn ($b) => ['qty' => (int) $b['qty'], 'price' => Money::pounds((int) $b['price_pence'])])->values(),
             'opensAt' => $this->opens_at?->toIso8601String(),
+            // Why it can't be entered yet (draft / coming soon), or null. The website shows "Notify me" while set.
+            // A preview link shows it as it'll look when live (entries still refused server-side).
+            'notOpenYet' => ($this->resource->previewing ?? false) ? null : $this->resource->notOpenYetReason(),
             'closesAt' => $this->closes_at?->toIso8601String(),
             'postalClosesAt' => $this->hasPostalRoute() ? $this->postalClosesAt()?->toIso8601String() : null,   // effective deadline; null = no postal route
             'postalClosesAtCustom' => $this->postal_closes_at?->toIso8601String(), // null = the default

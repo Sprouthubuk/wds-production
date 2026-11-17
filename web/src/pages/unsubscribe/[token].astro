@@ -1,0 +1,40 @@
+---
+/**
+ * Unsubscribe from launch emails (the link in every launch alert email). A button, not the visit itself, does
+ * it, so email link scanners can't unsubscribe anyone. The email's one-click header goes straight to the API.
+ */
+import Layout from '../../layouts/Layout.astro';
+import PageHero from '../../components/PageHero.astro';
+
+const { token } = Astro.params;
+Astro.response.headers.set('X-Robots-Tag', 'noindex');
+---
+<Layout title="Unsubscribe" description="Unsubscribe from WDS Competitions launch emails.">
+  <meta slot="head" name="robots" content="noindex" />
+  <PageHero eyebrow="Email" title="Unsubscribe" intro="Stop launch emails from WDS Competitions. You can sign up again at any time." />
+  <section class="section" style="border-bottom: 0">
+    <div class="container stack" style="gap: 16px; max-width: 640px">
+      <button type="button" class="btn" data-unsub={token}>Unsubscribe me</button>
+      <p class="body" data-unsub-msg role="status" aria-live="polite" hidden></p>
+      <a href="/" class="link-caps small">Back to home →</a>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('[data-unsub]')!;
+  const msg = document.querySelector<HTMLElement>('[data-unsub-msg]')!;
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/launch-alerts/unsubscribe/${encodeURIComponent(btn.dataset.unsub ?? '')}`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      msg.textContent = res.ok ? (data.message ?? "You're unsubscribed.") : (data.message ?? 'This unsubscribe link is not valid. Contact us and we will remove you.');
+      if (res.ok) btn.hidden = true; else btn.disabled = false;
+    } catch {
+      msg.textContent = 'Something went wrong, please try again.';
+      btn.disabled = false;
+    }
+    msg.hidden = false;
+  });
+</script>

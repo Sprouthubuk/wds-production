@@ -46,6 +46,12 @@ class TicketAllocator
             if (! $locked->isPublished()) {
                 throw new EntryException("{$locked->title} isn't open yet: it hasn't been published.");
             }
+            // Every channel's tickets come through here (online payment and its notification, reconcile, event
+            // sales, postal, free entry, Admin): nothing is entered before the competition is live. A paid order
+            // refused here is refunded by CheckoutService::handlePaymentResult.
+            if ($why = $locked->notOpenYetReason()) {
+                throw new EntryException($why);
+            }
 
             $email = self::normaliseEmail($owner['email']);
             $entrant = Entrant::forEmail($email);

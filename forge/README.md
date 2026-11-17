@@ -33,6 +33,13 @@ Then:
 - First deploy, then run once from Commands: `php artisan key:generate --force` (if APP_KEY empty) and `php artisan db:seed --force`
 - SSL: Let's Encrypt
 
+**The queue worker and the scheduler must both run on production.** Coming-soon competitions open only through
+the scheduler (`competitions:open-due`, every minute, without overlapping), and launch alert emails go out only
+through the queue worker (one job per email, spaced at `LAUNCH_ALERTS_PER_SECOND`, default `2`; leave it unset
+unless Resend's rate limit for the account is different). If either is stopped, a competition won't open at its
+time and nobody is told. Check: `php8.5 artisan schedule:list | grep open-due`, and Forge → Background processes
+shows the worker running. After any deploy, Forge's deploy script should run `php8.5 artisan queue:restart`.
+
 ## 2. Website site
 | Setting | Value |
 |---|---|
@@ -244,7 +251,7 @@ staging site (its own server or database), and only read-only checks here.
 - [ ] The website loads (the seeded competition is a draft, so the list is empty until it's published).
 - [ ] `/admin` signs in with the seeded admin. Change the password. The competition opens in the editor.
 - [ ] Mail works: `php8.5 artisan wds:mail-test <your email>` arrives in the inbox (not spam), and a password reset to yourself arrives (section 7). (The Verity alert test runs on staging, section 5.)
-- [ ] `php8.5 artisan schedule:list` lists `orders:expire` and the six Verity commands.
+- [ ] `php8.5 artisan schedule:list` lists `orders:expire`, `competitions:open-due` (every minute) and the six Verity commands.
 - [ ] `php8.5 artisan verity:check --strict` is all OK (section 5).
 - [ ] On staging: publish a test competition, buy online, log a postal entry, let it close and draw, publish
       the result, and open `/verify/{id}`: every check shows as passed.

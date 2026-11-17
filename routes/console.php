@@ -4,6 +4,9 @@ use Illuminate\Console\Scheduling\Schedule as Scheduler;
 use Illuminate\Support\Facades\Schedule;
 use Sprouthub\Verity\Facades\Verity;
 
+// Coming soon → live at each competition's opening time (and queue its launch email). Needs the Forge
+// scheduler AND the queue worker on production (docs/production-readiness.md).
+Schedule::command('competitions:open-due')->everyMinute()->withoutOverlapping();
 // Release capacity held by abandoned checkouts.
 Schedule::command('orders:expire')->everyMinute()->withoutOverlapping();
 // Cashflows: re-query orders still waiting on a payment, in case a notification was missed (CashflowsReconciler).

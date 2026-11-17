@@ -35,6 +35,7 @@ class ReportController extends Controller
                 'revenue' => Money::pounds($sales->sum('totalRevenue')),
                 'postalAccepted' => $postal->where('status', 'accepted')->count(),
                 'postalRejected' => $postal->where('status', 'rejected')->count(),
+                'postalHeld' => $postal->where('status', 'held')->count(),
             ],
             'eventTakings' => $this->reports->eventTakings($from, $to)->map(fn ($r) => array_merge($r, ['total' => Money::pounds($r['total'])])),
             'postalReasons' => $postal->where('status', 'rejected')->countBy('reason')->map(fn ($n, $reason) => ['reason' => $reason, 'count' => $n])->values(),

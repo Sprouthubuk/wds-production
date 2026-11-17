@@ -5,10 +5,14 @@ import CompetitionCard from '../../components/CompetitionCard.astro';
 import ComingSoonCard from '../../components/ComingSoonCard.astro';
 import LaunchCard from '../../components/LaunchCard.astro';
 import { getCompetitions, getUpcoming } from '../../lib/api';
+import { isComingSoon } from '../../lib/coming-soon';
 
 const [competitions, upcoming] = await Promise.all([getCompetitions(), getUpcoming()]);
 // Nothing live yet: show the featured draft's teaser card instead of empty placeholders.
-const prelaunch = !competitions.some((c) => c.status === 'live') && upcoming ? upcoming : null;
+// Coming-soon competitions have their own cards; the draft teaser shows only while nothing is published.
+const noneLive = !competitions.some((c) => c.status === 'live');
+const anySoon = competitions.some(isComingSoon);
+const prelaunch = noneLive && !anySoon && upcoming ? upcoming : null;
 const filters = [
   { key: 'all', label: 'All' },
   { key: 'cars', label: 'Cars' },
@@ -17,7 +21,7 @@ const filters = [
 ];
 ---
 <Layout title="Competitions" active="competitions">
-  <PageHero eyebrow="Competitions" title={prelaunch ? 'Coming soon' : 'Live competitions'} intro="Low ticket numbers and a live draw on every competition. Enter online, or enter any paid competition free by post with exactly the same chance of winning." />
+  <PageHero eyebrow="Competitions" title={noneLive ? 'Coming soon' : 'Live competitions'} intro="Low ticket numbers and a live draw on every competition. Enter online, or enter any paid competition free by post with exactly the same chance of winning." />
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 32px">
       <div class="row filters" role="group" aria-label="Filter competitions">
