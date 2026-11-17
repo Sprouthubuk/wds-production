@@ -30,10 +30,12 @@ final class ClientDrafts
     private const DRAW_AT = '2026-12-24 19:30:00';
 
     /**
-     * Launch: every competition opens for entries at this moment (coming soon until then). UTC, which on
-     * 1 December is UK time (GMT). PLACEHOLDER 19:00, AWAITING CLIENT CONFIRMATION: change only this line.
+     * Launch: every competition opens for entries at this moment (coming soon until then). Confirmed by the
+     * client: Tuesday 1 December 2026, 9:00am Europe/London. Stored as UTC like every other time here; on
+     * 1 December the UK is on GMT, so 09:00 UK = 09:00 UTC (ClientDraftsTest checks this). Everything the
+     * site and emails say about the opening time is worded from each competition's opens_at.
      */
-    public const OPENS_AT = '2026-12-01 19:00:00';
+    public const OPENS_AT = '2026-12-01 09:00:00';
 
     /**
      * The confirmed details, by slug: applied while that competition is an unpublished draft.

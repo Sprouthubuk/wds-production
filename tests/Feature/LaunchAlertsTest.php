@@ -48,7 +48,7 @@ class LaunchAlertsTest extends TestCase
             'slug' => $slug, 'title' => ucfirst($slug).' prize', 'category' => 'cars', 'status' => 'draft',
             'images' => [['src' => '/images/e46-clubsport-34.jpg', 'alt' => 'Car']],
             'ticket_price_pence' => 500, 'bundles' => [], 'total_tickets' => 495, 'max_per_person' => null,
-            'opens_at' => '2026-12-01 19:00:00', 'closes_at' => '2026-12-24 19:00:00', 'draw_at' => '2026-12-24 19:30:00',
+            'opens_at' => '2026-12-01 09:00:00', 'closes_at' => '2026-12-24 19:00:00', 'draw_at' => '2026-12-24 19:30:00',
             'draw_method' => Competition::DRAW_PHYSICAL, 'postal_entry_enabled' => true,
         ]));
     }
@@ -106,7 +106,7 @@ class LaunchAlertsTest extends TestCase
         DB::table('newsletter_subscribers')->insert(['email' => 'early@example.com', 'consent_at' => now()->subWeek(), 'source' => 'first_access',
             'unsubscribe_token' => 'early-token', 'list_key' => '0:early@example.com', 'created_at' => now()->subWeek(), 'updated_at' => now()->subWeek()]);
 
-        Carbon::setTestNow('2026-12-01 19:00:00');
+        Carbon::setTestNow('2026-12-01 09:00:00');
         $r = app(CompetitionLauncher::class)->open($c, null);
 
         $this->assertEqualsCanonicalizing(['both@example.com', 'site@example.com', 'mine@example.com', 'early@example.com'],
@@ -125,7 +125,7 @@ class LaunchAlertsTest extends TestCase
     {
         $c = $this->comingSoon();
         $sub = app(LaunchAlerts::class)->subscribe('fan@example.com', $c, 'competition')['subscriber'];
-        Carbon::setTestNow('2026-12-01 19:00:00');
+        Carbon::setTestNow('2026-12-01 09:00:00');
         Queue::fake();
         app(CompetitionLauncher::class)->open($c, null);
         $send = LaunchAlertSend::sole();
@@ -160,7 +160,7 @@ class LaunchAlertsTest extends TestCase
 
         // Queued before unsubscribing: skipped at send time.
         Queue::fake();
-        Carbon::setTestNow('2026-12-01 19:00:00');
+        Carbon::setTestNow('2026-12-01 09:00:00');
         $this->assertSame(0, app(CompetitionLauncher::class)->open($c, null)['queued']);
     }
 

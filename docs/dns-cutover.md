@@ -1,6 +1,6 @@
 # DNS cutover: wdscompetitions.co.uk → production
 
-**Target date: [TBC]**, before the competitions open (placeholder: 1 Dec 2026, 19:00 UK). Leave at least 48 hours:
+**Target date: [TBC]**, before the competitions open (they open Tue 1 Dec 2026, 9:00am UK time). Leave at least 48 hours:
 DNS, SSL, the Cashflows live Portal URLs and a smoke test all happen on the day, and a mistake needs time to fix.
 
 Nothing in this document has been changed yet. It's the plan, plus what the domain looks like today.

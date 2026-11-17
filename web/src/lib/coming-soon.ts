@@ -19,7 +19,7 @@ export function launchDay(iso: string): string {
   return `${ordinal(day)} ${month}`;
 }
 
-/** "Tuesday 1 December 2026, 7:00pm" (UK time): the site's deadline style (ukDateTime), as the API words it. */
+/** "Tuesday 1 December 2026, 9:00am" (UK time): the site's deadline style (ukDateTime), as the API words it. */
 export const opensLabel = (iso: string): string => ukDateTime(iso);
 
 /** The earliest future opening time among coming-soon competitions, if any. */
@@ -32,7 +32,7 @@ export function nextOpening(list: Competition[], now = Date.now()): string | nul
 export const CONSENT_LINE = 'Email me when WDS Competitions launch. Unsubscribe anytime.';
 
 /**
- * Free postal entry before opening (coming soon): "Entries open Tuesday 1 December 2026, 7:00pm (UK time).
+ * Free postal entry before opening (coming soon): "Entries open Tuesday 1 December 2026, 9:00am (UK time).
  * Envelopes received before then are counted once entries open." The API holds them and numbers them at opening.
  */
 export function postalBeforeOpening(c: Pick<Competition, 'status' | 'notOpenYet' | 'preview' | 'opensAt'>): string | null {
