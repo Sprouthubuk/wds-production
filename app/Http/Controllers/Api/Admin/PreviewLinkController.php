@@ -18,7 +18,7 @@ class PreviewLinkController extends Controller
     /** Creates a link, or a new one in place of the current one (which stops working). */
     public function store(Request $request, Competition $competition)
     {
-        abort_if($competition->isPublished() || $competition->status !== 'draft', 422, 'Only a draft competition can have a preview link. This one is already published.');
+        abort_unless(PreviewLink::previewable($competition), 422, 'Only a draft or coming-soon competition can have a preview link. This one is already open.');
         $link = PreviewLink::issue($competition, $request->user());
 
         return response()->json(['message' => 'Preview link ready. It works for '.PreviewLink::DAYS.' days.', 'data' => self::payload($link)], 201);

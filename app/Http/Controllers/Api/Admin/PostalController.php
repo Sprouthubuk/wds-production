@@ -32,7 +32,7 @@ class PostalController extends Controller
     {
         $list = Competition::query()->whereNotNull('verity_ref')->where('postal_entry_enabled', true)->where('ticket_price_pence', '>', 0)
             ->orderBy('closes_at')->get()
-            ->filter(fn (Competition $c) => $c->hasPostalRoute() && $verity->isOpen($c))->values();
+            ->filter(fn (Competition $c) => $c->hasPostalRoute() && ! $c->notOpenYetReason() && $verity->isOpen($c))->values();
 
         return CompetitionResource::collection($list)->response()->header('Cache-Control', 'no-store');
     }

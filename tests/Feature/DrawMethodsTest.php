@@ -89,13 +89,13 @@ class DrawMethodsTest extends TestCase
         ]);
         // Chosen before publish, fixed after. An external draw needs its random number tool (name + https link).
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawMethod' => 'external'])->assertOk()->assertJsonPath('data.drawMethod', 'external');
-        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertStatus(422)
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish", ['openNow' => true])->assertStatus(422)
             ->assertJsonPath('message', 'Name the random number tool for the external draw (and its https link) before publishing.');
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Dice app', 'drawToolUrl' => 'http://example.com/dice'])->assertStatus(422);
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Dice | app', 'drawToolUrl' => 'https://example.com/dice'])->assertStatus(422);
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Dice app', 'drawToolUrl' => 'https://example.com/dice'])->assertOk()
             ->assertJsonPath('data.drawTool', ['name' => 'Dice app', 'url' => 'https://example.com/dice']);
-        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertOk();
+        $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/publish", ['openNow' => true])->assertOk();
         // After publish: changed through Verity (on the audit trail), never by the form.
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawToolName' => 'Coin', 'drawToolUrl' => 'https://example.com/coin'])->assertStatus(422);
         $this->actingAs($this->admin)->postJson("/api/admin/competitions/{$c->id}/draw-tool", ['name' => 'random.org', 'url' => 'https://www.random.org/integers/'])->assertOk();

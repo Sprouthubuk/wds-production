@@ -23,6 +23,9 @@ return [
     'ico_number' => env('ICO_NUMBER') ?: null,
     'powered_by' => (bool) env('SHOW_POWERED_BY', true),
 
+    // Launch emails sent a second (LaunchAlerts). Resend's default limit is 2 requests a second per team.
+    'launch_alerts_per_second' => (int) env('LAUNCH_ALERTS_PER_SECOND', 2),
+
     // Topics on the contact form ("Website enquiry: <topic>").
     'contact_topics' => ['A competition', 'My order', 'Free postal entry', 'Draws and winners', 'My account', 'Something else'],
 ];

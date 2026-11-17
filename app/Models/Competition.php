@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * Larastan reads these columns as strings; the casts make them dates/arrays.
  *
+ * @property \Illuminate\Support\Carbon|null $opens_at
  * @property \Illuminate\Support\Carbon|null $closes_at
  * @property \Illuminate\Support\Carbon|null $draw_at
  * @property array<int, array{src?: string, alt?: string}>|null $images
@@ -125,17 +126,55 @@ class Competition extends Model
     public function orderLines(): HasMany { return $this->hasMany(OrderLine::class); }
     public function postalEntries(): HasMany { return $this->hasMany(PostalEntry::class); }
     public function draws(): HasMany { return $this->hasMany(Draw::class); }
+    public function events(): HasMany { return $this->hasMany(CompetitionEvent::class); }
+
+    /**
+     * draft: hidden (only its teaser, and a preview link). coming_soon: published on Verity with the terms
+     * locked, shown with a countdown and "Notify me", not enterable until opens_at (competitions:open-due
+     * or Admin's "Open now"). live: taking entries. closed / drawn: follow Verity.
+     */
+    public const STATUSES = ['draft', 'coming_soon', 'live', 'closed', 'drawn'];
 
     public function scopeVisible(Builder $q): Builder
     {
-        return $q->whereIn('status', ['live', 'closed', 'drawn']);
+        return $q->whereIn('status', ['coming_soon', 'live', 'closed', 'drawn']);
+    }
+
+    public function isComingSoon(): bool
+    {
+        return $this->status === 'coming_soon';
+    }
+
+    /** The opening time in words (UK time), e.g. "Tuesday 1 December 2026, 7:00pm". */
+    public function opensLabel(): ?string
+    {
+        return $this->opens_at ? self::ukDeadline($this->opens_at) : null;
+    }
+
+    /**
+     * Why this competition can't take entries YET (draft, coming soon, or its opening time still ahead), or
+     * null. Every way in (checkout, payment, reconcile, free entry, postal, event sales, the basket quote and
+     * TicketAllocator itself) uses this one message, so the API refuses whatever the page shows.
+     */
+    public function notOpenYetReason(): ?string
+    {
+        if ($this->status === 'draft' || ! $this->isPublished()) {
+            return "{$this->title} isn't open for entries yet.";
+        }
+        if ($this->status === 'coming_soon' || $this->status === 'scheduled' || $this->opens_at?->isFuture()) {
+            return $this->opens_at
+                ? "{$this->title} isn't open yet: entries open {$this->opensLabel()} (UK time)."
+                : "{$this->title} isn't open for entries yet.";
+        }
+
+        return null;
     }
 
     /** Open for entries right now. */
     public function isOpen(): bool
     {
         return $this->status === 'live'
-            && (! $this->opens_at || $this->opens_at->isPast())
+            && (! $this->opens_at || ! $this->opens_at->isFuture())
             && (! $this->closes_at || $this->closes_at->isFuture())
             && $this->draw_at?->isFuture() === true;
     }

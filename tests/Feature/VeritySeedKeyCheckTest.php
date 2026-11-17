@@ -114,11 +114,11 @@ class VeritySeedKeyCheckTest extends TestCase
         $c = Competition::create(['slug' => 'k', 'title' => 'K', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 100, 'bundles' => [],
             'total_tickets' => 10, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00', 'images' => [['src' => '/images/p.jpg', 'alt' => 'P']]]);
         $admin = \App\Models\User::factory()->create(['role' => 'admin']);
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertStatus(422)
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$c->id}/publish", ['openNow' => true])->assertStatus(422)
             ->assertJsonPath('message', fn ($m) => str_starts_with($m, 'Publishing is blocked') && str_contains($m, 'base64:'));
         $this->assertFalse($c->fresh()->isPublished());
 
         config(['verity.seed_key' => $this->keys()['good']]);
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$c->id}/publish")->assertOk();
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$c->id}/publish", ['openNow' => true])->assertOk();
     }
 }

@@ -58,7 +58,7 @@ $publish = function (array $attrs) {
         'postal_entry_enabled' => true, 'event_sales_enabled' => true,
     ]);
 
-    return app(VerityDrawEngine::class)->publish($c);
+    return app(VerityDrawEngine::class)->publish($c, openNow: true);
 };
 
 $publish(['slug' => 'e2e-bmw', 'title' => 'E2E BMW E46', 'badge' => 'Main event', 'cash_alternative_pence' => 500000, 'sort_order' => 1]);

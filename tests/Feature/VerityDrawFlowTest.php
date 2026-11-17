@@ -284,13 +284,13 @@ class VerityDrawFlowTest extends TestCase
 
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['status' => 'live'])->assertStatus(422);
         // No photo yet: the public gallery would be empty, so publishing is refused until one is uploaded.
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish")->assertStatus(422)
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertStatus(422)
             ->assertJsonPath('message', 'Upload at least one photo of the prize (Photos, then Save) before publishing.');
         $this->assertFalse($draft->fresh()->isPublished());
         $draft->update(['images' => [['src' => '/images/prize.jpg', 'alt' => 'The prize']]]);
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish")->assertOk()
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertOk()
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'locked in'));
-        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish")->assertStatus(422);
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertStatus(422);
 
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['totalTickets' => 200])->assertStatus(422);
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['ticketPrice' => 2])->assertStatus(422);

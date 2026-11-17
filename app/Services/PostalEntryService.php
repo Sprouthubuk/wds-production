@@ -31,9 +31,9 @@ class PostalEntryService
      */
     public function log(Competition $competition, array $data, User $staff): PostalEntry
     {
-        // A draft can't take entries of any kind (nothing is logged, Verity is never called).
-        if (! $competition->isPublished() || $competition->status === 'draft') {
-            throw new EntryException("{$competition->title} isn't open for entries yet.");
+        // A draft or a coming-soon competition can't take entries of any kind (nothing is logged, Verity is never called).
+        if ($why = $competition->notOpenYetReason()) {
+            throw new EntryException($why);
         }
         $entry = DB::transaction(function () use ($competition, $data, $staff) {
             $receivedAt = Carbon::parse($data['received_on']);

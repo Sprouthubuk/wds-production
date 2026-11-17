@@ -74,9 +74,9 @@ class CheckoutService
                 $lines = [];
                 foreach ($items as $item) {
                     $c = $competitions->get($item['competitionId']) ?? throw new EntryException('A competition in your basket no longer exists.');
-                    // A draft (even one seen through a preview link) is never enterable, and never reaches Verity.
-                    if (! $c->isPublished() || $c->status === 'draft') {
-                        throw new EntryException("{$c->title} isn't open for entries yet.");
+                    // A draft (even one seen through a preview link) or a coming-soon competition is never enterable.
+                    if ($why = $c->notOpenYetReason()) {
+                        throw new EntryException($why);
                     }
                     if (! $c->isOpen()) {
                         throw new EntryException("{$c->title} is closed for entries.");
@@ -281,7 +281,10 @@ class CheckoutService
                 // Too late (the competition closed, or its tickets went while the reservation was over): the money
                 // goes straight back, and the order page says why.
                 Log::warning('Paid order could not be fulfilled: refunding', ['order' => $order->reference, 'reason' => $e->getMessage()]);
-                $this->refuseAndRefund($order, $result, $cardType, "Your payment arrived after your tickets' reservation had ended and they could no longer be issued ({$e->getMessage()}). We've refunded your payment in full and no tickets were issued.");
+                $notOpen = $order->lines()->with('competition')->get()->first(fn ($l) => $l->competition?->notOpenYetReason());
+                $this->refuseAndRefund($order, $result, $cardType, $notOpen
+                    ? "Your tickets couldn't be issued because the competition isn't open for entries yet ({$e->getMessage()}). We've refunded your payment in full and no tickets were issued."
+                    : "Your payment arrived after your tickets' reservation had ended and they could no longer be issued ({$e->getMessage()}). We've refunded your payment in full and no tickets were issued.");
             } finally {
                 $lock->release();
             }

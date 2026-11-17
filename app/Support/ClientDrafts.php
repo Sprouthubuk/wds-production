@@ -30,6 +30,12 @@ final class ClientDrafts
     private const DRAW_AT = '2026-12-24 19:30:00';
 
     /**
+     * Launch: every competition opens for entries at this moment (coming soon until then). UTC, which on
+     * 1 December is UK time (GMT). PLACEHOLDER 19:00, AWAITING CLIENT CONFIRMATION: change only this line.
+     */
+    public const OPENS_AT = '2026-12-01 19:00:00';
+
+    /**
      * The confirmed details, by slug: applied while that competition is an unpublished draft.
      *
      * @return array<string, array<string, mixed>>
@@ -38,10 +44,13 @@ final class ClientDrafts
     {
         return [
             self::MAIN_EVENT => self::mainEvent() + ['draw_method' => Competition::DRAW_PHYSICAL],
-            self::COILOVERS => ['draw_method' => Competition::DRAW_PHYSICAL, 'max_per_person' => null, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+            // £5, 5 for £20; 495 tickets; no cap; £500 cash alternative; postal by Tue 22 Dec 19:00 (the 48-hour default).
+            self::COILOVERS => ['draw_method' => Competition::DRAW_PHYSICAL, 'ticket_price_pence' => 500, 'bundles' => [['qty' => 5, 'price_pence' => 2000]],
+                'total_tickets' => 495, 'max_per_person' => null, 'cash_alternative_pence' => 50000, 'postal_entry_enabled' => true,
+                'opens_at' => self::OPENS_AT, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
             // Free: 500 entries, one per verified account, online only (no postal route).
-            self::ENGINE_TABLE => ['draw_method' => Competition::DRAW_PHYSICAL, 'total_tickets' => 500, 'max_per_person' => 1, 'postal_entry_enabled' => false,
-                'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
+            self::ENGINE_TABLE => ['draw_method' => Competition::DRAW_PHYSICAL, 'ticket_price_pence' => 0, 'bundles' => [], 'total_tickets' => 500, 'max_per_person' => 1,
+                'postal_entry_enabled' => false, 'opens_at' => self::OPENS_AT, 'closes_at' => self::CLOSES_AT, 'postal_closes_at' => null, 'draw_at' => self::DRAW_AT],
         ];
     }
 
@@ -54,6 +63,8 @@ final class ClientDrafts
             'total_tickets' => 750,
             'max_per_person' => null, // no cap
             'cash_alternative_pence' => 500000,
+            'postal_entry_enabled' => true,
+            'opens_at' => self::OPENS_AT,
             'closes_at' => self::CLOSES_AT,
             'postal_closes_at' => null,
             'draw_at' => self::DRAW_AT,

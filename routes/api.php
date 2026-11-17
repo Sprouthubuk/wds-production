@@ -30,7 +30,12 @@ Route::middleware('throttle:10,1')->group(function () {
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
     Route::post('/newsletter', [EngagementController::class, 'newsletter']);
     Route::post('/contact', [EngagementController::class, 'contact']);
+    Route::post('/launch-alerts/unsubscribe/{token}', [EngagementController::class, 'unsubscribe']);
 });
+
+// The basket's price and availability check: per line, the price and whether it can be entered now
+// ("not open yet" for a coming-soon competition). Checkout refuses the same lines whatever this says.
+Route::post('/basket/quote', [PublicController::class, 'basketQuote'])->middleware('throttle:60,1');
 
 // The "Confirm your email" link (signed; lands on the website's account page)
 Route::get('/auth/verify-email/{user}/{hash}', [EmailVerificationController::class, 'verify'])->name('auth.verify-email')->middleware(['signed', 'throttle:20,1']);
@@ -86,6 +91,11 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::put('/competitions/{competition}', [Admin\CompetitionController::class, 'update']);
     Route::post('/competitions/{competition}/publish', [Admin\CompetitionController::class, 'publish']);
     Route::post('/competitions/{competition}/extend', [Admin\CompetitionController::class, 'extend']);
+    Route::post('/competitions/{competition}/open', [Admin\CompetitionController::class, 'open']);
+    Route::get('/competitions/{competition}/history', [Admin\CompetitionController::class, 'history']);
+    Route::get('/launch-alerts', [Admin\LaunchAlertController::class, 'index']);
+    Route::get('/launch-alerts/export', [Admin\LaunchAlertController::class, 'export']);
+    Route::post('/launch-alerts/test', [Admin\LaunchAlertController::class, 'test'])->middleware('throttle:10,1');
     Route::get('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'show']);
     Route::post('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'store']);
     Route::delete('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'destroy']);
