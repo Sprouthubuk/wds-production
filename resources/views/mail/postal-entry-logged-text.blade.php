@@ -6,6 +6,11 @@ You're in, {!! strtok($entry->name, ' ') !!}.
 {!! $competition->title !!}
 Your ticket number: #{!! $ticket !!}
 Drawn {!! $competition->draw_at->timezone('Europe/London')->format('l j F, g:ia') !!}. Same draw, same chance of winning as online entries.
+@elseif ($entry->status === 'held')
+We've got it, {!! strtok($entry->name, ' ') !!}.
+
+{!! $competition->title !!}
+Your postal entry received on {!! $entry->receivedMoment()->timezone('Europe/London')->format('j F Y') !!} is logged. Entries open {!! $competition->opensLabel() !!} (UK time): it's counted then, and we'll email you your ticket number. Same draw, same chance of winning as online entries.
 @else
 We couldn't accept your entry.
 

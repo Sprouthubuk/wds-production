@@ -32,7 +32,8 @@ class PostalController extends Controller
     {
         $list = Competition::query()->whereNotNull('verity_ref')->where('postal_entry_enabled', true)->where('ticket_price_pence', '>', 0)
             ->orderBy('closes_at')->get()
-            ->filter(fn (Competition $c) => $c->hasPostalRoute() && ! $c->notOpenYetReason() && $verity->isOpen($c))->values();
+            // Coming soon too: those envelopes are held and get their numbers when it opens (PostalEntryService).
+            ->filter(fn (Competition $c) => $c->hasPostalRoute() && $c->status !== 'draft' && $verity->isOpen($c))->values();
 
         return CompetitionResource::collection($list)->response()->header('Cache-Control', 'no-store');
     }
@@ -56,9 +57,11 @@ class PostalController extends Controller
 
         return response()->json([
             'status' => $entry->status,
-            'message' => $entry->status === 'allocated'
-                ? 'Entry logged — ticket #'.$entry->ticket->display($entry->competition->total_tickets).' allocated.'
-                : 'Entry rejected: '.$entry->rejection_reason.'.',
+            'message' => match ($entry->status) {
+                'allocated' => 'Entry logged — ticket #'.$entry->ticket->display($entry->competition->total_tickets).' allocated.',
+                'held' => 'Entry logged and held: it gets its ticket number when entries open ('.$entry->competition->opensLabel().', UK time). The entrant has been emailed.',
+                default => 'Entry rejected: '.$entry->rejection_reason.'.',
+            },
         ], 201);
     }
 }

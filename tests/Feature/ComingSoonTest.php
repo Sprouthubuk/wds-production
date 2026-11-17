@@ -146,12 +146,11 @@ class ComingSoonTest extends TestCase
         $this->actingAs($this->admin)->postJson('/api/admin/event-sales', [
             'competitionId' => $c->id, 'qty' => 1, 'name' => 'Pat Jones', 'email' => 'pat@example.com', 'dateOfBirth' => '1990-01-01', 'paymentMethod' => 'cash',
         ])->assertStatus(422);
-        // Postal entry logging: not offered, and refused if sent anyway.
-        $this->actingAs($this->admin)->getJson('/api/admin/postal/competitions')->assertOk()->assertJsonCount(0, 'data');
+        // Postal entry logging: the envelope is logged but HELD, no ticket (PostalBeforeOpeningTest covers it).
         $this->actingAs($this->admin)->postJson('/api/admin/postal', [
             'competitionId' => $c->id, 'name' => 'Sam Lee', 'address' => '2 High St', 'dateOfBirth' => '1990-01-01',
             'email' => 'sam@example.com', 'receivedOn' => '2026-11-20T09:00:00Z',
-        ])->assertStatus(422);
+        ])->assertCreated()->assertJsonPath('status', 'held');
         // Free entry (signed-in, verified account).
         $user = User::factory()->create(['role' => 'customer', 'date_of_birth' => '1990-01-01', 'email_verified_at' => now()]);
         $this->actingAs($user)->postJson("/api/competitions/{$free->id}/free-entry", ['ageConfirmed' => true, 'termsAccepted' => true])

@@ -16,12 +16,17 @@ const COMP = {
   verityRef: 'VTY-SOON01', drawMethod: 'physical', postponement: null,
 };
 
+const ADMIN = { id: 1, firstName: 'Jo', lastName: 'Admin', email: 'jo@example.com', isAdmin: true, isStaff: true };
+const EARLY = 'Entries open Tuesday 1 December 2026, 7:00pm (UK time). Envelopes received before then are counted once entries open.';
+
 const send = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 let api, site, base;
 before(async () => {
   api = createServer((req, res) => {
     const path = req.url.split('?')[0];
-    if (path === '/api/me') return send(res, 401, { message: 'Unauthenticated.' });
+    if (path === '/api/me') return (req.headers.authorization ?? '') === 'Bearer admin' ? send(res, 200, { data: ADMIN }) : send(res, 401, { message: 'Unauthenticated.' });
+    if (path === '/api/admin/postal/competitions') return send(res, 200, { data: [COMP] });
+    if (path === '/api/admin/postal') return send(res, 200, { data: [{ id: 1, competition: COMP.title, name: 'Sam Lee', email: 'sam@example.com', receivedOn: '2026-11-20', receivedAt: '2026-11-20T09:15:00+00:00', status: 'held', reason: null, ticket: null }] });
     if (path === '/api/competitions') return send(res, 200, { data: [COMP] });
     if (path === `/api/competitions/${COMP.slug}`) return send(res, 200, { data: COMP });
     if (path === '/api/upcoming') return send(res, 200, { data: null });
@@ -42,8 +47,8 @@ before(async () => {
 });
 after(() => { site?.kill(); api?.close(); });
 
-const page = async (path) => {
-  const res = await fetch(base + path, { redirect: 'manual' });
+const page = async (path, cookie) => {
+  const res = await fetch(base + path, { redirect: 'manual', headers: cookie ? { cookie } : {} });
   assert.equal(res.status, 200, path);
   return (await res.text()).replace(/<!--.*?-->/gs, '');
 };
@@ -77,4 +82,21 @@ test('the competitions list shows the coming-soon card', async () => {
   assert.ok(html.includes('Coming soon'));
   assert.ok(html.includes('Entries open'));
   assert.ok(html.includes('1 in 750'));
+});
+
+test('postal entry before opening: the competition page and the Free Postal Entry page say envelopes count once entries open', async () => {
+  const comp = await page(`/competitions/${COMP.slug}`);
+  assert.ok(comp.includes('How to enter by post'), 'the postal route is still offered');
+  assert.ok(comp.includes(EARLY), 'competition page wording');
+  const postal = await page('/free-postal-entry');
+  assert.ok(postal.includes('BMW E46 330Ci Clubsport: must be received by'), 'its deadline is listed while coming soon');
+  assert.ok(postal.includes('Tuesday 22 December 2026, 7:00pm'), 'the postal deadline');
+  assert.ok(postal.includes(EARLY), 'Free Postal Entry page wording');
+});
+
+test('admin postal logging: a coming-soon competition can be chosen and the hint says the entry is held', async () => {
+  const html = await page('/admin/postal', 'wds_admin=admin');
+  assert.ok(html.includes('BMW E46 330Ci Clubsport (coming soon)'), 'offered, marked coming soon');
+  assert.ok(html.includes('this entry is held and gets its ticket number when entries open (Tuesday 1 December 2026, 7:00pm)'), 'the hint');
+  assert.ok(html.includes('pill--held'), 'held shows in the list');
 });

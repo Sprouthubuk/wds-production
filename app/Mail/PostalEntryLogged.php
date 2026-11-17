@@ -22,9 +22,11 @@ class PostalEntryLogged extends Mailable implements ShouldQueue
     {
         $title = $this->entry->competition->title;
 
-        return new Envelope(subject: $this->entry->status === 'allocated'
-            ? "Your free postal entry is in: {$title}"
-            : "We couldn't accept your postal entry: {$title}");
+        return new Envelope(subject: match ($this->entry->status) {
+            'allocated' => "Your free postal entry is in: {$title}",
+            'held' => "We've received your postal entry: {$title}",
+            default => "We couldn't accept your postal entry: {$title}",
+        });
     }
 
     public function content(): Content

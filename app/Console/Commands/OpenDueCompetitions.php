@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Competition;
+use App\Models\PostalEntry;
 use App\Services\CompetitionLauncher;
 use Illuminate\Console\Command;
 
@@ -32,6 +33,13 @@ class OpenDueCompetitions extends Command
                 report($e);
                 $this->error("{$c->title}: {$e->getMessage()}");
             }
+        }
+
+        // Held postal entries that couldn't be added when their competition opened (an unexpected error): retried.
+        $stillHeld = Competition::query()->where('status', 'live')
+            ->whereIn('id', PostalEntry::query()->where('status', 'held')->select('competition_id'))->get();
+        foreach ($stillHeld as $c) {
+            $launcher->addHeldPostalEntries($c);
         }
 
         return self::SUCCESS;

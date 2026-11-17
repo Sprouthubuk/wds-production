@@ -30,3 +30,12 @@ export function nextOpening(list: Competition[], now = Date.now()): string | nul
 
 /** The consent line shown with every launch alert sign-up (stored with it by the API). */
 export const CONSENT_LINE = 'Email me when WDS Competitions launch. Unsubscribe anytime.';
+
+/**
+ * Free postal entry before opening (coming soon): "Entries open Tuesday 1 December 2026, 7:00pm (UK time).
+ * Envelopes received before then are counted once entries open." The API holds them and numbers them at opening.
+ */
+export function postalBeforeOpening(c: Pick<Competition, 'status' | 'notOpenYet' | 'preview' | 'opensAt'>): string | null {
+  if (!isComingSoon(c) || !c.opensAt) return null;
+  return `Entries open ${opensLabel(c.opensAt)} (UK time). Envelopes received before then are counted once entries open.`;
+}

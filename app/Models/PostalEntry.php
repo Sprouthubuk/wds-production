@@ -6,6 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * A free postal entry, logged by staff from an envelope. status: allocated (has a ticket), rejected (with a
+ * reason), or held (logged while the competition was coming soon; numbered when it opens).
+ *
+ * @property int $id
+ * @property int $competition_id
+ * @property int|null $user_id
+ * @property string $name
+ * @property string $email
+ * @property \Illuminate\Support\Carbon $date_of_birth
+ * @property \Illuminate\Support\Carbon $received_on
+ * @property \Illuminate\Support\Carbon|null $received_at
+ * @property string $status
+ * @property string|null $rejection_reason
+ * @property-read Competition $competition
+ * @property-read Ticket|null $ticket
+ */
 class PostalEntry extends Model
 {
     protected $fillable = ['competition_id', 'user_id', 'entrant_id', 'name', 'address', 'date_of_birth', 'email', 'phone', 'received_on', 'received_at', 'status', 'rejection_reason', 'logged_by'];
@@ -15,7 +32,10 @@ class PostalEntry extends Model
         return ['date_of_birth' => 'date', 'received_on' => 'date', 'received_at' => 'datetime'];
     }
 
+    /** @return BelongsTo<Competition, $this> */
     public function competition(): BelongsTo { return $this->belongsTo(Competition::class); }
+
+    /** @return HasOne<Ticket, $this> */
     public function ticket(): HasOne { return $this->hasOne(Ticket::class); }
 
     /** Rejections because of the linked account's status start with this. Admin sees them; the entrant doesn't. */
