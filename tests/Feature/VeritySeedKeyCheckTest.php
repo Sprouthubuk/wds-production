@@ -112,7 +112,7 @@ class VeritySeedKeyCheckTest extends TestCase
         Carbon::setTestNow('2026-10-20 12:00:00');
         config(['verity.seed_key' => $this->keys()['no_prefix']]);
         $c = Competition::create(['slug' => 'k', 'title' => 'K', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 100, 'bundles' => [],
-            'total_tickets' => 10, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00', 'images' => [['src' => '/images/p.jpg', 'alt' => 'P']]]);
+            'total_tickets' => 10, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00', 'images' => [['src' => '/images/p.jpg', 'alt' => 'P']], 'skill_question' => self::skillQ()]);
         $admin = \App\Models\User::factory()->create(['role' => 'admin']);
         $this->actingAs($admin)->postJson("/api/admin/competitions/{$c->id}/publish", ['openNow' => true])->assertStatus(422)
             ->assertJsonPath('message', fn ($m) => str_starts_with($m, 'Publishing is blocked') && str_contains($m, 'base64:'));

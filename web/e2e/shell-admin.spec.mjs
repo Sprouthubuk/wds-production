@@ -21,7 +21,7 @@ async function signIn(page, email = 'admin@e2e.test') {
 async function paidOrder(page, email) {
   const comps = (await (await page.request.get(`${API}/api/competitions`)).json()).data;
   const bmw = comps.find((c) => c.slug === 'e2e-bmw');
-  const r = await page.request.post(`${API}/api/checkout`, { data: { customer: { email, name: 'Shell Tester', phone: '07700900123', dateOfBirth: '1990-01-01' }, items: [{ competitionId: bmw.id, qty: 1 }], ageConfirmed: true, termsAccepted: true } });
+  const r = await page.request.post(`${API}/api/checkout`, { data: { customer: { email, name: 'Shell Tester', phone: '07700900123', dateOfBirth: '1990-01-01' }, items: [{ competitionId: bmw.id, qty: 1 }], ageConfirmed: true, termsAccepted: true, skillAnswers: { [bmw.id]: 1 } } });
   const ref = (await r.json()).reference;
   await page.request.post(`${API}/api/payments/webhook`, { data: { order: ref, status: 'paid', provider_reference: 'x' } });
   return ref;

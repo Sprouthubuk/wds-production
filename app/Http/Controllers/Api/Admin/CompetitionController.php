@@ -82,6 +82,10 @@ class CompetitionController extends Controller
         if (! collect($competition->images ?? [])->filter(fn ($i) => ! empty($i['src']))->count()) {
             throw new \App\Exceptions\EntryException('Upload at least one photo of the prize (Photos, then Save) before publishing.');
         }
+        // Paid competitions ask a skill question at checkout; it's locked with the other terms when published.
+        if (! $competition->isFree() && ! $competition->skillQuestion()) {
+            throw new \App\Exceptions\EntryException('Add the skill question (the question, 3 or 4 answers, and which one is correct), then Save, before publishing. It is locked with the other terms.');
+        }
         $wasDue = $competition->opens_at?->toIso8601String();
         $competition = $verity->publish($competition, $openNow);
         $comingSoon = $competition->status === 'coming_soon';
@@ -158,10 +162,14 @@ class CompetitionController extends Controller
         'draw_method' => 'The draw method',
         'total_tickets' => 'The number of tickets', 'ticket_price_pence' => 'The ticket price', 'max_per_person' => 'The maximum per person',
         'closes_at' => 'The closing time', 'opens_at' => 'The opening time', 'title' => 'The title',
+        'skill_question' => 'The skill question',
     ];
 
     private static function same(mixed $current, mixed $new): bool
     {
+        if (is_array($current) || is_array($new)) {
+            return json_encode($current) === json_encode($new);
+        }
         if ($current instanceof \DateTimeInterface || $new instanceof \DateTimeInterface) {
             return $current && $new && Carbon::parse($current)->equalTo(Carbon::parse($new));
         }
@@ -211,6 +219,21 @@ class CompetitionController extends Controller
             // An external draw's random number tool (e.g. random.org): sealed with the entry list when entries close.
             'drawToolName' => ['sometimes', 'nullable', 'string', 'max:80', 'not_regex:/[|\x00-\x1f]/'],
             'drawToolUrl' => ['sometimes', 'nullable', 'url:https', 'max:300', 'not_regex:/[\s|]/'],
+            // Paid competitions: a multiple-choice question asked at checkout (null = none yet; required to publish).
+            'skillQuestion' => ['sometimes', 'nullable', 'array'],
+            'skillQuestion.question' => ['required_with:skillQuestion', 'string', 'max:200'],
+            'skillQuestion.options' => ['required_with:skillQuestion', 'array', 'min:3', 'max:4'],
+            'skillQuestion.options.*' => ['required', 'string', 'max:120', 'distinct:ignore_case'],
+            'skillQuestion.correct' => ['required_with:skillQuestion', 'integer', 'min:0', function ($attr, $value, $fail) use ($request) {
+                if ((int) $value >= count((array) $request->input('skillQuestion.options', []))) {
+                    $fail('Choose which answer is correct.');
+                }
+            }],
+        ], [
+            'skillQuestion.options.min' => 'Give the skill question 3 or 4 answers.',
+            'skillQuestion.options.max' => 'Give the skill question 3 or 4 answers.',
+            'skillQuestion.options.*.required' => 'Fill in every answer (or remove the empty one).',
+            'skillQuestion.options.*.distinct' => 'Each answer must be different.',
         ]);
 
         $map = [
@@ -223,6 +246,14 @@ class CompetitionController extends Controller
         $out = [];
         foreach ($map as $in => $col) {
             if (array_key_exists($in, $d)) $out[$col] = $d[$in];
+        }
+        if (array_key_exists('skillQuestion', $d)) {
+            $q = $d['skillQuestion'];
+            $out['skill_question'] = $q ? [
+                'question' => trim($q['question']),
+                'options' => array_values(array_map(fn ($o) => trim((string) $o), $q['options'])),
+                'correct' => (int) $q['correct'],
+            ] : null;
         }
         if (array_key_exists('ticketPrice', $d)) $out['ticket_price_pence'] = Money::pence($d['ticketPrice']);
         if (array_key_exists('cashAlternative', $d)) $out['cash_alternative_pence'] = Money::pence($d['cashAlternative']);

@@ -57,6 +57,12 @@ trait VerityFakes
     }
 
     /** A WDS competition, published on Verity (sequential numbering, terms locked). */
+    /** A complete checkout skill question (paid competitions need one to be published from Admin). Answer: 1. */
+    protected static function skillQ(): array
+    {
+        return ['question' => 'What does BMW stand for?', 'options' => ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons'], 'correct' => 1];
+    }
+
     protected function publishedCompetition(array $overrides = []): Competition
     {
         $c = Competition::create(array_merge([

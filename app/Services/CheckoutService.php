@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Exceptions\EntryException;
 use App\Exceptions\LimitReachedException;
+use App\Exceptions\SkillAnswerWrong;
 use App\Mail\LatePaymentRefunded;
 use App\Mail\TicketsIssued;
 use App\Models\Competition;
@@ -41,7 +42,7 @@ class CheckoutService
     ) {}
 
     /**
-     * @param  array{customer: array{email:string,name:string,phone?:string|null,dateOfBirth:string}, items: list<array{competitionId:int, qty:int}>, discountCode?:string|null, useCredit?:bool, marketingOptIn?:bool}  $input
+     * @param  array{customer: array{email:string,name:string,phone?:string|null,dateOfBirth:string}, items: list<array{competitionId:int, qty:int}>, discountCode?:string|null, useCredit?:bool, marketingOptIn?:bool, skillAnswers?:array<int|string, mixed>}  $input
      * @return array{order: Order, redirectUrl: string}
      */
     public function start(array $input, ?User $user, string $channel = 'online', ?User $staff = null, ?string $paymentMethod = null): array
@@ -97,10 +98,20 @@ class CheckoutService
                         $left = max(0, $c->max_per_person - $held);
                         throw new EntryException("The maximum is {$c->max_per_person} tickets per person for {$c->title}. You can add {$left} more.");
                     }
+                    // The skill question (paid competitions, online): checked here, never trusted from the browser.
+                    // A wrong or missing answer stops the order before anything is created or any payment starts.
+                    $skillAnswer = null;
+                    if ($channel === 'online' && ($q = $c->skillQuestion())) {
+                        $given = $input['skillAnswers'][$c->id] ?? $input['skillAnswers'][(string) $c->id] ?? null;
+                        if (! $c->skillAnswerIsCorrect($given)) {
+                            throw new SkillAnswerWrong(count($items) > 1 ? "{$c->title}: ".Competition::SKILL_WRONG : Competition::SKILL_WRONG, $c->id);
+                        }
+                        $skillAnswer = mb_substr($q['options'][(int) $given], 0, 160);
+                    }
                     $lineTotal = $this->pricing->forCompetition($c, $qty);
                     $subtotal += $qty * $c->ticket_price_pence;
                     $total += $lineTotal;
-                    $lines[] = ['competition_id' => $c->id, 'qty' => $qty, 'unit_price_pence' => $c->ticket_price_pence, 'line_total_pence' => $lineTotal];
+                    $lines[] = ['competition_id' => $c->id, 'qty' => $qty, 'unit_price_pence' => $c->ticket_price_pence, 'line_total_pence' => $lineTotal, 'skill_answer' => $skillAnswer];
                 }
                 $bundleSaving = $subtotal - $total;
 

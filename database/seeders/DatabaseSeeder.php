@@ -56,12 +56,13 @@ class DatabaseSeeder extends Seeder
             'draw_at' => '2026-12-24 19:30:00',
             'postal_entry_enabled' => true,
             'event_sales_enabled' => true,
+            'skill_question' => ClientDrafts::skillQuestions()[ClientDrafts::MAIN_EVENT], // suggested; awaiting client approval
         ]);
 
         // The client's other confirmed drafts (created once, never overwritten): wds:client-drafts does the same in production.
         $confirmed = ClientDrafts::confirmed();
         foreach (ClientDrafts::newDrafts() as $slug => $attributes) {
-            Competition::firstOrCreate(['slug' => $slug], ($confirmed[$slug] ?? []) + $attributes);
+            Competition::firstOrCreate(['slug' => $slug], ($confirmed[$slug] ?? []) + ['skill_question' => ClientDrafts::skillQuestions()[$slug] ?? null] + $attributes);
         }
 
         Winner::firstOrCreate(['display_name' => 'Mark Robinson', 'prize' => 'Alpina D3 Coupé'], [

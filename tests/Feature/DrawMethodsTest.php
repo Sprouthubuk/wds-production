@@ -40,6 +40,7 @@ class DrawMethodsTest extends TestCase
         $ref = $this->postJson('/api/checkout', [
             'customer' => ['email' => $email, 'name' => 'Alex Smith', 'phone' => '0', 'dateOfBirth' => '1990-05-05'],
             'items' => [['competitionId' => $c->id, 'qty' => $qty]], 'ageConfirmed' => true, 'termsAccepted' => true,
+            'skillAnswers' => [$c->id => self::skillQ()['correct']],
         ])->assertOk()->json('reference');
         app(CheckoutService::class)->handlePaymentResult(new PaymentResult($ref, 'paid'));
     }
@@ -85,7 +86,7 @@ class DrawMethodsTest extends TestCase
         $c = Competition::create([
             'slug' => 'stream-car', 'title' => 'Stream car', 'images' => [['src' => '/images/prize.jpg', 'alt' => 'The prize']], 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 1000, 'bundles' => [],
             'total_tickets' => 50, 'max_per_person' => 20, 'closes_at' => '2026-10-30 20:00:00', 'draw_at' => '2026-10-30 20:30:00',
-            'postal_closes_at' => '2026-10-28 20:00:00', 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
+            'postal_closes_at' => '2026-10-28 20:00:00', 'postal_entry_enabled' => true, 'event_sales_enabled' => true, 'skill_question' => self::skillQ(),
         ]);
         // Chosen before publish, fixed after. An external draw needs its random number tool (name + https link).
         $this->actingAs($this->admin)->putJson("/api/admin/competitions/{$c->id}", ['drawMethod' => 'external'])->assertOk()->assertJsonPath('data.drawMethod', 'external');

@@ -57,7 +57,7 @@ class ComingSoonTest extends TestCase
             'images' => [['src' => '/images/e46-clubsport-34.jpg', 'alt' => 'Car']],
             'ticket_price_pence' => 1495, 'bundles' => [['qty' => 3, 'price_pence' => 4000]], 'total_tickets' => 750, 'max_per_person' => null,
             'opens_at' => self::OPENS, 'closes_at' => '2026-12-24 19:00:00', 'draw_at' => '2026-12-24 19:30:00',
-            'draw_method' => Competition::DRAW_PHYSICAL, 'postal_entry_enabled' => true, 'event_sales_enabled' => true,
+            'draw_method' => Competition::DRAW_PHYSICAL, 'postal_entry_enabled' => true, 'event_sales_enabled' => true, 'skill_question' => self::skillQ(),
         ], $overrides));
     }
 
@@ -71,6 +71,7 @@ class ComingSoonTest extends TestCase
         return $this->postJson('/api/checkout', [
             'customer' => ['email' => 'ann@example.com', 'name' => 'Ann A', 'phone' => '0', 'dateOfBirth' => '1990-01-01'],
             'items' => [['competitionId' => $c->id, 'qty' => 1]], 'ageConfirmed' => true, 'termsAccepted' => true,
+            'skillAnswers' => [$c->id => self::skillQ()['correct']],
         ]);
     }
 

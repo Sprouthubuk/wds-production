@@ -21,6 +21,7 @@ async function fillCheckout(page, { email, name = 'Guest Buyer', dob = '1990-05-
   await page.fill('#b-dob', dob);
   await page.check('#b-age');
   await page.check('#b-terms');
+  await page.locator('[data-skill] input[value="1"]').first().check(); // e2e-bmw's skill question (the right answer)
 }
 
 test('a guest buys the 3-ticket bundle, pays on the (fake) payment page and sees 3 ticket numbers', async ({ page }) => {
@@ -32,18 +33,26 @@ test('a guest buys the 3-ticket bundle, pays on the (fake) payment page and sees
   await page.waitForURL(/\/basket/);
   await expect(page.locator('body')).toContainText('E2E BMW E46');
   await fillCheckout(page, { email: 'guest1@e2e.test' });
+  // A wrong answer to the skill question: no payment page, a friendly message, and they can try again.
+  await page.locator('[data-skill] input[value="0"]').first().check();
+  await page.click('[data-submit]');
+  await expect(page.locator('[data-skill-wrong]')).toContainText("That answer isn't right");
+  expect(page.url()).toContain('/basket');
+  await page.locator('[data-skill] input[value="1"]').first().check();
   await page.click('[data-submit]');
   await page.waitForURL(/\/order\/WDS-/, { timeout: 20_000 });
   await expect(page.locator('body')).toContainText(/You're in|you're in/i, { timeout: 15_000 });
   const numbers = await page.locator('body').innerText();
   expect((numbers.match(/#\d{4}/g) ?? []).length).toBeGreaterThanOrEqual(3);
-  expect(errors).toEqual([]);
+  // The wrong answer's 422 is expected (the browser logs any 4xx); nothing else may error.
+  expect(errors.filter((e) => !/status of 422/.test(e))).toEqual([]);
 });
 
-test('on a 375px phone the enter and free postal buttons each fit on one line', async ({ page }) => {
+test('on a 375px phone the enter button fits on one line and the free route is offered under it', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/competitions/e2e-bmw');
-  for (const sel of ['[data-entry-panel] .enter-row [data-enter]', '[data-entry-panel] .enter-row [data-postal-link]']) {
+  await expect(page.locator('[data-free-route] a[href="/free-postal-entry"]')).toBeVisible();
+  for (const sel of ['[data-entry-panel] .enter-row [data-enter]']) {
     const lines = await page.locator(sel).first().evaluate((el) => { const r = document.createRange(); r.selectNodeContents(el); const tops = [...r.getClientRects()].map((x) => x.top).sort((a, b) => a - b); return tops.filter((t, i) => i === 0 || t - tops[i - 1] > 6).length; });
     expect(lines, sel).toBe(1);
   }

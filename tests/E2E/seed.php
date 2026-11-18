@@ -61,7 +61,8 @@ $publish = function (array $attrs) {
     return app(VerityDrawEngine::class)->publish($c, openNow: true);
 };
 
-$publish(['slug' => 'e2e-bmw', 'title' => 'E2E BMW E46', 'badge' => 'Main event', 'cash_alternative_pence' => 500000, 'sort_order' => 1]);
+$publish(['slug' => 'e2e-bmw', 'title' => 'E2E BMW E46', 'badge' => 'Main event', 'cash_alternative_pence' => 500000, 'sort_order' => 1,
+    'skill_question' => ['question' => 'What does BMW stand for?', 'options' => ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons'], 'correct' => 1]]);
 $publish(['slug' => 'e2e-few-left', 'title' => 'E2E Few Left', 'total_tickets' => 4, 'max_per_person' => 2, 'bundles' => [], 'sort_order' => 2]);
 $publish(['slug' => 'e2e-free', 'title' => 'E2E Free Table', 'category' => 'merch', 'ticket_price_pence' => 0, 'bundles' => [], 'total_tickets' => 100, 'max_per_person' => 1, 'event_sales_enabled' => false, 'postal_entry_enabled' => false, 'sort_order' => 3]);
 Competition::create(['slug' => 'e2e-draft', 'title' => 'E2E Draft (never public)', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 100, 'bundles' => [],

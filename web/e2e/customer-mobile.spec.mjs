@@ -40,6 +40,7 @@ test('order page and every account tab fit every width', async ({ page }) => {
   }
   await page.check('#b-age');
   await page.check('#b-terms');
+  await page.locator('[data-skill] input[value="1"]').first().check();
   await page.click('[data-submit]');
   await page.waitForURL(/\/order\/WDS-/, { timeout: 20_000 });
   await expect(page.locator('body')).toContainText(/You're in/i, { timeout: 15_000 });

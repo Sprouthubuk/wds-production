@@ -20,6 +20,14 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
         <div class="left">
           <div class="lines" data-lines></div>
 
+          <div class="skill stack" data-skill hidden>
+            <div class="stack" style="gap: 6px">
+              <h2 class="h3">Answer the question</h2>
+              <p class="small muted" style="margin:0">To enter online, answer this question correctly. You can try again if you get it wrong; you won't be charged unless your answer is right.</p>
+            </div>
+            <div class="stack" style="gap: 20px" data-skill-list></div>
+          </div>
+
           <div class="stack" style="gap: 16px">
             <div class="head-row"><h2 class="h3">Your details</h2>{me ? <span class="small muted">Signed in as {me.email}</span> : <a href="/sign-in?next=/basket" class="small">Have an account? Sign in</a>}</div>
             <div class="field"><label for="b-em">Email</label><input id="b-em" name="email" type="email" required autocomplete="email" /></div>
@@ -64,6 +72,15 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
   .post-alt { border-top: 1px solid var(--line-2); padding-top: 14px; display: flex; justify-content: space-between; gap: 12px; font-size: 13px; }
   .muted-2 { color: var(--muted-2); }
   .empty { gap: 24px; }
+  .skill { gap: 18px; border: 1px solid #fff; padding: 22px; }
+  .skill :global(fieldset) { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .skill :global(legend) { padding: 0 0 8px; font-weight: 700; font-size: 16px; line-height: 1.35; }
+  .skill :global(legend .for) { display: block; font-size: 11px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+  .skill :global(.opt) { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 14px; border: 1px solid var(--line-3); cursor: pointer; }
+  .skill :global(.opt:has(input:checked)) { border-color: #fff; background: #111; }
+  .skill :global(.opt input) { width: 20px; height: 20px; flex: none; accent-color: #fff; }
+  .skill :global(.skill-wrong) { color: var(--amber, #f0b429); font-weight: 700; font-size: 14px; margin: 0; }
+  @media (max-width: 600px) { .skill { padding: 16px; } }
   .lines :global(.line) { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; padding: 22px 0; border-top: 1px solid var(--line-2); }
   .lines :global(.line:last-child) { border-bottom: 1px solid var(--line-2); }
   .lines :global(.line img) { width: 120px; aspect-ratio: 4 / 3; object-fit: cover; }
@@ -90,6 +107,29 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
   const errorEl = root.querySelector<HTMLElement>('[data-error]')!;
   const submit = root.querySelector<HTMLButtonElement>('[data-submit]')!;
   const prefill = JSON.parse(root.dataset.prefill || 'null');
+  const skillEl = root.querySelector<HTMLElement>('[data-skill]')!;
+  const skillList = root.querySelector<HTMLElement>('[data-skill-list]')!;
+  type Skill = { question: string; options: string[] };
+  // The skill question for each paid competition in the basket, as the API sends it (never with the answer).
+  let questions: { competitionId: number; title: string; q: Skill }[] = [];
+
+  function renderSkill() {
+    const lines = readBasket();
+    const keep = new Map<number, string>();
+    skillList.querySelectorAll<HTMLInputElement>('input:checked').forEach((i) => keep.set(Number(i.dataset.cid), i.value));
+    skillList.innerHTML = '';
+    for (const { competitionId, title, q } of questions) {
+      if (!lines.some((l) => l.competitionId === competitionId)) continue;
+      const fs = document.createElement('fieldset');
+      fs.dataset.skillFor = String(competitionId);
+      fs.innerHTML = `<legend>${questions.length > 1 ? `<span class="for">${esc(title)}</span>` : ''}${esc(q.question)}</legend>`
+        + q.options.map((o, i) => `<label class="opt"><input type="radio" name="skill-${competitionId}" value="${i}" data-cid="${competitionId}" required ${keep.get(competitionId) === String(i) ? 'checked' : ''} /><span>${esc(o)}</span></label>`).join('')
+        + '<p class="skill-wrong" role="alert" data-skill-wrong hidden></p>';
+      fs.addEventListener('change', () => { const w = fs.querySelector<HTMLElement>('[data-skill-wrong]'); if (w) w.hidden = true; });
+      skillList.appendChild(fs);
+    }
+    skillEl.hidden = !skillList.children.length;
+  }
   if (prefill) {
     (form.elements.namedItem('email') as HTMLInputElement).value = prefill.email || '';
     (form.elements.namedItem('name') as HTMLInputElement).value = prefill.name || '';
@@ -141,7 +181,9 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
       const res = await fetch('/api/basket/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: lines.map((l) => ({ competitionId: l.competitionId, qty: l.qty })) }) });
       if (!res.ok || seq !== checkSeq) return;
-      const { data } = await res.json() as { data: { competitionId: number; open: boolean; message: string | null }[] };
+      const { data } = await res.json() as { data: { competitionId: number; open: boolean; message: string | null; skillQuestion?: Skill | null }[] };
+      questions = data.filter((q) => q.skillQuestion).map((q) => ({ competitionId: q.competitionId, title: lines.find((l) => l.competitionId === q.competitionId)?.title ?? '', q: q.skillQuestion! }));
+      renderSkill();
       const blocked = data.filter((q) => !q.open);
       linesEl.querySelectorAll('[data-line-warn]').forEach((el) => el.remove());
       for (const q of blocked) {
@@ -168,6 +210,13 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     errorEl.hidden = true;
+    // The skill question first: a friendly nudge here; the API checks the answer itself.
+    const unanswered = [...skillList.querySelectorAll<HTMLFieldSetElement>('fieldset')].find((fs) => !fs.querySelector('input:checked'));
+    if (unanswered) {
+      errorEl.textContent = 'Answer the question above to continue.'; errorEl.hidden = false;
+      unanswered.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     if (!form.reportValidity()) return;
     const fd = new FormData(form);
     const dob = new Date(String(fd.get('dob')));
@@ -186,9 +235,22 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
           createAccount: fd.get('createAccount') === 'on',
           ageConfirmed: fd.get('age') === 'on',
           termsAccepted: fd.get('terms') === 'on',
+          skillAnswers: Object.fromEntries([...skillList.querySelectorAll<HTMLInputElement>('input:checked')].map((i) => [i.dataset.cid, Number(i.value)])),
         }),
       });
       const data = await res.json().catch(() => ({}));
+      if (data.code === 'skill_wrong') {
+        // Wrong answer: nothing was created and nothing was paid. Say so by the question and let them try again.
+        const fs = skillList.querySelector<HTMLFieldSetElement>(`[data-skill-for="${data.competitionId}"]`);
+        if (!fs) await checkOpen(); // the question hadn't loaded yet: show it now
+        const target = skillList.querySelector<HTMLFieldSetElement>(`[data-skill-for="${data.competitionId}"]`);
+        target?.querySelectorAll<HTMLInputElement>('input').forEach((i) => { i.checked = false; });
+        const w = target?.querySelector<HTMLElement>('[data-skill-wrong]');
+        if (w) { w.textContent = data.message; w.hidden = false; target!.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+        else { errorEl.textContent = data.message; errorEl.hidden = false; }
+        submit.disabled = false; submit.textContent = 'Continue to secure payment →';
+        return;
+      }
       if (!res.ok || !data.redirectUrl) throw new Error(data.message || 'Something went wrong. Please try again.');
       window.location.href = data.redirectUrl;
     } catch (err) {

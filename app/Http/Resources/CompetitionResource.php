@@ -44,6 +44,10 @@ class CompetitionResource extends JsonResource
             'buildVideoUrl' => $this->build_video_url,
             'postalEntryEnabled' => $this->hasPostalRoute(), // never on a free competition
             'eventSalesEnabled' => (bool) $this->event_sales_enabled,
+            // Paid competitions: asked at checkout. The correct answer is only ever sent to Admin.
+            'skillQuestion' => ($q = $this->resource->skillQuestion())
+                ? ['question' => $q['question'], 'options' => $q['options']] + ($request->is('api/admin/*') ? ['correct' => $q['correct']] : [])
+                : ($request->is('api/admin/*') && is_array($this->skill_question) ? $this->skill_question : null), // Admin also sees an unfinished draft question
             'drawMethod' => $this->draw_method ?? 'verity',
             'drawTool' => $this->when($request->is('api/admin/*'), fn () => $this->resource->drawTool()),
             // Published on the Verity draw engine: the draw is locked in (null = still a draft).

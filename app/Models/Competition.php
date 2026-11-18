@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property \Illuminate\Support\Carbon|null $closes_at
  * @property \Illuminate\Support\Carbon|null $draw_at
  * @property array<int, array{src?: string, alt?: string}>|null $images
+ * @property array<string, mixed>|null $skill_question (as saved; skillQuestion() returns it only when complete)
  */
 class Competition extends Model
 {
@@ -21,6 +22,7 @@ class Competition extends Model
         'ticket_price_pence', 'bundles', 'total_tickets', 'max_per_person', 'cash_alternative_pence',
         'build_video_url', 'opens_at', 'closes_at', 'postal_closes_at', 'draw_at', 'postal_entry_enabled', 'event_sales_enabled', 'sort_order', 'draw_method', 'draw_tool_name', 'draw_tool_url',
         'verity_ref', 'verity_status', 'published_at', 'postponed_at', 'postponed_from', 'postponement_reason', 'instant_win',
+        'skill_question',
     ];
 
     /** Verity draws on drand ("Close & draw now" on stream, or automatically at the closing time). */
@@ -109,6 +111,7 @@ class Competition extends Model
             'description' => 'array',
             'specs' => 'array',
             'bundles' => 'array',
+            'skill_question' => 'array',
             'opens_at' => 'datetime',
             'closes_at' => 'datetime',
             'postal_closes_at' => 'datetime',
@@ -203,6 +206,41 @@ class Competition extends Model
 
     /** Postal entries must be received by this moment: postal_closes_at, or 48 hours before closes_at. */
     /** Free postal entry is the free route for paid competitions only: free ones are entered online (one per verified account). */
+    /** Shown at checkout when a wrong answer is given: nothing is created and no payment is taken. */
+    public const SKILL_WRONG = "That answer isn't right. Have another look and try again. No payment has been taken.";
+
+    /**
+     * The checkout skill question (paid competitions only): a question with 3 or 4 answers, one of them correct.
+     * Null on a free competition, or while a draft has none yet (publishing a paid competition requires one).
+     *
+     * @return array{question: string, options: list<string>, correct: int}|null
+     */
+    public function skillQuestion(): ?array
+    {
+        $q = $this->skill_question;
+        if ($this->isFree() || ! is_array($q) || trim((string) ($q['question'] ?? '')) === '') {
+            return null;
+        }
+        $options = array_values(array_map('strval', (array) ($q['options'] ?? [])));
+        $correct = (int) ($q['correct'] ?? -1);
+        if (count($options) < 3 || count($options) > 4 || ! array_key_exists($correct, $options)) {
+            return null;
+        }
+
+        return ['question' => (string) $q['question'], 'options' => $options, 'correct' => $correct];
+    }
+
+    /** Whether an answer (the option's position, from 0) is the correct one. True when there's no question to answer. */
+    public function skillAnswerIsCorrect(mixed $answer): bool
+    {
+        $q = $this->skillQuestion();
+        if (! $q) {
+            return true;
+        }
+
+        return is_numeric($answer) && (string) (int) $answer === (string) $answer && (int) $answer === $q['correct'];
+    }
+
     public function hasPostalRoute(): bool
     {
         return ! $this->isFree() && (bool) $this->postal_entry_enabled;

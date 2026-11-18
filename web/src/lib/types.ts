@@ -34,6 +34,8 @@ export interface Competition {
   /** Postponed (emergency only): the old closing time and the public reason. */
   postponement?: { at: string; from: string | null; reason: string | null } | null;
   bundles: Bundle[];
+  /** Paid competitions: asked at checkout (the API checks the answer). `correct` is only ever sent to Admin. */
+  skillQuestion?: { question: string; options: string[]; correct?: number } | null;
   opensAt: string | null;
   /** Why it can't be entered yet (coming soon), or null. While set the site shows "Notify me when it's live". */
   notOpenYet?: string | null;
