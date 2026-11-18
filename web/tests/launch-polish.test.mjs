@@ -23,11 +23,11 @@ const DRAFT = { ...PAID, id: 3, slug: 'coilovers', title: 'BC Racing BR Series C
   skillQuestion: { question: 'What part of a car do coilovers replace?', options: ['The brakes', 'The exhaust', 'The suspension (springs and dampers)', 'The gearbox'], correct: 2 } };
 const ADDRESS = 'WDS Competitions – Free Entry'; // the first line of the free entry address (sample settings)
 
-// null = the API has no settings (the site uses its sample settings); set it to test the announcement bar.
+// null = the API has no settings (the site uses its sample settings); set it to test the scrolling banner.
 let SETTINGS = null;
 const SITE = { tradingName: 'WDS Competitions', legalName: 'WDS Originals Limited', companyNumber: '13330886', registeredOffice: 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
   supportEmail: 'sales@example.com', postalEntryAddress: [ADDRESS, 'Knoll House'], drawsInstagram: 'wds_competitions', socials: [], youtubeUrl: 'https://youtube.com/@wdsoriginals',
-  drawsYoutubeUrl: null, announcementBar: '' };
+  drawsYoutubeUrl: null, bannerMessages: [] };
 
 const send = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 let api, site, base;
@@ -40,7 +40,7 @@ before(async () => {
     if (path === `/api/competitions/${FREE.slug}`) return send(res, 200, { data: FREE });
     if (path === `/api/admin/competitions/${DRAFT.id}`) return send(res, 200, { data: DRAFT });
     if (path.startsWith(`/api/admin/competitions/${DRAFT.id}/`)) return send(res, 200, { data: path.endsWith('history') ? [] : null });
-    if (path === '/api/admin/settings') return send(res, 200, { data: { ...SITE, announcementBar: '' } });
+    if (path === '/api/admin/settings') return send(res, 200, { data: { ...SITE, bannerMessages: ['Ticket bundles available', 'Low ticket numbers, better odds'] } });
     if (path === '/api/settings') return SETTINGS ? send(res, 200, { data: SETTINGS }) : send(res, 404, { message: 'Not found.' });
     if (path === '/api/upcoming') return send(res, 200, { data: null });
     if (path === '/api/winners') return send(res, 200, { data: [] });
@@ -164,30 +164,47 @@ test('buying is the focus: no postal promotion in the header, menu, home or comp
     assert.ok(!/class="btn[^"]*"[^>]*href="\/free-postal-entry"|href="\/free-postal-entry"[^>]*class="btn/.test(html), `${path}: never a button to the postal page`);
   }
   const home = await page('/');
-  assert.ok(!home.includes('class="ticker"'), 'no scrolling ticker');
   assert.ok(home.includes('<strong>Bundle deals</strong><br>Multi-buy ticket bundles') || home.includes('<strong>Bundle deals</strong><br />Multi-buy ticket bundles'), 'item 04 is bundle deals');
   assert.ok(home.includes('Enter in three steps') && home.includes('Answer the question and check out securely') && /<div class="steps-cta"[^>]*><a href="\/competitions"[^>]*>View competitions/.test(home), 'one 3-step how it works with a competitions CTA');
   const comp = await page(`/competitions/${PAID.slug}`);
   assert.ok(!/By post/.test(comp), 'no "By post: Free" price next to the ticket price');
 });
 
-test('the top announcement bar: empty shows none, text shows it on every page', async () => {
-  SETTINGS = { ...SITE, announcementBar: '' };
+const DEFAULTS = ['Ticket bundles available', 'Low ticket numbers, better odds', 'Numbers emailed instantly', 'Drawn live on Instagram @wds_competitions'];
+const tickerOf = (html) => { const i = html.indexOf('data-ticker'); return i < 0 ? '' : html.slice(i, html.indexOf('</div>', html.indexOf('class="track"', i))); };
+const shown = (t) => [...t.matchAll(/<span class="msg(?: last)?"[^>]*>([^<]*)<i><\/i><\/span>/g)].map((m) => m[1]);
+
+test('the scrolling banner: empty hides it; messages scroll in order under the header on the home page', async () => {
+  SETTINGS = { ...SITE, bannerMessages: [] };
   try {
-    for (const path of ['/', `/competitions/${PAID.slug}`]) assert.ok(!(await page(path)).includes('data-announce'), `${path}: no bar when empty`);
-    SETTINGS = { ...SITE, announcementBar: '  ' };
-    assert.ok(!(await page('/')).includes('data-announce'), 'blank counts as empty');
-    SETTINGS = { ...SITE, announcementBar: 'Multi-buy bundles available · Low ticket numbers, better odds' };
-    for (const path of ['/', `/competitions/${PAID.slug}`, '/faqs']) {
-      assert.ok((await page(path)).includes('<div class="announce" data-announce>Multi-buy bundles available · Low ticket numbers, better odds</div>'), `${path}: the bar`);
-    }
+    assert.ok(!(await page('/')).includes('data-ticker'), 'no messages: no ticker');
+    SETTINGS = { ...SITE, bannerMessages: ['  ', ''] };
+    assert.ok(!(await page('/')).includes('data-ticker'), 'blank lines count as empty');
+
+    SETTINGS = { ...SITE, bannerMessages: DEFAULTS };
+    const home = await page('/');
+    const t = tickerOf(home);
+    assert.deepEqual(shown(t), DEFAULTS, 'each message once, in order (the screen-reader copy)');
+    const all = [...t.matchAll(/<span class="msg[^"]*"[^>]*>([^<]*)<i><\/i>/g)].map((m) => m[1]);
+    assert.ok(all.length >= 12 && all.length % DEFAULTS.length === 0, 'repeated for a seamless loop');
+    all.forEach((m, i) => assert.equal(m, DEFAULTS[i % DEFAULTS.length], 'the loop keeps the order'));
+    assert.ok((t.match(/<i><\/i>/g) ?? []).length === all.length, 'the diamond separator after each message');
+    assert.ok(home.indexOf('data-ticker') > home.indexOf('</header>') && home.indexOf('data-ticker') < home.indexOf('class="hero"'), 'directly under the header, above the hero');
+    assert.ok(!(await page(`/competitions/${PAID.slug}`)).includes('data-ticker'), 'home page only, as before');
+    for (const path of ['/', `/competitions/${PAID.slug}`, '/faqs']) assert.ok(!(await page(path)).includes('data-announce'), `${path}: no static white bar`);
   } finally {
     SETTINGS = null;
   }
-  assert.ok(!(await page('/')).includes('data-announce'), 'sample settings: no bar by default');
+  assert.deepEqual(shown(tickerOf(await page('/'))), DEFAULTS, 'sample settings: the default messages');
 });
 
-test('admin settings has the announcement bar field with the suggested placeholder', async () => {
+test('the default banner messages never mention free post', () => {
+  for (const m of DEFAULTS) assert.ok(!/free|post/i.test(m), m);
+});
+
+test('admin settings: "Scrolling banner messages" is a one-per-line textarea, filled with the saved messages', async () => {
   const html = await page('/admin/settings', 'wds_admin=admin');
-  assert.ok(html.includes('name="announcementBar"') && html.includes('placeholder="Multi-buy bundles available · Low ticket numbers, better odds"'));
+  assert.ok(html.includes('Scrolling banner messages'));
+  assert.match(html, /<textarea id="bm" name="bannerMessages" data-type="lines"[^>]*>Ticket bundles available\nLow ticket numbers, better odds<\/textarea>/);
+  assert.ok(!html.includes('name="announcementBar"'), 'the old single-line field is gone');
 });

@@ -25,15 +25,27 @@ final class SettingsPayload
         // methods, all competitions). OFF by default: only switch it on if the client decides to.
         'siteSpendCapEnabled' => false,
         'siteSpendCapMonthly' => null, // pounds
-        // Optional slim bar at the top of every page (Admin → Settings). Empty = no bar.
-        'announcementBar' => '',
+        // The scrolling banner under the header on the home page (Admin → Settings → Scrolling banner
+        // messages), in order. Empty = no banner. A data migration seeds BANNER_DEFAULTS once.
+        'bannerMessages' => [],
+    ];
+
+    /** Seeded once into the saved settings (2026_11_22_000001 migration) when no messages are set. */
+    public const BANNER_DEFAULTS = [
+        'Ticket bundles available',
+        'Low ticket numbers, better odds',
+        'Numbers emailed instantly',
+        'Drawn live on Instagram @wds_competitions',
     ];
 
     public static function get(): array
     {
         // The contact address comes from config('wds.contact_email') only, whatever an older saved setting says.
+        $saved = Setting::get('site', []) ?? [];
+        unset($saved['announcementBar']); // replaced by bannerMessages (Nov 2026)
+
         return ['supportEmail' => (string) config('wds.contact_email'), 'footer' => self::footer()]
-            + array_merge(self::DEFAULTS, Setting::get('site', []) ?? []);
+            + array_merge(self::DEFAULTS, $saved);
     }
 
     /** The site footer's config (config/wds.php), not editable in Admin. */

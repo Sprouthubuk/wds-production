@@ -7,6 +7,7 @@ import ComingSoonCard from '../components/ComingSoonCard.astro';
 import LaunchHero from '../components/LaunchHero.astro';
 import LaunchCard from '../components/LaunchCard.astro';
 import SignupForm from '../components/SignupForm.astro';
+import Ticker from '../components/Ticker.astro';
 import { getCompetitions, getSettings, getUpcoming, getWinners } from '../lib/api';
 import { money, odds, percentSold } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
@@ -41,6 +42,8 @@ const drawTime = featured ? new Date(featured.drawAt).toLocaleTimeString('en-GB'
 const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', timeZone: 'Europe/London' }).replace('/', '.') : '';
 ---
 <Layout title="Home">
+  <Ticker messages={settings.bannerMessages} />
+
   {prelaunch ? <LaunchHero teaser={prelaunch} headline={headline} /> : null}
 
   {featured ? (

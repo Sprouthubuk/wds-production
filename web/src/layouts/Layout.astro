@@ -44,7 +44,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
       </div>
     ) : null}
     <a class="sr-only" href="#main">Skip to content</a>
-    <Header active={active} prelaunch={pre.on} firstAccessHref={pre.href} announcement={settings.announcementBar} />
+    <Header active={active} prelaunch={pre.on} firstAccessHref={pre.href} />
     <main id="main">
       <slot />
     </main>

@@ -69,4 +69,5 @@ export const sampleSettings: SiteSettings = {
   ],
   youtubeUrl: 'https://youtube.com/@wdsoriginals',
   drawsYoutubeUrl: null,
+  bannerMessages: ['Ticket bundles available', 'Low ticket numbers, better odds', 'Numbers emailed instantly', 'Drawn live on Instagram @wds_competitions'],
 };

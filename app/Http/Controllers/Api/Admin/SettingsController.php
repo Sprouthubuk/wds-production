@@ -28,12 +28,15 @@ class SettingsController extends Controller
             'drawsYoutubeUrl' => ['sometimes', 'nullable', 'url:https'],
             'siteSpendCapEnabled' => ['sometimes', 'boolean'],
             'siteSpendCapMonthly' => ['sometimes', 'nullable', 'numeric', 'min:1', 'max:100000', 'required_if:siteSpendCapEnabled,true'],
-            'announcementBar' => ['sometimes', 'nullable', 'string', 'max:140'],
+            'bannerMessages' => ['sometimes', 'nullable', 'array', 'max:12'], 'bannerMessages.*' => ['nullable', 'string', 'max:120'],
         ]);
-        if (array_key_exists('announcementBar', $d)) {
-            $d['announcementBar'] = trim((string) $d['announcementBar']); // empty = no bar
+        if (array_key_exists('bannerMessages', $d)) {
+            // One message per line, in order; blank lines dropped. Empty = no banner.
+            $d['bannerMessages'] = array_values(array_filter(array_map(fn ($m) => trim((string) $m), (array) $d['bannerMessages']), fn ($m) => $m !== ''));
         }
-        Setting::put('site', array_merge(Setting::get('site', []) ?? [], $d));
+        $site = Setting::get('site', []) ?? [];
+        unset($site['announcementBar']); // replaced by bannerMessages
+        Setting::put('site', array_merge($site, $d));
 
         return response()->json(['message' => 'Settings saved.', 'data' => SettingsPayload::get()]);
     }

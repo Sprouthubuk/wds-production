@@ -1,0 +1,39 @@
+---
+/**
+ * The scrolling banner under the header on the home page (Admin â†’ Settings â†’ Scrolling banner messages,
+ * one message per line). Same look and speed as the original ticker. No messages = no ticker.
+ * With reduced motion it doesn't move: the messages are shown once, wrapped and centred.
+ */
+interface Props { messages?: string[] | null }
+const messages = (Astro.props.messages ?? []).map((m) => String(m).trim()).filter(Boolean);
+// Repeat short lists so one loop is always wider than the screen, then double it for a seamless scroll.
+const reps = messages.length ? Math.ceil(6 / messages.length) : 0;
+const loop = Array.from({ length: reps }, () => messages).flat();
+// The original scrolled 6 messages per 40s; keep that pace whatever the number of messages.
+const seconds = Math.round((40 * loop.length) / 6);
+---
+{messages.length ? (
+  <div class="ticker" data-ticker>
+    <div class="track" style={`--ticker-dur: ${seconds}s`}>
+      {loop.map((t, i) => <span class={i < messages.length ? (i === messages.length - 1 ? 'msg last' : 'msg') : 'msg dup'} aria-hidden={i < messages.length ? undefined : 'true'}>{t}<i></i></span>)}
+      {loop.map((t) => <span class="msg dup" aria-hidden="true">{t}<i></i></span>)}
+    </div>
+  </div>
+) : null}
+
+<style>
+  .ticker { overflow: hidden; border-bottom: 1px solid var(--line); background: var(--bg-2); }
+  .ticker { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .ticker:hover .track { animation-play-state: paused; }
+  .track { display: flex; width: max-content; padding: 14px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap; animation: marquee var(--ticker-dur, 40s) linear infinite; }
+  .track span { padding: 0 28px; display: flex; align-items: center; gap: 28px; }
+  .track i { width: 6px; height: 6px; background: #fff; transform: rotate(45deg); }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) {
+    .ticker { -webkit-mask-image: none; mask-image: none; }
+    .track { animation: none; width: auto; flex-wrap: wrap; justify-content: center; row-gap: 8px; padding: 12px 16px; font-size: 12px; letter-spacing: 0.12em; white-space: normal; text-align: center; }
+    .track .dup { display: none; }
+    .track span { padding: 0 8px; gap: 16px; }
+    .track .last i { display: none; }
+  }
+</style>

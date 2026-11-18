@@ -23,6 +23,15 @@ async function shoot(page, name) {
   await page.screenshot({ path: path.join(dir, `${name}-full.png`), fullPage: true });
 }
 
+// The home page's first screen with motion on too, to show the scrolling banner as most visitors see it.
+async function shootMoving(page, name) {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
+  await page.goto('/');
+  await page.waitForTimeout(1500);
+  await page.screenshot({ path: path.join(dir, `${name}-motion-fold.png`) });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+}
+
 test('public pages at 375px', async ({ page }) => {
   test.setTimeout(120_000);
   if (SOON) {
@@ -30,12 +39,14 @@ test('public pages at 375px', async ({ page }) => {
       await page.goto(url);
       await shoot(page, `soon-${name}`);
     }
+    await shootMoving(page, 'soon-home');
     return;
   }
   for (const [name, url] of PAGES) {
     await page.goto(url);
     await shoot(page, name);
   }
+  await shootMoving(page, 'home');
   // Basket with tickets in it, then the account page (signed in).
   await page.goto('/competitions/e2e-bmw');
   await page.locator('[data-entry-panel] [data-enter]').first().click();
