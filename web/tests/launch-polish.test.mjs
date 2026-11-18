@@ -236,7 +236,10 @@ test('company details: full in the T&Cs and privacy policy; no street address on
 
 test('client copy: home Dream it block, footer tagline, competitions intro, meta description', async () => {
   const home = await page('/');
-  assert.ok(home.includes('<p class="body" data-dream>Modern classic BMWs, from beautifully refreshed OEM+ examples to full race-inspired track day builds. Now is your chance to win them.</p>'));
+  // The "Dream it. Build it. Drive it. Win it." paragraph: the same wording on the home and About pages.
+  const DREAM = '<p class="body" data-dream>WDS Originals builds high-performance and modern classic BMWs, from beautifully refreshed OEM+ examples to full race-inspired track day builds. Now is your chance to win them.</p>';
+  assert.ok(home.includes(DREAM), 'home');
+  assert.ok((await page('/about')).includes(DREAM), 'About');
   assert.ok(footerOf(home).includes('<p class="strap">Be sure to enter for your chance to win. Every draw is streamed live on our social media.</p>'));
   assert.ok(!home.includes('Win genuine WDS Originals builds. Every draw streamed live.'), 'old tagline gone');
   assert.ok(home.includes('<meta name="description" content="Win modern classic BMWs, parts and merchandise. Low ticket numbers, great odds, and every draw is streamed live on our social media.">'));
