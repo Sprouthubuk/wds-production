@@ -28,17 +28,6 @@ const s = await getSettings();
       <img src="/images/e46-clubsport-34-720.jpg" alt="The Clubsport in the WDS Originals workshop" class="pic" loading="lazy" />
     </div>
   </section>
-  <section class="section" style="border-bottom: 0">
-    <div class="container stack" style="gap: 24px">
-      <h2 class="display display--s">Company details</h2>
-      <div class="rows">
-        <div><span>Promoter</span><span>{s.legalName}, trading as {s.tradingName}</span></div>
-        <div><span>Company number</span><span>{s.companyNumber}</span></div>
-        <div><span>Registered office</span><span>{s.registeredOffice}</span></div>
-        <div><span>Email</span><span><a href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></span></div>
-      </div>
-    </div>
-  </section>
 </Layout>
 <style>
   .split { display: flex; flex-wrap: wrap; gap: 56px; align-items: center; }

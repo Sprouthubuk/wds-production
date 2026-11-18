@@ -18,6 +18,7 @@ const sections: [string, string[]][] = [
   ['Our liability', ['[Limitation of liability wording.]']],
   ['Your data', ['We use your details to run the competition and contact winners, as set out in our <a href="/privacy">privacy policy</a>.']],
   ['Governing law', ['These terms are governed by the laws of England and Wales. [Confirm.]']],
+  ['Company details', [`${s.legalName}, trading as ${s.tradingName}.`, `Registered in England &amp; Wales, company no. ${s.companyNumber}.`, `Registered office: ${s.registeredOffice}.`, `Email: <a href="mailto:${s.supportEmail}">${s.supportEmail}</a>`]],
 ];
 ---
 <LegalPage title="Terms & conditions" heading="Terms & conditions" sections={sections} />

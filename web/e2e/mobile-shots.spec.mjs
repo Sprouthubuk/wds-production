@@ -62,3 +62,24 @@ test('public pages at 375px', async ({ page }) => {
   await page.waitForURL(/\/account/, { timeout: 15_000 });
   await shoot(page, 'account');
 });
+
+// Close-ups of single sections, for copy changes: [name, page, selector].
+const SECTIONS = [
+  ['section-home-dream', '/', 'section:has([data-dream])'],
+  ['section-footer-top', '/', '[data-footer-brand]'],
+  ['section-footer-legal', '/', '[data-footer-legal]'],
+  ['section-competitions-intro', '/competitions', '.page-hero'],
+  ['section-about-end', '/about', 'main > section:last-of-type'],
+  ['section-terms-company-details', '/terms', 'section:has(> #company-details)'],
+  ['section-contact-details', '/contact', 'main .rows'],
+];
+
+test('changed sections at 375px', async ({ page }) => {
+  test.setTimeout(120_000);
+  for (const [name, url, sel] of SECTIONS) {
+    await page.goto(url);
+    await page.addStyleTag({ content: '[data-reveal],[data-reveal-group] > *{opacity:1!important;transform:none!important}' });
+    await page.waitForTimeout(1200);
+    await page.locator(sel).first().screenshot({ path: path.join(dir, `${name}.png`) });
+  }
+});

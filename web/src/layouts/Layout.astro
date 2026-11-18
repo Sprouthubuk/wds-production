@@ -12,7 +12,7 @@ interface Props {
   active?: 'competitions' | 'winners' | 'faqs' | 'none';
   image?: string;
 }
-const { title, description = 'Win genuine WDS Originals BMW builds, parts and merchandise. Low ticket numbers, better odds and every draw streamed live.', active = 'none', image = '/images/e46-clubsport-34.jpg' } = Astro.props;
+const { title, description = 'Win modern classic BMWs, parts and merchandise. Low ticket numbers, great odds, and every draw is streamed live on our social media.', active = 'none', image = '/images/e46-clubsport-34.jpg' } = Astro.props;
 const [settings, pre] = await Promise.all([getSettings(), prelaunchState(Astro.locals)]);
 const preview = Astro.locals.preview ?? null;
 const fullTitle = title === 'Home' ? 'WDS Competitions — Win genuine WDS Originals builds' : `${title} — WDS Competitions`;

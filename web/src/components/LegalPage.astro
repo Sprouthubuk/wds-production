@@ -3,6 +3,8 @@ import Layout from '../layouts/Layout.astro';
 import PageHero from './PageHero.astro';
 interface Props { title: string; heading: string; sections: [string, string[]][]; updated?: string }
 const { title, heading, sections, updated = '[DATE]' } = Astro.props;
+// Each heading also gets a readable anchor, e.g. /terms#company-details.
+const slug = (t: string) => t.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 ---
 <Layout title={title}>
   <PageHero eyebrow="Legal" title={heading} />
@@ -13,7 +15,7 @@ const { title, heading, sections, updated = '[DATE]' } = Astro.props;
         <nav aria-label="Contents" class="toc"><span class="label">Contents</span>{sections.map(([t], i) => <a href={`#s${i + 1}`}>{i + 1}. {t}</a>)}</nav>
         <div class="content">
           {sections.map(([t, paras], i) => (
-            <section id={`s${i + 1}`}><h2 class="h3">{i + 1}. {t}</h2>{paras.map((p) => <p class="body" set:html={p} />)}</section>
+            <section id={`s${i + 1}`}><h2 class="h3" id={slug(t)}>{i + 1}. {t}</h2>{paras.map((p) => <p class="body" set:html={p} />)}</section>
           ))}
         </div>
       </div>

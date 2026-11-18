@@ -7,16 +7,15 @@ import { sampleSettings } from '../src/data/sample.ts';
 
 test('legal line without an ICO number', () => {
   assert.deepEqual(legalParts({ ...sampleSettings, footer: { ...DEFAULT_FOOTER, icoNumber: null } }, 2026), [
-    '© 2026 WDS Originals Limited, trading as WDS Competitions',
+    '© 2026 WDS Originals Limited',
     'Registered in England & Wales, company no. 13330886',
-    'Registered office: Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
     '18+ UK residents only.',
   ]);
 });
 
 test('legal line with an ICO number', () => {
   const parts = legalParts({ ...sampleSettings, footer: { ...DEFAULT_FOOTER, icoNumber: 'ZB123456' } }, 2026);
-  assert.equal(parts[3], 'ICO registration: ZB123456');
+  assert.equal(parts[2], 'ICO registration: ZB123456');
   assert.equal(parts.at(-1), '18+ UK residents only.');
 });
 

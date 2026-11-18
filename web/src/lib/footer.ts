@@ -24,13 +24,16 @@ export const PAYMENT_MARKS = [
   { key: 'google-pay', alt: 'Google Pay' },
 ] as const;
 
-/** The legal line, parts joined with " · ". The ICO registration appears only when config('wds.ico_number') is set. */
+/**
+ * The legal line, parts joined with " · " (the footer adds "Full company details in our Terms" with a link).
+ * Kept minimal: no address here; the registered office is in the T&Cs and privacy policy. The ICO registration
+ * appears only when config('wds.ico_number') is set.
+ */
 export function legalParts(s: SiteSettings, year = new Date().getFullYear()): string[] {
   const ico = footerConfig(s).icoNumber;
   return [
-    `© ${year} ${s.legalName}, trading as ${s.tradingName}`,
+    `© ${year} ${s.legalName}`,
     `Registered in England & Wales, company no. ${s.companyNumber}`,
-    `Registered office: ${s.registeredOffice}`,
     ...(ico ? [`ICO registration: ${ico}`] : []),
     '18+ UK residents only.',
   ];
