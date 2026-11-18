@@ -127,6 +127,8 @@ class PublicController extends Controller
                 'qty' => (int) $item['qty'],
                 'total' => \App\Http\Resources\Money::pounds($pricing->forCompetition($c, (int) $item['qty'])),
                 'available' => $state === 'open' ? $c->available() : 0,
+                // Asked in the basket before payment (paid competitions). Never says which answer is correct.
+                'skillQuestion' => ($q = $c->skillQuestion()) ? ['question' => $q['question'], 'options' => $q['options']] : null,
             ];
         })->values();
 

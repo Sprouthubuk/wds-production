@@ -143,7 +143,14 @@ button, input, select, textarea { font: inherit; color: inherit; }
 }
 
 @media (max-width: 600px) {
-  .section { padding: 56px 0; }
+  /* Phones: tighter vertical rhythm (client feedback: it felt cluttered and long). */
+  .section { padding: 44px 0; }
+  .section--tight { padding: 32px 0; }
+  .section-head { margin-bottom: 20px; }
+  .page-hero { padding: 32px 0 24px; }
+  .page-hero .container { gap: 14px; }
+  .lead { font-size: 16px; }
+  .faq summary { min-height: 56px; font-size: 16px; }
   .card__body { padding: 18px; }
   .btn { padding: 0 20px; }
 }

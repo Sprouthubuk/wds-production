@@ -288,6 +288,11 @@ class VerityDrawFlowTest extends TestCase
             ->assertJsonPath('message', 'Upload at least one photo of the prize (Photos, then Save) before publishing.');
         $this->assertFalse($draft->fresh()->isPublished());
         $draft->update(['images' => [['src' => '/images/prize.jpg', 'alt' => 'The prize']]]);
+        // A paid competition needs its checkout skill question before it can be published.
+        $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertStatus(422)
+            ->assertJsonPath('message', fn ($m) => str_starts_with($m, 'Add the skill question'));
+        $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['skillQuestion' => self::skillQ()])->assertOk()
+            ->assertJsonPath('data.skillQuestion.correct', 1);
         $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertOk()
             ->assertJsonPath('message', fn ($m) => str_contains($m, 'locked in'));
         $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertStatus(422);

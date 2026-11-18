@@ -117,8 +117,8 @@ class ContactFormTest extends TestCase
         config(['wds.contact_email' => 'help@example.com']);
         $this->assertSame('help@example.com', SettingsPayload::get()['supportEmail']);
 
-        $this->assertStringNotContainsString('wds_competitions', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
-        $this->assertStringContainsString('instagram.com/wds_originals', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
+        $this->assertStringNotContainsString('wds_originals', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
+        $this->assertStringContainsString('instagram.com/wds_competitions/', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
     }
 
     public function test_enquiries_go_to_the_contact_address_when_no_enquiry_address_is_set(): void

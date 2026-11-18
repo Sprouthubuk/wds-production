@@ -43,7 +43,7 @@ const bundles = [...c.bundles].sort((a, b) => a.qty - b.qty);
   </ul>
 
   <SignupForm id={`notify-${c.id}`} label="Notify me when it's live" competitionId={c.id} source="competition" signedInAs={signedInAs} />
-  <span class="foot">{free ? 'Free to enter online, one per account, once it opens.' : 'Entries open on the date above. Free postal entry on every paid competition.'}</span>
+  <span class="foot">{free ? 'Free to enter online, one per account, once it opens.' : 'Entries open on the date above.'}</span>
 </div>
 
 <style>

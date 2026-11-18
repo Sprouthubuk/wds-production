@@ -56,6 +56,22 @@ final class ClientDrafts
         ];
     }
 
+    /**
+     * Suggested checkout skill questions for the paid competitions, AWAITING CLIENT APPROVAL. Set only on a draft
+     * that has none yet, so wording edited (approved) in Admin is never overwritten. Locked once published.
+     *
+     * @return array<string, array{question: string, options: list<string>, correct: int}>
+     */
+    public static function skillQuestions(): array
+    {
+        return [
+            self::MAIN_EVENT => ['question' => 'What does BMW stand for?',
+                'options' => ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons'], 'correct' => 1],
+            self::COILOVERS => ['question' => 'What part of a car do coilovers replace?',
+                'options' => ['The brakes', 'The exhaust', 'The suspension (springs and dampers)', 'The gearbox'], 'correct' => 2],
+        ];
+    }
+
     /** @return array<string, mixed> */
     public static function mainEvent(): array
     {

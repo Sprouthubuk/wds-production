@@ -63,9 +63,9 @@ export const sampleSettings: SiteSettings = {
   registeredOffice: 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
   supportEmail: 'sales@wdsoriginals.com',
   postalEntryAddress: ['WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'],
-  drawsInstagram: 'wds_originals',
+  drawsInstagram: 'wds_competitions',
   socials: [
-    { label: 'Instagram @wds_originals', url: 'https://instagram.com/wds_originals' },
+    { label: 'Instagram @wds_competitions', url: 'https://www.instagram.com/wds_competitions/' },
   ],
   youtubeUrl: 'https://youtube.com/@wdsoriginals',
   drawsYoutubeUrl: null,

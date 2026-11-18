@@ -26,8 +26,13 @@ class ClientDrafts extends Command
         $this->line($apply ? 'Applying:' : 'Dry run (nothing is written; add --apply to write):');
 
         $new = Drafts::newDrafts();
+        $skill = Drafts::skillQuestions();
         foreach (Drafts::confirmed() as $slug => $confirmed) {
             $c = Competition::where('slug', $slug)->first();
+            // The suggested skill question only fills an empty one: wording edited in Admin is kept.
+            if (isset($skill[$slug]) && empty($c->skill_question)) {
+                $confirmed['skill_question'] = $skill[$slug];
+            }
             if (! $c) {
                 if (! isset($new[$slug])) {
                     $this->warn("  {$slug}: not found, skipped.");

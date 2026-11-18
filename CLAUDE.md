@@ -24,8 +24,11 @@ Repository admins can bypass this in an emergency; don't, unless the owner says 
 
 ## Business rules
 
-- **Free postal entry only, no skill question.** The client confirmed that the free route is free postal
-  entry; competitions don't have a skill/knowledge question. Don't add one.
+- **Free postal entry, plus a skill question for paid online entries** (client feedback, Nov 2026; this replaces
+  the earlier "no skill question" rule). Every paid competition has free postal entry and a multiple-choice skill
+  question (`competitions.skill_question`) asked in the basket. The answer is checked server-side in
+  `CheckoutService::start` before any order or payment exists, and stored on the order line. It's locked at publish.
+  Free competitions, postal entries and event sales don't ask it.
 - Postal entries must be **received at least 48 hours before `closes_at`** (`Competition::postalClosesAt()`;
   an admin can override per competition). Later ones are rejected: "Received less than 48 hours before close".
 

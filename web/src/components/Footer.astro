@@ -13,14 +13,6 @@ const NAV: [string, [string, string][]][] = [
 ---
 <footer class="site-footer" data-footer>
   <div class="container inner">
-    <div class="postal" data-reveal>
-      <div class="stack" style="gap: 6px">
-        <span class="h">Free postal entry on every paid competition</span>
-        <span class="muted">Enter any paid competition free by post. Postal entries have exactly the same chance of winning as online entries.</span>
-      </div>
-      <a href="/free-postal-entry" class="btn">How to enter by post</a>
-    </div>
-
     <div class="brand-row" data-footer-brand>
       <div class="brand">
         <a href="/" class="logo" aria-label="WDS Competitions home"><img src="/images/wds-logo.png" alt="WDS Competitions" width="200" height="28" loading="lazy" data-logo /></a>
@@ -73,10 +65,6 @@ const NAV: [string, [string, string][]][] = [
 <style>
   .site-footer { border-top: 1px solid var(--line); }
   .inner { padding-top: 56px; padding-bottom: 32px; display: flex; flex-direction: column; gap: 40px; }
-  .postal { border: 1px solid #fff; padding: 24px 28px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; }
-  .postal .stack { flex: 1 1 420px; }
-  .postal .h { font-size: 16px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; }
-  .postal .muted { font-size: 14px; }
 
   /* Brand: the logo is sized by height only, so it keeps its natural 900×126 shape (never stretched). */
   .brand-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 32px; }
@@ -118,8 +106,6 @@ const NAV: [string, [string, string][]][] = [
   }
   @media (max-width: 700px) {
     .inner { padding-top: 40px; gap: 32px; }
-    .postal { padding: 22px; }
-    .postal .btn { width: 100%; }
     .logo { min-height: 44px; align-items: center; }
     .logo img { height: 24px; }
     .brand { flex-direction: column; align-items: flex-start; }

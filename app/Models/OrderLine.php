@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class OrderLine extends Model
 {
-    protected $fillable = ['order_id', 'competition_id', 'qty', 'unit_price_pence', 'line_total_pence'];
+    protected $fillable = ['order_id', 'competition_id', 'qty', 'unit_price_pence', 'line_total_pence', 'skill_answer'];
 
     /** @return BelongsTo<Order, $this> */
     public function order(): BelongsTo { return $this->belongsTo(Order::class); }

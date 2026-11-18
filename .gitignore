@@ -36,3 +36,4 @@ Thumbs.db
 /qa/screenshots
 /web/test-results
 /web/playwright-report
+/qa/mobile

@@ -41,6 +41,12 @@ const ukWhen = (iso: string | null) => (iso ? new Date(iso).toLocaleString('en-G
 const history = !isNew && !usingSampleData
   ? (await adminGet<{ data: { at: string; action: string; summary: string; by: string | null }[] }>(Astro.cookies, `/competitions/${id}/history`).catch(() => ({ data: [] }))).data
   : [];
+// The checkout skill question (paid competitions): up to 4 answers, one correct. Locked at publish with the other terms.
+const sq = v.skillQuestion ?? null;
+const sqOptions = [...(sq?.options ?? []), '', '', '', ''].slice(0, 4);
+const sqComplete = !!sq && !!sq.question && (sq.options?.length ?? 0) >= 3 && typeof sq.correct === 'number' && sq.correct < sq.options.length;
+const paid = v.ticketPrice > 0;
+const sqLine = sqComplete ? ` Skill question: "${sq!.question}" (correct answer: "${sq!.options[sq!.correct!]}").` : '';
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 ---
 <AdminLayout title={isNew ? 'New competition' : v.title} active="competitions">
@@ -98,6 +104,24 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
       </div>
       <button type="button" class="adm-link" style="margin-top:10px" data-add-bundle>+ Add bundle</button>
       <p class="small muted" style="margin:12px 0 0" data-odds></p>
+    </section>
+
+    <section class="panel" data-skill-panel>
+      <h2>Skill question</h2>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)">{locked
+        ? 'Published: the skill question is locked in with the other terms.'
+        : 'Paid competitions only. Asked in the basket before payment; a wrong answer cannot continue (no payment is taken) and can try again. Needed to publish a paid competition, and locked when you publish. Free competitions and postal entries skip it.'}</p>
+      <fieldset class="sq" disabled={locked}>
+        <legend class="sr-only">Skill question</legend>
+        <div class="field"><label for="sq-q">Question</label><input id="sq-q" name="sqQuestion" maxlength="200" placeholder="e.g. What does BMW stand for?" value={sq?.question ?? ''} /></div>
+        <span class="label" style="margin-top:6px">Answers <span class="small muted">(3 or 4; tick the correct one)</span></span>
+        {sqOptions.map((o, i) => (
+          <div class="row sq-opt" style="gap:10px;align-items:center">
+            <label class="sq-correct"><input type="radio" name="sqCorrect" value={String(i)} checked={sq?.correct === i} aria-label={`Answer ${i + 1} is correct`} />Correct</label>
+            <input name={`sqOption${i}`} maxlength="120" placeholder={i === 3 ? 'Answer 4 (optional)' : `Answer ${i + 1}`} value={o} aria-label={`Answer ${i + 1}`} />
+          </div>
+        ))}
+      </fieldset>
     </section>
 
     </div>
@@ -168,17 +192,19 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   {!isNew && !locked ? (
     <section class="panel" style="margin-top:20px">
       <h2>Publish</h2>
-      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price and maximum per person are fixed, and <span data-method-text={JSON.stringify(publishWhat)}>{publishWhat[methodNow] ?? publishWhat.verity}</span>. Check everything above (and save) first.</p>
+      <p class="small" style="margin:0 0 12px;color:var(--muted-2)"><strong>Publishing locks the draw in and can't be undone.</strong> The closing time, ticket count, price, maximum per person{paid ? ' and skill question' : ''} are fixed, and <span data-method-text={JSON.stringify(publishWhat)}>{publishWhat[methodNow] ?? publishWhat.verity}</span>. Check everything above (and save) first.</p>
       {v.images.length ? null : <p class="alert alert--error" style="margin:0 0 12px">Upload at least one photo of the prize (Photos, then Save) before publishing.</p>}
+      {paid && !sqComplete ? <p class="alert alert--error" style="margin:0 0 12px">Add the skill question (Pricing → Skill question, then Save) before publishing.</p> : null}
+      {paid && sqComplete ? <p class="small" style="margin:0 0 12px">Skill question: <strong>{sq!.question}</strong> Correct answer: <strong>{sq!.options[sq!.correct!]}</strong>.</p> : null}
       {opensFuture ? (
         <>
           <p class="small" style="margin:0 0 12px">Opens <strong>{ukWhen(v.opensAt)}</strong> UK time. Until then it shows as <strong>coming soon</strong>: visible with its odds and prices, "Notify me" instead of Enter, and nothing can be entered.</p>
-          <button class="btn" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title} as coming soon? This locks the draw in: opens ${ukWhen(v.opensAt)}, closes ${ukWhen(v.closesAt)} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, ${v.maxPerPerson ? `max ${v.maxPerPerson} per person` : 'no per-person limit'}. ${methodNow === 'verity' ? 'The winner is drawn automatically about a minute after closing.' : 'Entries are sealed at closing; the winner is drawn live at the live draw time.'} It opens for entries on its own at the opening time. It can't be undone.`} data-reload>Publish as coming soon</button>
+          <button class="btn" disabled={!v.images.length || (paid && !sqComplete)} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-confirm={`Publish ${v.title} as coming soon? This locks the draw in: opens ${ukWhen(v.opensAt)}, closes ${ukWhen(v.closesAt)} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}, ${v.maxPerPerson ? `max ${v.maxPerPerson} per person` : 'no per-person limit'}.${sqLine} ${methodNow === 'verity' ? 'The winner is drawn automatically about a minute after closing.' : 'Entries are sealed at closing; the winner is drawn live at the live draw time.'} It opens for entries on its own at the opening time. It can't be undone.`} data-reload>Publish as coming soon</button>
         </>
       ) : (
         <>
           <p class="alert alert--error" style="margin:0 0 12px">{v.opensAt ? `The opening time (${ukWhen(v.opensAt)}) has passed` : 'There is no opening time'}, so publishing opens entries <strong>immediately</strong>. To publish as coming soon, set a future time in Details → Opens and save.</p>
-          <button class="btn btn--danger" disabled={!v.images.length} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-body='{"openNow":true}' data-confirm={`Publish ${v.title} and OPEN IT FOR ENTRIES NOW? This locks the draw in (closes ${ukWhen(v.closesAt)} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}) and people can enter straight away. This is recorded in the competition's history and can't be undone.`} data-reload>Publish and open immediately</button>
+          <button class="btn btn--danger" disabled={!v.images.length || (paid && !sqComplete)} data-admin-action={`/api/admin/competitions/${v.id}/publish`} data-body='{"openNow":true}' data-confirm={`Publish ${v.title} and OPEN IT FOR ENTRIES NOW? This locks the draw in (closes ${ukWhen(v.closesAt)} UK time, ${v.totalTickets} tickets at £${v.ticketPrice}).${sqLine} People can enter straight away. This is recorded in the competition's history and can't be undone.`} data-reload>Publish and open immediately</button>
         </>
       )}
     </section>
@@ -395,6 +421,18 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
         }
       }
       if (!f('ticketPrice').disabled) body.ticketPrice = Number(f('ticketPrice').value);
+      // The skill question (not sent once locked). Empty answers are dropped; "correct" follows the ticked one.
+      if (!f('sqQuestion').disabled) {
+        const opts = [0, 1, 2, 3].map((i) => ({ i, text: f(`sqOption${i}`).value.trim() })).filter((o) => o.text);
+        const ticked = document.querySelector<HTMLInputElement>('input[name=sqCorrect]:checked');
+        const question = f('sqQuestion').value.trim();
+        if (!question && !opts.length) body.skillQuestion = null;
+        else {
+          const correct = ticked ? opts.findIndex((o) => String(o.i) === ticked.value) : -1;
+          if (correct < 0) { showError(form, 'Skill question: tick the correct answer (not an empty one).'); say('Tick the correct answer for the skill question.', true); return; }
+          body.skillQuestion = { question, options: opts.map((o) => o.text), correct };
+        }
+      }
       // Locked after publish: don't send the draw terms at all.
       for (const k of ['title', 'totalTickets', 'maxPerPerson', 'opensAt', 'closesAt']) if (f(k)?.disabled) delete body[k];
       showError(form, null);
@@ -420,4 +458,9 @@ const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'n
   .dm label { display: flex; gap: 10px; align-items: flex-start; font-size: 14px; line-height: 1.4; text-transform: none; letter-spacing: 0; font-weight: 400; cursor: pointer; }
   .dm input[type='radio'] { width: 18px; height: 18px; min-height: 0; flex: none; margin: 1px 0 0; padding: 0; accent-color: #fff; }
   .dm[disabled] label { opacity: .6; cursor: default; }
+  .sq { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .sq-opt input[name^='sqOption'] { flex: 1; min-width: 0; background: #000; border: 1px solid var(--line-2); padding: 9px 12px; }
+  .sq-correct { display: flex; gap: 6px; align-items: center; font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 400; flex: none; cursor: pointer; }
+  .sq-correct input { width: 18px; height: 18px; min-height: 0; margin: 0; padding: 0; accent-color: #fff; }
+  .sq[disabled] { opacity: .7; }
 </style>

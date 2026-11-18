@@ -13,9 +13,9 @@ final class SettingsPayload
         'registeredOffice' => 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
         // One line per row: "WDS Competitions – Free Entry, Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY, United Kingdom".
         'postalEntryAddress' => ['WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'],
-        'drawsInstagram' => 'wds_originals',
+        'drawsInstagram' => 'wds_competitions',
         'socials' => [
-            ['label' => 'Instagram @wds_originals', 'url' => 'https://instagram.com/wds_originals'],
+            ['label' => 'Instagram @wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'],
         ],
         'youtubeUrl' => 'https://youtube.com/@wdsoriginals',
         // Optional YouTube channel for live draws. Instagram stays the primary channel; with both set
@@ -25,6 +25,8 @@ final class SettingsPayload
         // methods, all competitions). OFF by default: only switch it on if the client decides to.
         'siteSpendCapEnabled' => false,
         'siteSpendCapMonthly' => null, // pounds
+        // Optional slim bar at the top of every page (Admin → Settings). Empty = no bar.
+        'announcementBar' => '',
     ];
 
     public static function get(): array
@@ -45,7 +47,7 @@ final class SettingsPayload
         ];
     }
 
-    /** Where draws are streamed, to finish "Drawn live on …": "our socials" or "Instagram @wds_originals". */
+    /** Where draws are streamed, to finish "Drawn live on …": "our socials" or "Instagram @wds_competitions". */
     public static function drawnLiveOn(?array $settings = null): string
     {
         $s = $settings ?? self::get();

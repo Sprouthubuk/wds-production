@@ -50,6 +50,7 @@ class PostalDeadlineDisplayTest extends TestCase
             'title' => 'Coilovers', 'category' => 'parts', 'ticketPrice' => 2, 'totalTickets' => 1000,
             'closesAt' => '2026-12-24T19:00:00.000Z', 'drawAt' => '2026-12-24T19:30:00.000Z', 'postalClosesAt' => null, 'postalEntryEnabled' => true,
             'images' => [['src' => '/images/p.jpg', 'alt' => 'P']],
+            'skillQuestion' => ['question' => 'What do coilovers replace?', 'options' => ['The brakes', 'The suspension', 'The exhaust'], 'correct' => 1],
         ])->assertCreated()->json('data.id');
         $c = Competition::findOrFail($id);
         $this->assertNull($c->postal_closes_at);

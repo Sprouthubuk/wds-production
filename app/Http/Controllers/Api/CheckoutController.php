@@ -28,6 +28,9 @@ class CheckoutController extends Controller
             'items.*.competitionId' => ['required', 'integer'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:1000'],
             'discountCode' => ['nullable', 'string', 'max:40'],
+            // The skill question: competition id => the position of the chosen answer (checked in CheckoutService).
+            'skillAnswers' => ['sometimes', 'array', 'max:20'],
+            'skillAnswers.*' => ['nullable', 'integer', 'min:0', 'max:3'],
             'useCredit' => ['boolean'],
             'marketingOptIn' => ['boolean'],
             'createAccount' => ['boolean'],

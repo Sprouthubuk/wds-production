@@ -18,7 +18,7 @@ return [
         'https://api.wdscompetitions.co.uk,https://wds-competitions-api.on-forge.com'))))),
 
     // Site footer: social links, the ICO registration line (shown only when set) and "Powered by RaffleLabs".
-    'instagram' => ['handle' => 'wds_originals', 'url' => 'https://instagram.com/wds_originals'],
+    'instagram' => ['handle' => 'wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'],
     'youtube' => ['name' => 'WDS Originals', 'url' => 'https://youtube.com/@wdsoriginals'],
     'ico_number' => env('ICO_NUMBER') ?: null,
     'powered_by' => (bool) env('SHOW_POWERED_BY', true),

@@ -74,7 +74,12 @@ test('the home page: Launching 1st December, site-wide sign-up, and a coming-soo
   assert.ok(/First up: <strong[^>]*>BMW E46 330Ci Clubsport<\/strong>/.test(html), 'features the competition');
   assert.ok(html.includes('1 in 750'), 'odds on the card');
   assert.ok(html.includes(`/competitions/${COMP.slug}#notify`), 'card button goes to Notify me');
-  assert.ok(!/Enter online<\/a>/.test(html.split('Two ways to enter')[0]), 'no Enter button on the card');
+  assert.ok(!/Enter online<\/a>/.test(html.split('Enter in three steps')[0]), 'no Enter button on the card');
+  // Less is more (client): one sign-up form (the hero's), no postal promotion, and the 3 steps lead to first access.
+  assert.equal((html.match(/<form class="signup" data-signup/g) ?? []).length, 1, 'only the hero sign-up form');
+  assert.ok(!html.includes('id="nl-email"'), 'no second sign-up strip');
+  assert.ok(!/free postal entry on every paid competition/i.test(html), 'no postal banner or hero link');
+  assert.match(html.slice(html.indexOf('Enter in three steps')), /^[\s\S]*?<div class="steps-cta"[^>]*><a href="#first-access"[^>]*>Get first access/, 'the 3 steps CTA is Get first access');
 });
 
 test('the competitions list shows the coming-soon card', async () => {
@@ -86,7 +91,7 @@ test('the competitions list shows the coming-soon card', async () => {
 
 test('postal entry before opening: the competition page and the Free Postal Entry page say envelopes count once entries open', async () => {
   const comp = await page(`/competitions/${COMP.slug}`);
-  assert.ok(comp.includes('How to enter by post'), 'the postal route is still offered');
+  assert.ok(comp.includes('Free entry route available'), 'the postal route is still offered');
   assert.ok(comp.includes(EARLY), 'competition page wording');
   const postal = await page('/free-postal-entry');
   assert.ok(postal.includes('BMW E46 330Ci Clubsport: must be received by'), 'its deadline is listed while coming soon');

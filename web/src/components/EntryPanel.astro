@@ -1,18 +1,17 @@
 ---
 /**
  * The ticket entry panel. One script drives every panel on the page.
- * variant="full"  → competition page / mobile. The free postal route is a "Free postal entry" button beside
- *                   Enter, always visible before purchase; the address and instructions are on /free-postal-entry.
- * variant="hero"  → compact card in the homepage hero
+ * variant="full"  → competition page / mobile. Kept short (client feedback): the page adds one line under it,
+ *                   "Free entry route available – see free postal entry"; the address and instructions are on
+ *                   /free-postal-entry (client: buying tickets is the focus, the free route low-key but one click away).
+ * variant="hero"  → compact card in the homepage hero: the same one-line free route under Enter.
  */
-import { drawChannels } from '../lib/channels';
 import type { Competition, SiteSettings } from '../lib/types';
-import { postalDeadlineSentence } from '../lib/postal';
-import { money, odds, percentSold, priceFor, savingFor, statusLabel } from '../lib/pricing';
+import { money, odds, percentSold, priceFor, savingFor } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
 
 interface Props { competition: Competition; settings: SiteSettings; variant?: 'full' | 'hero' }
-const { competition: c, settings, variant = 'full' } = Astro.props;
+const { competition: c, variant = 'full' } = Astro.props; // settings: kept in Props for callers
 
 const left = Math.max(0, c.totalTickets - c.ticketsSold);
 const cap = Math.max(1, Math.min(c.maxPerPerson ?? left, left || 1)); // no per-person cap: up to what's left
@@ -21,7 +20,6 @@ const pct = percentSold(c.ticketsSold, c.totalTickets);
 const cd = countdownParts(c.drawAt ?? new Date().toISOString());
 const options = [{ qty: 1, price: c.ticketPrice }, ...[...c.bundles].sort((a, b) => a.qty - b.qty)].filter((o) => o.qty <= cap);
 const soldOut = left === 0;
-const postalSentence = postalDeadlineSentence(c);
 const config = JSON.stringify({
   id: c.id, slug: c.slug, title: c.title, image: c.images[0]?.src ?? '', ticketPrice: c.ticketPrice,
   bundles: c.bundles, maxPerPerson: c.maxPerPerson, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
@@ -31,7 +29,7 @@ const config = JSON.stringify({
   <div class={`entry entry--${variant}`}>
     <div class="odds-strip"><div><span>Entry</span><b class="num">Free</b></div><div><span>Odds per entry</span><b class="num">{odds(c.totalTickets)}</b></div></div>
     <a href={`/competitions/${c.slug}`} class="btn btn--block btn--lg">Enter free</a>
-    <span class="foot">One free entry per account · or free by post</span>
+    <span class="foot">One free entry per account</span>
   </div>
 ) : (
 <div class={`entry entry--${variant}`} data-entry-panel data-config={config}>
@@ -46,7 +44,7 @@ const config = JSON.stringify({
 
   <div class="sold">
     {variant === 'full' ? (
-      <div class="sold-head"><span class="pct num" data-count-to={`${pct}%`}>{pct}%</span><span class="lbl">sold</span><span class="chip chip--line"><span class="dot"></span>{statusLabel(c.ticketsSold, c.totalTickets)}</span></div>
+      <div class="sold-head"><span class="pct num" data-count-to={`${pct}%`}>{pct}%</span><span class="lbl">sold</span></div>
     ) : null}
     <div class={`progress ${variant === 'full' ? 'progress--ticks' : ''}`} role="progressbar" aria-label="Tickets sold" aria-valuemin="0" aria-valuemax="100" aria-valuenow={pct}><span style={`width:${pct}%`}></span></div>
     <div class="sold-foot num"><span><strong data-count-to={variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}>{variant === 'hero' ? `${pct}%` : c.ticketsSold.toLocaleString('en-GB')}</strong> sold</span><span><strong>{left.toLocaleString('en-GB')}</strong> left</span></div>
@@ -75,7 +73,6 @@ const config = JSON.stringify({
                 <span class="p-label">{o.qty === 1 ? '1 ticket' : variant === 'hero' ? `${o.qty} for` : `${o.qty} tickets`}</span>
                 <span class="p-price">{money(o.price)}</span>
                 <span class="p-save">{save > 0.004 ? `Save ${money(save)}` : 'Single'}</span>
-                {variant === 'full' ? <span class="p-odds">{odds(c.totalTickets, o.qty)} chance</span> : null}
               </button>
             );
           })}
@@ -103,32 +100,26 @@ const config = JSON.stringify({
         <button type="button" class="nudge" data-nudge hidden></button>
 
         {variant === 'hero' ? (
-          <div class="btn-pair">
-            <button type="button" class="btn" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter online'}</button>
-            <a href="/free-postal-entry" class="btn">Free postal entry</a>
-          </div>
+          <button type="button" class="btn btn--block" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter now'}</button>
+          <p class="free-route" data-free-route>Free entry route available – see <a href="/free-postal-entry">free postal entry</a></p>
         ) : (
           <div class="enter-row">
             {c.preview
               ? <button type="button" class="btn btn--lg" disabled>Preview: entries disabled</button>
               : <button type="button" class="btn btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>}
-            <a href="/free-postal-entry" class="btn btn--outline btn--lg postal-link" data-postal-link>Free postal entry</a>
           </div>
         )}
-        {variant === 'full' ? <p class="small muted-2 postal-note">Same draw, same chance. {postalSentence} <a href="/free-postal-entry">How to enter by post</a>.</p> : null}
       </>
     )}
   </div>
 
-  {variant === 'hero' ? (
-    <span class="foot">Same draw, same chance{c.maxPerPerson ? ` · Max ${c.maxPerPerson} per person` : ''}</span>
-  ) : (
-    <div class="trust"><span>Secure checkout</span><span>Numbers issued in order</span><span>{drawChannels(settings).drawnLive}</span></div>
-  )}
+  {variant === 'hero' && c.maxPerPerson ? <span class="foot">Max {c.maxPerPerson} per person</span> : null}
 </div>
 )}
 
 <style>
+  .free-route { margin: 0; font-size: 12px; text-align: center; color: var(--muted-2); }
+  .free-route a { color: inherit; display: inline-block; padding: 6px 0; margin: -6px 0; } /* a 24px+ tap target; nothing moves */
   .entry { display: flex; flex-direction: column; gap: 18px; }
   .odds-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #fff; color: #000; }
   .odds-strip > div { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
@@ -150,13 +141,16 @@ const config = JSON.stringify({
   .sold-foot strong { color: #fff; }
   .online { display: flex; flex-direction: column; gap: 14px; }
   /* Enter and the free postal route side by side, before any purchase, at every width. */
-  .enter-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 8px; }
+  .enter-row { display: grid; grid-template-columns: minmax(0, 1fr); }
   .enter-row .btn { width: 100%; padding-left: 10px; padding-right: 10px; }
-  .postal-link { white-space: normal; text-align: center; line-height: 1.15; }
-  /* Narrow phones: side by side, "Enter now · £40" and "Free postal entry" wrapped onto 2–3 lines. Stack them. */
-  @media (max-width: 420px) { .enter-row { grid-template-columns: 1fr; } }
-  .postal-note { margin: 0; }
-  .postal-note a { color: inherit; }
+  /* Phones: the stepper is enough; the slider and the "or choose your own" label are extra noise. */
+  @media (max-width: 600px) {
+    .entry--full { gap: 14px; }
+    .entry--full .range { display: none; }
+    .entry--full .packs button { min-height: 72px; }
+    .entry--full .sold-head .pct { font-size: 26px; }
+    .entry--full .countdown b { font-size: 22px; }
+  }
   .packs { display: grid; gap: 6px; }
   .packs button { position: relative; min-height: 86px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 8px 4px; border: 1px solid #3a3a3a; background: transparent; color: #fff; cursor: pointer; transition: background-color .45s var(--ease), color .45s var(--ease), border-color .45s var(--ease), transform .2s var(--ease); }
   .packs button:hover { border-color: #fff; }
@@ -165,7 +159,6 @@ const config = JSON.stringify({
   .p-label { font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
   .p-price { font-size: 24px; font-weight: 700; line-height: 1.05; }
   .p-save { font-size: 11px; font-weight: 700; }
-  .p-odds { font-size: 11px; opacity: .7; }
   .entry--hero .packs button { min-height: 70px; }
   .entry--hero .p-price { font-size: 18px; }
   .own { display: flex; flex-direction: column; gap: 12px; }
@@ -199,7 +192,6 @@ const config = JSON.stringify({
   .nudge { min-height: 44px; padding: 0 14px; background: transparent; border: 1px dashed #fff; color: #fff; font-size: 13px; text-align: left; cursor: pointer; }
   .nudge[hidden] { display: none; }
   .muted-2 { color: var(--muted-2); }
-  .trust { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 16px; font-size: 12px; color: var(--muted); }
   .foot { font-size: 12px; color: #8a8a8a; text-align: center; }
 </style>
 
