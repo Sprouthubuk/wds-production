@@ -49,7 +49,7 @@ class DrawChannelsTest extends TestCase
 
         $site = SettingsPayload::get();
         $this->assertSame('wds_competitions', $site['drawsInstagram']);
-        $this->assertSame([['label' => 'Instagram @wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'], ['label' => 'TikTok', 'url' => 'https://tiktok.com/@wds']], $site['socials']);
+        $this->assertEquals([['label' => 'Instagram @wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'], ['label' => 'TikTok', 'url' => 'https://tiktok.com/@wds']], $site['socials']);
         $this->assertSame('https://youtube.com/@wdscompetitions', $site['drawsYoutubeUrl']);
         $this->assertStringNotContainsString('wds_originals', json_encode($site));
 

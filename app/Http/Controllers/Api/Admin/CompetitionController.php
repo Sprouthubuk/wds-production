@@ -168,13 +168,26 @@ class CompetitionController extends Controller
     private static function same(mixed $current, mixed $new): bool
     {
         if (is_array($current) || is_array($new)) {
-            return json_encode($current) === json_encode($new);
+            // MySQL stores JSON objects with its own key order, so compare with keys sorted.
+            return json_encode(self::sortKeys($current)) === json_encode(self::sortKeys($new));
         }
         if ($current instanceof \DateTimeInterface || $new instanceof \DateTimeInterface) {
             return $current && $new && Carbon::parse($current)->equalTo(Carbon::parse($new));
         }
 
         return (string) $current === (string) $new;
+    }
+
+    private static function sortKeys(mixed $value): mixed
+    {
+        if (! is_array($value)) {
+            return $value;
+        }
+        if (! array_is_list($value)) {
+            ksort($value);
+        }
+
+        return array_map(self::sortKeys(...), $value);
     }
 
     public function uploadImage(Request $request)

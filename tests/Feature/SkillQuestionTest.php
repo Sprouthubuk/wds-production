@@ -114,11 +114,11 @@ class SkillQuestionTest extends TestCase
     {
         $c = $this->paid();
         $public = $this->getJson("/api/competitions/{$c->slug}")->assertOk()->json('data.skillQuestion');
-        $this->assertSame(['question' => 'What does BMW stand for?', 'options' => ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons']], $public);
+        $this->assertEquals(['question' => 'What does BMW stand for?', 'options' => ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons']], $public);
         $this->assertStringNotContainsString('correct', $this->getJson('/api/competitions')->getContent());
         // The basket gets it fresh from the API, to ask before payment.
         $quote = $this->postJson('/api/basket/quote', ['items' => [['competitionId' => $c->id, 'qty' => 1]]])->assertOk();
-        $this->assertSame($public, $quote->json('data.0.skillQuestion'));
+        $this->assertEquals($public, $quote->json('data.0.skillQuestion'));
         $this->assertStringNotContainsString('correct', $quote->getContent());
 
         $admin = User::factory()->create(['role' => 'admin']);
@@ -137,15 +137,18 @@ class SkillQuestionTest extends TestCase
         $put(['question' => 'Q?', 'options' => ['A', 'B', 'C'], 'correct' => 3])->assertStatus(422)->assertJsonValidationErrors('skillQuestion.correct');
         $put(['question' => 'Q?', 'options' => ['A', 'a', 'C'], 'correct' => 0])->assertStatus(422);
         $put(['question' => ' What does BMW stand for? ', 'options' => [' British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons'], 'correct' => 1])->assertOk();
-        $this->assertSame(self::skillQ(), $draft->fresh()->skill_question, 'trimmed and stored');
+        $this->assertEquals(self::skillQ(), $draft->fresh()->skill_question, 'trimmed and stored (MySQL may reorder JSON keys)');
 
         $this->actingAs($admin)->postJson("/api/admin/competitions/{$draft->id}/publish", ['openNow' => true])->assertOk();
         // Saving the same question again is fine (Admin sends the whole form); changing it isn't.
         $put(self::skillQ())->assertOk();
+        // MySQL returns JSON keys in its own order: still the same question.
+        Competition::whereKey($draft->id)->update(['skill_question' => json_encode(['correct' => 1, 'options' => self::skillQ()['options'], 'question' => self::skillQ()['question']])]);
+        $put(self::skillQ())->assertOk();
         $put(['question' => 'Easier?', 'options' => ['Yes', 'No', 'Maybe'], 'correct' => 0])->assertStatus(422)
             ->assertJsonPath('message', fn ($m) => str_starts_with($m, "The skill question can't change after publishing"));
         $this->actingAs($admin)->putJson("/api/admin/competitions/{$draft->id}", ['skillQuestion' => null])->assertStatus(422);
-        $this->assertSame(self::skillQ(), $draft->fresh()->skill_question);
+        $this->assertEquals(self::skillQ(), $draft->fresh()->skill_question);
     }
 
     public function test_client_drafts_seed_a_question_for_the_bmw_and_the_coilovers_but_never_overwrite_one_edited_in_admin(): void
@@ -167,6 +170,6 @@ class SkillQuestionTest extends TestCase
         $edited = ['question' => 'Which German city is BMW based in?', 'options' => ['Munich', 'Berlin', 'Hamburg'], 'correct' => 0];
         $bmw->update(['skill_question' => $edited]);
         $this->artisan('wds:client-drafts --apply')->assertSuccessful();
-        $this->assertSame($edited, $bmw->fresh()->skill_question);
+        $this->assertEquals($edited, $bmw->fresh()->skill_question);
     }
 }
