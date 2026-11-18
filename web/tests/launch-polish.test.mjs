@@ -236,10 +236,11 @@ test('company details: full in the T&Cs and privacy policy; no street address on
 
 test('client copy: home Dream it block, competitions intro, meta description', async () => {
   const home = await page('/');
-  // The "Dream it. Build it. Drive it. Win it." paragraph: the same wording on the home and About pages.
-  const DREAM = '<p class="body" data-dream>WDS Originals builds high-performance and modern classic BMWs, from beautifully refreshed OEM+ examples to full race-inspired track day builds. Now is your chance to win them.</p>';
-  assert.ok(home.includes(DREAM), 'home');
-  assert.ok((await page('/about')).includes(DREAM), 'About');
+  // The "Dream it. Build it. Drive it. Win it." paragraph: different wording on the home and About pages.
+  assert.ok(home.includes('<p class="body" data-dream>WDS Originals builds high-performance and modern classic BMWs, from beautifully refreshed OEM+ examples to full race-inspired track day builds. Now is your chance to win them.</p>'), 'home');
+  const about = await page('/about');
+  assert.ok(about.includes('<p class="body" data-dream>WDS Competitions exists to give you the chance to win prizes straight from the WDS Originals workshop.</p>'), 'About');
+  assert.ok(/Dream it\. Build it\.<br\s*\/?>Drive it\. Win it\./.test(about) && about.includes('>View competitions</a>'), 'About keeps the heading and buttons');
   assert.ok(!home.includes('Win genuine WDS Originals builds. Every draw streamed live.'), 'old tagline gone');
   assert.ok(home.includes('<meta name="description" content="Win modern classic BMWs, parts and merchandise. Low ticket numbers, great odds, and every draw is streamed live on our social media.">'));
   const comps = await page('/competitions');
@@ -292,4 +293,14 @@ test('no mojibake: the competitions intro has real middle dots', async () => {
     const html = await page(path);
     for (const bad of MOJIBAKE) assert.ok(!html.includes(bad), `${path}: no ${bad}`);
   }
+});
+
+test('FAQs: every question closed by default, each with an id to link to (free entry: #free-entry)', async () => {
+  const html = await page('/faqs');
+  const details = [...html.matchAll(/<details([^>]*)>/g)].map((m) => m[1]);
+  assert.ok(details.length >= 15);
+  assert.ok(details.every((attrs) => !/\sopen(\s|=|$)/.test(attrs)), 'none open');
+  const ids = details.map((attrs) => attrs.match(/id="([^"]+)"/)?.[1]);
+  assert.ok(ids.every(Boolean) && new Set(ids).size === ids.length, 'unique ids');
+  assert.ok(/<details id="free-entry"[^>]*><summary>Can I enter for free\?<\/summary>/.test(html));
 });
