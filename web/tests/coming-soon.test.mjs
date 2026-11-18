@@ -86,7 +86,7 @@ test('the competitions list shows the coming-soon card', async () => {
 
 test('postal entry before opening: the competition page and the Free Postal Entry page say envelopes count once entries open', async () => {
   const comp = await page(`/competitions/${COMP.slug}`);
-  assert.ok(comp.includes('How to enter by post'), 'the postal route is still offered');
+  assert.ok(comp.includes('Free entry route available'), 'the postal route is still offered');
   assert.ok(comp.includes(EARLY), 'competition page wording');
   const postal = await page('/free-postal-entry');
   assert.ok(postal.includes('BMW E46 330Ci Clubsport: must be received by'), 'its deadline is listed while coming soon');
