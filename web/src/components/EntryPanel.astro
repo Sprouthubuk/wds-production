@@ -2,9 +2,9 @@
 /**
  * The ticket entry panel. One script drives every panel on the page.
  * variant="full"  → competition page / mobile. Kept short (client feedback): the page adds one line under it,
- *                   "Free entry route available – see free postal entry", and the sticky bar has a Free postal entry
- *                   button; the address and instructions are on /free-postal-entry.
- * variant="hero"  → compact card in the homepage hero
+ *                   "Free entry route available – see free postal entry"; the address and instructions are on
+ *                   /free-postal-entry (client: buying tickets is the focus, the free route low-key but one click away).
+ * variant="hero"  → compact card in the homepage hero: the same one-line free route under Enter.
  */
 import type { Competition, SiteSettings } from '../lib/types';
 import { money, odds, percentSold, priceFor, savingFor } from '../lib/pricing';
@@ -29,7 +29,7 @@ const config = JSON.stringify({
   <div class={`entry entry--${variant}`}>
     <div class="odds-strip"><div><span>Entry</span><b class="num">Free</b></div><div><span>Odds per entry</span><b class="num">{odds(c.totalTickets)}</b></div></div>
     <a href={`/competitions/${c.slug}`} class="btn btn--block btn--lg">Enter free</a>
-    <span class="foot">One free entry per account · or free by post</span>
+    <span class="foot">One free entry per account</span>
   </div>
 ) : (
 <div class={`entry entry--${variant}`} data-entry-panel data-config={config}>
@@ -100,10 +100,8 @@ const config = JSON.stringify({
         <button type="button" class="nudge" data-nudge hidden></button>
 
         {variant === 'hero' ? (
-          <div class="btn-pair">
-            <button type="button" class="btn" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter online'}</button>
-            <a href="/free-postal-entry" class="btn">Free postal entry</a>
-          </div>
+          <button type="button" class="btn btn--block" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter now'}</button>
+          <p class="free-route" data-free-route>Free entry route available – see <a href="/free-postal-entry">free postal entry</a></p>
         ) : (
           <div class="enter-row">
             {c.preview
@@ -115,13 +113,13 @@ const config = JSON.stringify({
     )}
   </div>
 
-  {variant === 'hero' ? (
-    <span class="foot">Same draw, same chance{c.maxPerPerson ? ` · Max ${c.maxPerPerson} per person` : ''}</span>
-  ) : null}
+  {variant === 'hero' && c.maxPerPerson ? <span class="foot">Max {c.maxPerPerson} per person</span> : null}
 </div>
 )}
 
 <style>
+  .free-route { margin: 0; font-size: 12px; text-align: center; color: var(--muted-2); }
+  .free-route a { color: inherit; display: inline-block; padding: 6px 0; margin: -6px 0; } /* a 24px+ tap target; nothing moves */
   .entry { display: flex; flex-direction: column; gap: 18px; }
   .odds-strip { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); background: #fff; color: #000; }
   .odds-strip > div { padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }

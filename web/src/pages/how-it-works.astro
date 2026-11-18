@@ -3,7 +3,8 @@ import { drawChannels } from '../lib/channels';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getSettings } from '../lib/api';
-const settings = await getSettings();
+import { prelaunchState } from '../lib/prelaunch';
+const [settings, pre] = await Promise.all([getSettings(), prelaunchState(Astro.locals)]);
 const journey = [
   ['01', 'Entries open', 'Each competition has a fixed, low number of tickets, shown on the page, so you always know your odds.'],
   ['02', 'Numbers issued in order', 'Online, postal and event entries get the next ticket numbers in sequence from one run.'],
@@ -13,21 +14,22 @@ const journey = [
 ];
 const fair = [
   ['Better odds', 'Low ticket numbers on every competition.'],
-  ['Free entry route', 'Every paid competition can be entered free by post.'],
+  ['Instant numbers', 'Your ticket numbers are emailed as soon as you check out.'],
   ['Verified draws', 'Every draw is streamed live and the result published with a certificate.'],
   ['18+ only', 'All entrants and winners must be 18 or over and UK residents.'],
 ];
 ---
 <Layout title="How it works">
-  <PageHero eyebrow="How it works" title="How WDS Competitions works" intro="Pick a prize, enter online or free by post, and watch the winner drawn live." />
+  <PageHero eyebrow="How it works" title="How WDS Competitions works" intro="Pick a prize, choose your tickets and watch the winner drawn live." />
   <section class="section">
     <div class="container">
-      <div class="section-head"><h2 class="display display--s">Two ways to enter</h2></div>
-      <div class="grid grid--2">
-        <div class="way"><span class="label">Option 1</span><h3 class="display display--s">Enter online</h3><ol><li>Choose a competition and your tickets or a bundle</li><li>Answer the question in your basket, then check out on our payment provider's secure page</li><li>Your ticket numbers are emailed straight away</li></ol><a href="/competitions" class="btn btn--block">Enter online</a></div>
-        <div class="way"><span class="label">Option 2</span><h3 class="display display--s">Enter free by post</h3><ol><li>Write your details and the competition name on a postcard or letter</li><li>Post it so it reaches us at least 48 hours before the competition closes</li><li>Your ticket number is emailed once allocated</li></ol><a href="/free-postal-entry" class="btn btn--block">Enter free by post</a></div>
-      </div>
-      <p class="body" style="margin-top: 24px">Both routes go into the same draw with exactly the same chance of winning.</p>
+      <div class="section-head"><h2 class="display display--s">Enter in three steps</h2></div>
+      <ol class="steps">
+        <li><b>01</b><span>Choose your tickets or a bundle</span></li>
+        <li><b>02</b><span>Answer the question and check out securely</span></li>
+        <li><b>03</b><span>Your numbers are emailed instantly</span></li>
+      </ol>
+      <div class="steps-cta">{pre.on ? <a href={pre.href} class="btn">Get first access</a> : <a href="/competitions" class="btn">View competitions</a>}</div>
     </div>
   </section>
   <section class="section">
@@ -44,9 +46,17 @@ const fair = [
   </section>
 </Layout>
 <style>
-  .way { border: 1px solid #fff; padding: 36px; display: flex; flex-direction: column; gap: 18px; }
-  .way ol { margin: 0; padding-left: 20px; font-size: 16px; line-height: 1.8; color: #d0d0d0; }
-  .way .btn { margin-top: auto; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line-2); }
+  .steps li { display: flex; flex-direction: column; gap: 10px; padding: 24px 24px 24px 0; font-size: 16px; color: #d0d0d0; }
+  .steps li + li { padding-left: 24px; border-left: 1px solid var(--line-2); }
+  .steps b { font-size: 32px; line-height: 1; color: #fff; }
+  .steps-cta { margin-top: 28px; }
+  @media (max-width: 700px) {
+    .steps { grid-template-columns: minmax(0, 1fr); }
+    .steps li, .steps li + li { flex-direction: row; align-items: center; gap: 16px; padding: 16px 0; border-left: 0; border-bottom: 1px solid var(--line-2); font-size: 15px; }
+    .steps b { font-size: 22px; min-width: 32px; }
+    .steps-cta .btn { width: 100%; }
+  }
   .journey > div { display: flex; gap: 32px; padding: 26px 0; border-top: 1px solid var(--line-2); }
   .journey b { flex: 0 0 72px; font-size: 40px; line-height: 1; color: #5c5c5c; }
   .journey p { margin: 0; }

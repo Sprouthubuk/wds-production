@@ -23,6 +23,12 @@ const DRAFT = { ...PAID, id: 3, slug: 'coilovers', title: 'BC Racing BR Series C
   skillQuestion: { question: 'What part of a car do coilovers replace?', options: ['The brakes', 'The exhaust', 'The suspension (springs and dampers)', 'The gearbox'], correct: 2 } };
 const ADDRESS = 'WDS Competitions – Free Entry'; // the first line of the free entry address (sample settings)
 
+// null = the API has no settings (the site uses its sample settings); set it to test the announcement bar.
+let SETTINGS = null;
+const SITE = { tradingName: 'WDS Competitions', legalName: 'WDS Originals Limited', companyNumber: '13330886', registeredOffice: 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
+  supportEmail: 'sales@example.com', postalEntryAddress: [ADDRESS, 'Knoll House'], drawsInstagram: 'wds_competitions', socials: [], youtubeUrl: 'https://youtube.com/@wdsoriginals',
+  drawsYoutubeUrl: null, announcementBar: '' };
+
 const send = (res, status, body) => { res.writeHead(status, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(body)); };
 let api, site, base;
 before(async () => {
@@ -34,6 +40,8 @@ before(async () => {
     if (path === `/api/competitions/${FREE.slug}`) return send(res, 200, { data: FREE });
     if (path === `/api/admin/competitions/${DRAFT.id}`) return send(res, 200, { data: DRAFT });
     if (path.startsWith(`/api/admin/competitions/${DRAFT.id}/`)) return send(res, 200, { data: path.endsWith('history') ? [] : null });
+    if (path === '/api/admin/settings') return send(res, 200, { data: { ...SITE, announcementBar: '' } });
+    if (path === '/api/settings') return SETTINGS ? send(res, 200, { data: SETTINGS }) : send(res, 404, { message: 'Not found.' });
     if (path === '/api/upcoming') return send(res, 200, { data: null });
     if (path === '/api/winners') return send(res, 200, { data: [] });
     return send(res, 404, { message: 'Not found.' });
@@ -134,4 +142,52 @@ test('admin: the skill question is editable on a draft and shown in the publish 
   assert.match(html, /name="sqCorrect" value="2" checked/);
   assert.ok(html.includes('maximum per person and skill question are fixed'));
   assert.ok(html.includes('Skill question: &quot;What part of a car do coilovers replace?&quot; (correct answer: &quot;The suspension (springs and dampers)&quot;)'), 'in the confirm');
+});
+
+test('legal minimum: a paid competition page links to /free-postal-entry under Enter, and the footer keeps the link', async () => {
+  const html = await page(`/competitions/${PAID.slug}`);
+  assert.match(html, /<p class="free-route small" data-free-route>Free entry route available – see <a href="\/free-postal-entry">free postal entry<\/a><\/p>/, 'the small free-route line');
+  assert.ok(footer(html).includes('href="/free-postal-entry"'), 'footer Help link');
+  assert.ok(html.includes('href="/terms"'), 'T&Cs link');
+  assert.ok(footer(await page('/')).includes('href="/free-postal-entry"'), 'footer link on every page');
+  assert.match(await page('/terms'), /href="\/free-postal-entry"/, 'the T&Cs clause links to it');
+});
+
+test('buying is the focus: no postal promotion in the header, menu, home or competition page', async () => {
+  for (const path of ['/', `/competitions/${PAID.slug}`, '/how-it-works', '/competitions', '/winners', '/basket']) {
+    const html = await page(path);
+    const head = html.slice(0, html.indexOf('<main'));
+    assert.ok(!head.includes('/free-postal-entry'), `${path}: no Free postal entry in the header or menu`);
+    assert.ok(!/free postal entry on every paid competition/i.test(html), `${path}: no "on every paid competition" banner`);
+    // (The basket's terms tick-box and the competition's Terms summary may say "enter free by post": that's the legal minimum.)
+    assert.ok(!/>Enter free by post|<strong>Free<\/strong> by post|Two ways to enter|>Option [AB12]</.test(html), `${path}: no postal option cards or buttons`);
+    assert.ok(!/class="btn[^"]*"[^>]*href="\/free-postal-entry"|href="\/free-postal-entry"[^>]*class="btn/.test(html), `${path}: never a button to the postal page`);
+  }
+  const home = await page('/');
+  assert.ok(!home.includes('class="ticker"'), 'no scrolling ticker');
+  assert.ok(home.includes('<strong>Bundle deals</strong><br>Multi-buy ticket bundles') || home.includes('<strong>Bundle deals</strong><br />Multi-buy ticket bundles'), 'item 04 is bundle deals');
+  assert.ok(home.includes('Enter in three steps') && home.includes('Answer the question and check out securely') && /<div class="steps-cta"[^>]*><a href="\/competitions"[^>]*>View competitions/.test(home), 'one 3-step how it works with a competitions CTA');
+  const comp = await page(`/competitions/${PAID.slug}`);
+  assert.ok(!/By post/.test(comp), 'no "By post: Free" price next to the ticket price');
+});
+
+test('the top announcement bar: empty shows none, text shows it on every page', async () => {
+  SETTINGS = { ...SITE, announcementBar: '' };
+  try {
+    for (const path of ['/', `/competitions/${PAID.slug}`]) assert.ok(!(await page(path)).includes('data-announce'), `${path}: no bar when empty`);
+    SETTINGS = { ...SITE, announcementBar: '  ' };
+    assert.ok(!(await page('/')).includes('data-announce'), 'blank counts as empty');
+    SETTINGS = { ...SITE, announcementBar: 'Multi-buy bundles available · Low ticket numbers, better odds' };
+    for (const path of ['/', `/competitions/${PAID.slug}`, '/faqs']) {
+      assert.ok((await page(path)).includes('<div class="announce" data-announce>Multi-buy bundles available · Low ticket numbers, better odds</div>'), `${path}: the bar`);
+    }
+  } finally {
+    SETTINGS = null;
+  }
+  assert.ok(!(await page('/')).includes('data-announce'), 'sample settings: no bar by default');
+});
+
+test('admin settings has the announcement bar field with the suggested placeholder', async () => {
+  const html = await page('/admin/settings', 'wds_admin=admin');
+  assert.ok(html.includes('name="announcementBar"') && html.includes('placeholder="Multi-buy bundles available · Low ticket numbers, better odds"'));
 });

@@ -63,7 +63,7 @@ const jsonLd = {
   description: c.strapline, offers: { '@type': 'Offer', priceCurrency: 'GBP', price: c.ticketPrice.toFixed(2), availability: c.ticketsSold < c.totalTickets ? 'https://schema.org/InStock' : 'https://schema.org/SoldOut' },
 };
 ---
-<Layout title={c.title} description={free ? `Win the ${c.title}. Free to enter online. ${ch.drawnLive}.` : `Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. Free postal entry available. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
+<Layout title={c.title} description={free ? `Win the ${c.title}. Free to enter online. ${ch.drawnLive}.` : `Win the ${c.title}. Only ${c.totalTickets} tickets at ${money(c.ticketPrice)}. ${ch.drawnLive}.`} active="competitions" image={c.images[0]?.src}>
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
   <div class="container crumbs"><a href="/">Home</a> / <a href="/competitions">Competitions</a> / <span>{c.title}</span></div>
   {c.postponement ? (
@@ -157,7 +157,7 @@ const jsonLd = {
         <span class="eyebrow">Win this {c.category === 'cars' ? 'car' : 'prize'}</span>
         <h1 class="display panel-title">{c.title}</h1>
       </div>
-      <div class="prices"><div><span class="label">Online</span><b>{free ? 'Free' : money(c.ticketPrice)}</b></div><div><span class="label">By post</span><b>Free</b></div></div>
+      <div class="prices"><div><span class="label">{free ? 'Entry' : 'Per ticket'}</span><b>{free ? 'Free' : money(c.ticketPrice)}</b></div></div>
       <p class="key-terms small" data-key-terms>{soon && c.opensAt ? <><span>Opens {opensLabel(c.opensAt)}</span> · </> : null}<span>Closes {closesLabel}</span> · <span>{maxLine}</span> · <a href="/terms">T&amp;Cs</a></p>
       {soon ? <NotifyPanel competition={c} signedInAs={me?.email ?? null} />
         : free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} />}
@@ -174,7 +174,7 @@ const jsonLd = {
         ? <div class="sb-btns"><a href="#notify" class="btn" data-scroll-panel>Notify me when it's live</a></div>
         : pre.on
         ? <div class="sb-btns"><a href={pre.href} class="btn">Get first access</a></div>
-        : <div class="btn-pair sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a>{postal ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}</div>}
+        : <div class="sb-btns"><a href="#top-panel" class="btn" data-scroll-panel>{free ? 'Enter free' : <>Enter · from {money(c.ticketPrice)}</>}</a></div>}
     </div>
   </div>
 </Layout>
@@ -188,7 +188,7 @@ const jsonLd = {
   .main { grid-area: main; min-width: 0; display: flex; flex-direction: column; gap: 72px; }
   .panel { grid-area: panel; min-width: 0; position: sticky; top: 96px; border: 1px solid #fff; padding: 28px; display: flex; flex-direction: column; gap: 20px; background: #000; animation: rise 1s var(--ease) .15s both; }
   .panel-title { font-size: clamp(34px, 3.4vw, 46px); }
-  .prices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
+  .prices { display: grid; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--line-2); border-bottom: 1px solid var(--line-2); }
   .prices > div { padding: 14px 0; display: flex; flex-direction: column; gap: 4px; }
   .prices > div + div { padding-left: 20px; border-left: 1px solid var(--line-2); }
   .prices b { font-size: 30px; }
@@ -196,8 +196,9 @@ const jsonLd = {
   .postponed .muted { color: #444; }
   .postponed b { font-size: 17px; line-height: 1.35; }
   .key-terms { margin: -6px 0 0; color: var(--muted-2); line-height: 1.6; }
-  .key-terms a, .free-route a { color: #fff; }
-  .free-route { margin: 0; text-align: center; color: var(--muted-2); }
+  .key-terms a { color: #fff; }
+  .free-route a { color: inherit; display: inline-block; padding: 6px 0; margin: -6px 0; } /* a 24px+ tap target; nothing moves */
+  .free-route { margin: 0; font-size: 12px; text-align: center; color: var(--muted-2); }
   .thumbs[hidden] { display: none; }
   .more .details { margin-bottom: 18px; }
   .more details > p { margin: 0 0 18px; }

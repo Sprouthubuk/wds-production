@@ -34,11 +34,6 @@ const draftCard = prelaunch && !heroSoon ? prelaunch : null;
 const featured = prelaunch ? undefined : competitions.find((c) => c.badge) ?? competitions[0];
 const latestWinner = winners[0];
 const placeholders = Math.max(0, 3 - competitions.length - (draftCard ? 1 : 0));
-const ticker = prelaunch
-  ? [headline, `Coming soon: ${prelaunch.title}`, ...(heroSoon ? [`${odds(heroSoon.totalTickets)} odds`] : []), 'Get first access', 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
-  : featured
-  ? [featured.title, `Only ${featured.totalTickets.toLocaleString('en-GB')} tickets`, `${odds(featured.totalTickets)} odds`, 'Free postal entry on every paid competition', ch.drawnLive, '18+ UK only']
-  : ['Free postal entry on every paid competition', ch.drawnLive, '18+ UK only'];
 const launchCd = prelaunch ? launchCountdown(prelaunch) : null;
 const specs = featured?.specs ?? [];
 const spec = (label: string) => specs.find((s) => s.label.toLowerCase() === label.toLowerCase())?.value;
@@ -46,10 +41,6 @@ const drawTime = featured ? new Date(featured.drawAt).toLocaleTimeString('en-GB'
 const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', timeZone: 'Europe/London' }).replace('/', '.') : '';
 ---
 <Layout title="Home">
-  <div class="ticker" aria-hidden="true">
-    <div class="track">{[...ticker, ...ticker].map((t) => <span>{t}<i></i></span>)}</div>
-  </div>
-
   {prelaunch ? <LaunchHero teaser={prelaunch} headline={headline} /> : null}
 
   {featured ? (
@@ -64,7 +55,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
             <h1 class="display display--xl">{featured.title.replace(/^BMW\s+/i, '')}</h1>
           </div>
           <p class="lead hero-lead">{featured.strapline}</p>
-          <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>Free postal entry</span><span>{ch.youtube ? 'Drawn live on our socials' : 'Drawn live on Instagram'}</span></div>
+          <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>{ch.youtube ? 'Drawn live on our socials' : 'Drawn live on Instagram'}</span></div>
         </div>
         <div class="hero-card hero-anim-card">
           <EntryPanel competition={featured} settings={settings} variant="hero" />
@@ -78,7 +69,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
       <div><b>01</b><span><strong>Better odds</strong><br />Low ticket numbers, always</span></div>
       <div><b>02</b><span><strong>Instant numbers</strong><br />Emailed at checkout</span></div>
       <div><b>03</b><span><strong>Drawn live</strong><br />{ch.youtube ? 'Instagram & YouTube' : ch.where}</span></div>
-      <div><b>04</b><span><strong>Free by post</strong><br />On every paid competition</span></div>
+      <div><b>04</b><span><strong>Bundle deals</strong><br />Multi-buy ticket bundles</span></div>
     </div>
   </section>
 
@@ -121,21 +112,13 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
 
   <section class="section">
     <div class="container">
-      <div class="center-head" data-reveal><span class="eyebrow">Two ways to enter</span><h2 class="display display--m">Same draw. Same odds.</h2></div>
-      <div class="grid grid--2" data-reveal-group>
-        <div class="way">
-          <div class="way-top"><span class="eyebrow">Option A</span></div>
-          <h3 class="display display--s">Enter online</h3>
-          <ol><li><b>1</b>Choose your tickets or a bundle</li><li><b>2</b>Check out securely by card</li><li><b>3</b>Numbers emailed instantly</li></ol>
-          {prelaunch ? <a href="#first-access" class="btn btn--block">Get first access</a> : <a href={featured ? `/competitions/${featured.slug}` : '/competitions'} class="btn btn--block">Enter online</a>}
-        </div>
-        <div class="way">
-          <div class="way-top"><span class="eyebrow">Option B</span></div>
-          <h3 class="display display--s">Enter free by post</h3>
-          <ol><li><b>1</b>Write your details on a postcard</li><li><b>2</b>Post it to arrive 48 hours before close</li><li><b>3</b>Number emailed once allocated</li></ol>
-          <a href="/free-postal-entry" class="btn btn--block">{prelaunch ? 'How postal entry works' : 'Enter free by post'}</a>
-        </div>
-      </div>
+      <div class="center-head" data-reveal><span class="eyebrow">How it works</span><h2 class="display display--m">Enter in three steps</h2></div>
+      <ol class="steps" data-reveal-group>
+        <li><b>01</b><span>Choose your tickets or a bundle</span></li>
+        <li><b>02</b><span>Answer the question and check out securely</span></li>
+        <li><b>03</b><span>Your numbers are emailed instantly</span></li>
+      </ol>
+      <div class="steps-cta">{prelaunch ? <a href="#first-access" class="btn">Get first access</a> : <a href="/competitions" class="btn">View competitions</a>}</div>
     </div>
   </section>
 
@@ -177,12 +160,14 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
     </div>
   </section>
 
+  {prelaunch ? null : (
   <section class="section section--tight" id="notify">
     <div class="container split" style="align-items: center" data-reveal>
-      <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">{prelaunch ? headline : 'Get first access'}</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
+      <div class="stack" style="gap: 12px; flex: 1 1 420px"><h2 class="display display--s">Get first access</h2><p class="body muted">New prizes, early-bird launches and live draw reminders. No spam.</p></div>
       <div style="flex: 1 1 460px"><SignupForm id="nl-email" label="Sign me up" source="home" /></div>
     </div>
   </section>
+  )}
 
   {prelaunch ? (
     <div class="sticky-bar" slot="after">
@@ -197,22 +182,13 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
       <div class="container">
         {featured.images[0] ? <img src={thumb(featured.images[1]?.src ?? featured.images[0]?.src)} alt="" width="64" height="48" class="sb-img" /> : null}
         <div class="stack sb-text"><strong>{featured.title}</strong><span class="small muted num">Live draw in <span data-countdown={featured.drawAt} data-countdown-text>{countdownParts(featured.drawAt).text}</span> · {percentSold(featured.ticketsSold, featured.totalTickets)}% sold</span></div>
-        <div class="btn-pair sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">{featured.ticketPrice === 0 ? 'Enter free' : <>Enter · {money(featured.ticketPrice)}</>}</a>{featured.ticketPrice > 0 ? <a href="/free-postal-entry" class="btn">Free postal entry</a> : null}</div>
+        <div class="sb-btns"><a href={`/competitions/${featured.slug}`} class="btn">{featured.ticketPrice === 0 ? 'Enter free' : <>Enter · {money(featured.ticketPrice)}</>}</a></div>
       </div>
     </div>
   ) : null}
 </Layout>
 
 <style>
-  .ticker { overflow: hidden; border-bottom: 1px solid var(--line); background: var(--bg-2); }
-  .ticker { -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-  .ticker:hover .track { animation-play-state: paused; }
-  .track { display: flex; width: max-content; padding: 14px 0; font-size: 13px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; white-space: nowrap; animation: marquee 40s linear infinite; }
-  .track span { padding: 0 28px; display: flex; align-items: center; gap: 28px; }
-  .track i { width: 6px; height: 6px; background: #fff; transform: rotate(45deg); }
-  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  @media (prefers-reduced-motion: reduce) { .track { animation: none; } }
-
   .hero { position: relative; border-bottom: 1px solid var(--line); overflow: hidden; }
   .hero-img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 60% 50%; animation: settle 2.6s var(--ease) both, fade 1.2s ease both; }
   .hero-anim > * { animation: rise 1.1s var(--ease) both; }
@@ -256,13 +232,12 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   .b-wide b { display: block; margin-top: 6px; font-size: 18px; text-transform: uppercase; overflow-wrap: break-word; }
   @media (max-width: 900px) { .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: none; grid-auto-rows: auto; } .bento > :not(.b-wide) { min-height: 168px; } .b-main { aspect-ratio: 4 / 3; min-height: 0 !important; } .b-tile { padding: 18px; } .b-wide { grid-template-columns: minmax(0, 1fr); } .b-big { font-size: 40px; } .b-mid { font-size: 24px; } }
 
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line-2); }
+  .steps li { display: flex; flex-direction: column; gap: 10px; padding: 24px 24px 24px 0; font-size: 16px; color: #d0d0d0; }
+  .steps li + li { padding-left: 24px; border-left: 1px solid var(--line-2); }
+  .steps b { font-size: 32px; line-height: 1; color: #fff; }
+  .steps-cta { display: flex; justify-content: center; margin-top: 32px; }
   .center-head { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 12px; margin-bottom: 40px; }
-  .way { border: 1px solid #fff; padding: 40px; display: flex; flex-direction: column; gap: 22px; }
-  .way ol { list-style: none; margin: 0; padding: 0; }
-  .way li { display: flex; gap: 16px; padding: 14px 0; border-top: 1px solid var(--line-2); font-size: 15px; color: #d0d0d0; }
-  .way li:last-child { border-bottom: 1px solid var(--line-2); }
-  .way li b { color: #fff; }
-  .way .btn { margin-top: auto; }
 
   .split { display: flex; flex-wrap: wrap; gap: 56px; }
   .date { font-size: clamp(110px, 15vw, 200px); line-height: .82; font-weight: 700; letter-spacing: -0.05em; }
@@ -272,8 +247,6 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
   .inv { display: inline-block; background: #fff; color: #000; padding: 4px 10px 0; margin-top: 6px; line-height: .95; }
   .winner-img { width: 100%; height: 340px; object-fit: cover; object-position: 50% 62%; }
   .row-between { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; }
-  .way { transition: background-color .6s var(--ease); }
-  .way:hover { background: #070707; }
   @media (max-width: 1000px) {
     .hero-card { flex: 1 1 100%; max-width: 560px; }
     .hero-inner { min-height: 0; gap: 32px; }
@@ -285,7 +258,11 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
     .usp-grid > div:nth-child(even) { padding-left: 16px; border-left: 1px solid var(--line); }
     .usp-grid > div:nth-child(n+3) { border-top: 1px solid var(--line); }
     .usp-grid b { font-size: 28px; }
-    .way { padding: 26px 22px; }
+    .steps { grid-template-columns: minmax(0, 1fr); }
+    .steps li, .steps li + li { flex-direction: row; align-items: center; gap: 16px; padding: 16px 0; border-left: 0; border-bottom: 1px solid var(--line-2); font-size: 15px; }
+    .steps b { font-size: 22px; min-width: 32px; }
+    .steps-cta { margin-top: 24px; }
+    .steps-cta .btn { width: 100%; }
     .split { gap: 40px; }
     .winner-img { height: 300px; }
     .winner-body { flex-direction: column; align-items: flex-start; }

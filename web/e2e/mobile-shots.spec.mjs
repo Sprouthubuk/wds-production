@@ -8,8 +8,12 @@ const dir = process.env.SHOTS ? path.join(process.env.E2E_ROOT ?? '..', 'qa', 'm
 const PAGES = [['home', '/'], ['competition', '/competitions/e2e-bmw'], ['competition-free', '/competitions/e2e-free'], ['faqs', '/faqs'],
   ['how-it-works', '/how-it-works'], ['verify', '/verify'], ['free-postal-entry', '/free-postal-entry']];
 
+// E2E_COMING_SOON=1 seeds everything as coming soon: then only the home and competition pages, as soon-*.
+const SOON = Boolean(process.env.E2E_COMING_SOON);
+
 test.skip(!dir, 'set SHOTS to take screenshots');
-test.use({ viewport: { width: 375, height: 812 } });
+// Reduced motion: scroll reveals show at once, so the full-page shots aren't half faded.
+test.use({ viewport: { width: 375, height: 812 }, reducedMotion: 'reduce' });
 
 async function shoot(page, name) {
   await page.waitForTimeout(400);
@@ -21,6 +25,13 @@ async function shoot(page, name) {
 
 test('public pages at 375px', async ({ page }) => {
   test.setTimeout(120_000);
+  if (SOON) {
+    for (const [name, url] of PAGES.slice(0, 2)) {
+      await page.goto(url);
+      await shoot(page, `soon-${name}`);
+    }
+    return;
+  }
   for (const [name, url] of PAGES) {
     await page.goto(url);
     await shoot(page, name);

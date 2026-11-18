@@ -56,7 +56,7 @@ test('order page and every account tab fit every width', async ({ page }) => {
 test('small text links are still 24px tap targets on a phone (WCAG 2.2)', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 812 });
   await page.goto('/competitions/e2e-bmw');
-  for (const sel of ['.announce a', '.crumbs a', '.site-footer nav a']) {
+  for (const sel of ['.crumbs a', '.free-route a', '.site-footer nav a']) {
     const heights = await page.locator(sel).evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().height)));
     expect(heights.length, sel).toBeGreaterThan(0);
     for (const h of heights) expect(h, `${sel} is ${h}px tall`).toBeGreaterThanOrEqual(24);
