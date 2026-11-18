@@ -92,7 +92,7 @@ test('the competition page puts long information in accordions, closed by defaul
   assert.ok(html.includes('The winner can choose £5,000 cash instead'), 'cash alternative');
   assert.ok(html.includes('answer a multiple-choice question correctly before paying'), 'the skill question in the terms summary');
   assert.ok(html.includes('href="https://www.instagram.com/wds_competitions/"'), 'Instagram link');
-  assert.ok(!html.includes('wds_originals'));
+  assert.ok(!mainOf(html).includes('wds_originals'), 'the draw copy names @wds_competitions only (wds_originals is just a footer social link)');
 });
 
 test('the free competition gets no free-route line and no skill question', async () => {
@@ -234,13 +234,12 @@ test('company details: full in the T&Cs and privacy policy; no street address on
   assert.ok(mainOf(await page('/free-postal-entry')).includes('Knoll Road'), 'postal address kept');
 });
 
-test('client copy: home Dream it block, footer tagline, competitions intro, meta description', async () => {
+test('client copy: home Dream it block, competitions intro, meta description', async () => {
   const home = await page('/');
   // The "Dream it. Build it. Drive it. Win it." paragraph: the same wording on the home and About pages.
   const DREAM = '<p class="body" data-dream>WDS Originals builds high-performance and modern classic BMWs, from beautifully refreshed OEM+ examples to full race-inspired track day builds. Now is your chance to win them.</p>';
   assert.ok(home.includes(DREAM), 'home');
   assert.ok((await page('/about')).includes(DREAM), 'About');
-  assert.ok(footerOf(home).includes('<p class="strap">Be sure to enter for your chance to win. Every draw is streamed live on our social media.</p>'));
   assert.ok(!home.includes('Win genuine WDS Originals builds. Every draw streamed live.'), 'old tagline gone');
   assert.ok(home.includes('<meta name="description" content="Win modern classic BMWs, parts and merchandise. Low ticket numbers, great odds, and every draw is streamed live on our social media.">'));
   const comps = await page('/competitions');
@@ -248,4 +247,49 @@ test('client copy: home Dream it block, footer tagline, competitions intro, meta
   assert.deepEqual(pts, ['Low ticket numbers', 'Great odds', 'Highly exclusive prizes']);
   assert.ok(/data-points[^>]*>.*Low ticket numbers.*·.*Great odds.*·.*Highly exclusive prizes/s.test(comps));
   assert.ok(!comps.includes('Low ticket numbers and a live draw on every competition.'));
+});
+
+test('footer: no tagline; social links as icon + handle, in order, with the right YouTube link; Facebook only when set', async () => {
+  const sl = (html) => [...footerOf(html).matchAll(/<a href="([^"]+)" target="_blank" rel="noopener" data-social="(\w+)"/g)].map((m) => [m[2], m[1]]);
+  const home = await page('/');
+  assert.ok(!footerOf(home).includes('class="strap"') && !footerOf(home).includes('Be sure to enter for your chance to win'), 'no tagline');
+  assert.deepEqual(sl(home), [
+    ['instagram', 'https://www.instagram.com/wds_originals/'],
+    ['youtube', 'https://www.youtube.com/@wds_originals'],
+    ['instagram', 'https://www.instagram.com/wds_competitions/'],
+  ], 'defaults (sample settings)');
+  assert.ok(!home.includes('youtube.com/@wdsoriginals'), 'never the old, wrong YouTube link');
+
+  const links = [
+    { network: 'instagram', label: '@wds_originals', url: 'https://www.instagram.com/wds_originals/' },
+    { network: 'youtube', label: '@wds_originals', url: 'https://www.youtube.com/@wds_originals' },
+    { network: 'instagram', label: '@wds_competitions', url: 'https://www.instagram.com/wds_competitions/' },
+  ];
+  SETTINGS = { ...SITE, socialLinks: links };
+  try {
+    const html = await page('/');
+    assert.equal(sl(html).length, 3);
+    assert.ok(!footerOf(html).includes('data-social="facebook"'), 'Facebook hidden when empty');
+    assert.match(footerOf(html), /<span class="sr-only"[^>]*>YouTube <\/span>@wds_originals/, 'handle label, with the network for screen readers');
+    SETTINGS = { ...SITE, socialLinks: [...links, { network: 'facebook', label: 'Facebook', url: 'https://www.facebook.com/wdsoriginals' }] };
+    for (const path of ['/', '/contact']) {
+      const h = await page(path);
+      assert.deepEqual(sl(h).at(-1), ['facebook', 'https://www.facebook.com/wdsoriginals'], `${path}: Facebook shown when set`);
+    }
+    assert.ok(/data-social="youtube"/.test(mainOf(await page('/contact'))), 'Contact page has the social links too');
+  } finally {
+    SETTINGS = null;
+  }
+});
+
+test('no mojibake: the competitions intro has real middle dots', async () => {
+  const comps = await page('/competitions');
+  assert.ok(comps.includes('·'), 'has ·');
+  // A-circumflex, a-circumflex + euro sign, A-tilde (escaped so this file itself stays clean for the encoding check).
+  const MOJIBAKE = ['\u00c2', '\u00e2\u20ac', '\u00c3'];
+  for (const bad of MOJIBAKE) assert.ok(!comps.includes(bad), `no ${bad}`);
+  for (const path of ['/', '/about', '/contact', '/terms', '/free-postal-entry', `/competitions/${PAID.slug}`]) {
+    const html = await page(path);
+    for (const bad of MOJIBAKE) assert.ok(!html.includes(bad), `${path}: no ${bad}`);
+  }
 });

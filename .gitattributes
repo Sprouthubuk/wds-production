@@ -1,4 +1,14 @@
+# All text is UTF-8 with LF line endings, whatever the editor or OS, so characters like "·" and "–" survive
+# (a Windows cp1252 round trip once turned "·" into "Â·"). web/tests/encoding.test.mjs checks it.
 * text=auto eol=lf
+*.astro text eol=lf
+*.ts text eol=lf
+*.mjs text eol=lf
+*.js text eol=lf
+*.json text eol=lf
+*.css text eol=lf
+*.php text eol=lf
+*.svg text eol=lf
 
 *.blade.php diff=html
 *.css diff=css
