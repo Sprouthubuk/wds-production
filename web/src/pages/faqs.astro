@@ -34,6 +34,9 @@ const groups: [string, Faq[]][] = [
     ['How do I collect the car?', '[To confirm: collection from the WDS workshop or delivery.]'],
   ]],
 ];
+// Every question starts closed. Each has an id so a link can open one directly, e.g. /faqs#free-entry.
+const IDS: Record<string, string> = { 'Can I enter for free?': 'free-entry' };
+const faqId = (q: string) => IDS[q] ?? q.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: groups.flatMap(([, items]) => items.filter(([, a]) => !a.startsWith('[')).map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } }))) };
 ---
 <Layout title="FAQs" active="faqs">
@@ -41,11 +44,31 @@ const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntit
   <PageHero eyebrow="Help" title="Frequently asked questions" />
   <section class="section" style="border-bottom: 0">
     <div class="container faq" style="max-width: 960px">
-      {groups.map(([cat, items], gi) => (
-        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a, link], qi) => <details open={gi === 0 && qi === 1}><summary>{q}</summary><p>{a}{link ? <> <a href={link.href}>{link.label} →</a></> : null}</p></details>)}</div></div>
+      {groups.map(([cat, items]) => (
+        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a, link]) => <details id={faqId(q)} data-faq><summary>{q}</summary><p>{a}{link ? <> <a href={link.href}>{link.label} →</a></> : null}</p></details>)}</div></div>
       ))}
       <p class="body">Can't find your answer? <a href="/contact">Contact us</a>.</p>
     </div>
   </section>
 </Layout>
+<style>
+  /* A linked question isn't hidden under the sticky header. */
+  details[data-faq] { scroll-margin-top: 96px; }
+</style>
+<script>
+  // Open the question the URL points at (/faqs#free-entry), and only that one. Plain /faqs: all closed.
+  // A later hash link closes the question the previous one opened (questions opened by tapping stay open).
+  let linked: HTMLDetailsElement | null = null;
+  function openFromHash() {
+    const id = decodeURIComponent(location.hash.slice(1));
+    const target = id ? document.getElementById(id) : null;
+    if (!(target instanceof HTMLDetailsElement) || !target.matches('[data-faq]')) return;
+    if (linked && linked !== target) linked.open = false;
+    linked = target;
+    target.open = true;
+    target.scrollIntoView({ block: 'start' });
+  }
+  openFromHash();
+  window.addEventListener('hashchange', openFromHash);
+</script>
 <style>.group { display: flex; flex-direction: column; gap: 14px; margin-bottom: 40px; }</style>
