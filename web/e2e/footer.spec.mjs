@@ -94,9 +94,10 @@ test('the footer has every block, with the right links', async ({ page }) => {
 
   // Legal line; no ICO line while config('wds.ico_number') is unset; "Powered by RaffleLabs" (on by default).
   const legal = f.locator('[data-footer-legal]');
-  await expect(legal).toContainText(`© ${new Date().getFullYear()} WDS Originals Limited, trading as WDS Competitions`);
+  await expect(legal).toContainText(`© ${new Date().getFullYear()} WDS Originals Limited`);
   await expect(legal).toContainText('Registered in England & Wales, company no. 13330886');
-  await expect(legal).toContainText('Registered office: Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY');
+  await expect(legal).not.toContainText('Knoll'); // no address in the footer: it's in the T&Cs
+  await expect(legal.getByRole('link', { name: 'Terms' })).toHaveAttribute('href', '/terms#company-details');
   await expect(legal).toContainText('18+ UK residents only.');
   await expect(legal).not.toContainText('ICO registration');
   await expect(legal.locator('[data-powered-by]')).toHaveText('Powered by RaffleLabs');

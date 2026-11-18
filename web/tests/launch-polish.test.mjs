@@ -208,3 +208,41 @@ test('admin settings: "Scrolling banner messages" is a one-per-line textarea, fi
   assert.match(html, /<textarea id="bm" name="bannerMessages" data-type="lines"[^>]*>Ticket bundles available\nLow ticket numbers, better odds<\/textarea>/);
   assert.ok(!html.includes('name="announcementBar"'), 'the old single-line field is gone');
 });
+
+const STREET = 'Knoll House, Knoll Road';
+const mainOf = (html) => html.slice(html.indexOf('<main'), html.indexOf('</main>'));
+const footerOf = (html) => html.slice(html.indexOf('<footer'), html.indexOf('</footer>'));
+
+test('company details: full in the T&Cs and privacy policy; no street address on the About page, Contact page or footer', async () => {
+  const terms = await page('/terms');
+  assert.match(terms, /<h2 class="h3" id="company-details">\d+\. Company details<\/h2>/, 'a Company details section in the T&Cs');
+  for (const fact of ['WDS Originals Limited, trading as WDS Competitions', 'company no. 13330886', 'Registered office: Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY']) {
+    assert.ok(mainOf(terms).includes(fact), `T&Cs: ${fact}`);
+  }
+  assert.ok(mainOf(terms).includes('The promoter is WDS Originals Limited (company no. 13330886), trading as WDS Competitions, of Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY.'), 'the promoter clause');
+  assert.ok(mainOf(await page('/privacy')).includes('Registered office: Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY'), 'privacy policy');
+
+  for (const path of ['/', '/about', '/contact', '/competitions', `/competitions/${PAID.slug}`, '/faqs', '/how-it-works', '/terms', '/free-postal-entry']) {
+    const html = await page(path);
+    assert.ok(!footerOf(html).includes(STREET) && !footerOf(html).includes('GU15'), `${path}: no address in the footer`);
+    assert.match(footerOf(html), /© \d{4} WDS Originals Limited<\/span>.*Registered in England &amp; Wales, company no\. 13330886<\/span>.{0,120}Full company details in our <a href="\/terms#company-details">Terms<\/a>\./s, `${path}: minimal legal line`);
+  }
+  const about = await page('/about');
+  assert.ok(!about.includes(STREET) && !about.includes('Company details'), 'About: no Company details section');
+  assert.ok(!mainOf(await page('/contact')).includes(STREET), 'Contact: no registered office');
+  // The free postal entry page keeps its postal address.
+  assert.ok(mainOf(await page('/free-postal-entry')).includes('Knoll Road'), 'postal address kept');
+});
+
+test('client copy: home Dream it block, footer tagline, competitions intro, meta description', async () => {
+  const home = await page('/');
+  assert.ok(home.includes('<p class="body" data-dream>Modern classic BMWs, from beautifully refreshed OEM+ examples to full race-inspired track day builds. Now is your chance to win them.</p>'));
+  assert.ok(footerOf(home).includes('<p class="strap">Be sure to enter for your chance to win. Every draw is streamed live on our social media.</p>'));
+  assert.ok(!home.includes('Win genuine WDS Originals builds. Every draw streamed live.'), 'old tagline gone');
+  assert.ok(home.includes('<meta name="description" content="Win modern classic BMWs, parts and merchandise. Low ticket numbers, great odds, and every draw is streamed live on our social media.">'));
+  const comps = await page('/competitions');
+  const pts = [...comps.matchAll(/<span class="pt">([^<]+)/g)].map((m) => m[1]);
+  assert.deepEqual(pts, ['Low ticket numbers', 'Great odds', 'Highly exclusive prizes']);
+  assert.ok(/data-points[^>]*>.*Low ticket numbers.*·.*Great odds.*·.*Highly exclusive prizes/s.test(comps));
+  assert.ok(!comps.includes('Low ticket numbers and a live draw on every competition.'));
+});

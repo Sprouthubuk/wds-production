@@ -19,9 +19,13 @@ const filters = [
   { key: 'parts', label: 'Parts & accessories' },
   { key: 'merch', label: 'Merch' },
 ];
+const POINTS = ['Low ticket numbers', 'Great odds', 'Highly exclusive prizes'];
 ---
 <Layout title="Competitions" active="competitions">
-  <PageHero eyebrow="Competitions" title={noneLive ? 'Coming soon' : 'Live competitions'} intro="Low ticket numbers and a live draw on every competition." />
+  <PageHero eyebrow="Competitions" title={noneLive ? 'Coming soon' : 'Live competitions'}>
+    <!-- One line on desktop; on a phone each point stays whole and the line breaks between points. -->
+    <p class="lead points" data-points>{POINTS.map((t, i) => <><span class="pt">{t}{i < POINTS.length - 1 ? <span class="pt-sep" aria-hidden="true"> Â·</span> : null}</span>{' '}</>)}</p>
+  </PageHero>
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 32px">
       <div class="row filters" role="group" aria-label="Filter competitions">
@@ -38,6 +42,8 @@ const filters = [
 </Layout>
 
 <style>
+  .points { margin: 0; }
+  .points .pt { white-space: nowrap; }
   .filters { gap: 8px; }
   .filters button { min-height: 44px; padding: 0 20px; border: 1px solid #fff; background: #000; color: #fff; font-size: 12px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
   .filters button[aria-pressed='true'] { background: #fff; color: #000; }
