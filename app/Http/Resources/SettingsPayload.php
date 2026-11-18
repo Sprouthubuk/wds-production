@@ -25,6 +25,8 @@ final class SettingsPayload
         // methods, all competitions). OFF by default: only switch it on if the client decides to.
         'siteSpendCapEnabled' => false,
         'siteSpendCapMonthly' => null, // pounds
+        // Optional slim bar at the top of every page (Admin → Settings). Empty = no bar.
+        'announcementBar' => '',
     ];
 
     public static function get(): array

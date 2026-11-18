@@ -105,6 +105,8 @@ export interface SiteSettings {
   drawsYoutubeUrl: string | null;
   siteSpendCapEnabled?: boolean;
   siteSpendCapMonthly?: number | null;
+  /** Admin → Settings → Top announcement bar. Empty (or missing) = no bar. */
+  announcementBar?: string;
   /** Footer config (config/wds.php). Optional so an older API still renders a footer. */
   footer?: FooterConfig;
 }

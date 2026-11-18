@@ -18,6 +18,10 @@ const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).d
       <div class="field" style="margin-top:14px"><label for="ro">Registered office</label><input id="ro" name="registeredOffice" value={s.registeredOffice} /></div>
     </section>
     <section class="panel">
+      <h2>Top announcement bar</h2>
+      <div class="field"><label for="ab">Announcement text</label><input id="ab" name="announcementBar" maxlength="140" value={s.announcementBar ?? ''} placeholder="Multi-buy bundles available · Low ticket numbers, better odds" aria-describedby="ab-h" /><span class="hint" id="ab-h">A slim bar at the top of every page. Leave empty for no bar.</span></div>
+    </section>
+    <section class="panel">
       <h2>Free postal entry</h2>
       <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="7">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on the Free Postal Entry page.</span></div>
     </section>

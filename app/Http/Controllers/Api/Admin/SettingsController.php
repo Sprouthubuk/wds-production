@@ -28,7 +28,11 @@ class SettingsController extends Controller
             'drawsYoutubeUrl' => ['sometimes', 'nullable', 'url:https'],
             'siteSpendCapEnabled' => ['sometimes', 'boolean'],
             'siteSpendCapMonthly' => ['sometimes', 'nullable', 'numeric', 'min:1', 'max:100000', 'required_if:siteSpendCapEnabled,true'],
+            'announcementBar' => ['sometimes', 'nullable', 'string', 'max:140'],
         ]);
+        if (array_key_exists('announcementBar', $d)) {
+            $d['announcementBar'] = trim((string) $d['announcementBar']); // empty = no bar
+        }
         Setting::put('site', array_merge(Setting::get('site', []) ?? [], $d));
 
         return response()->json(['message' => 'Settings saved.', 'data' => SettingsPayload::get()]);

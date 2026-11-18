@@ -1,18 +1,17 @@
 ---
-interface Props { active?: string; prelaunch?: boolean; firstAccessHref?: string }
-const { active = 'none', prelaunch = false, firstAccessHref = '/#notify' } = Astro.props;
+interface Props { active?: string; prelaunch?: boolean; firstAccessHref?: string; announcement?: string | null }
+const { active = 'none', prelaunch = false, firstAccessHref = '/#notify', announcement = null } = Astro.props;
+// Admin → Settings → Top announcement bar. Empty (the default) = no bar.
+const announce = (announcement ?? '').trim();
 // Nothing live yet: the entry button becomes "Get first access" and jumps to the sign-up form.
 const cta = prelaunch ? { href: firstAccessHref, label: 'Get first access' } : { href: '/competitions', label: 'Enter now' };
 const nav = [
   { key: 'competitions', label: 'Competitions', href: '/competitions' },
   { key: 'winners', label: 'Winners', href: '/winners' },
-  { key: 'postal', label: 'Free postal entry', href: '/free-postal-entry' },
   { key: 'faqs', label: 'FAQs', href: '/faqs' },
 ];
 ---
-<div class="announce">
-  <span class="long">Christmas Eve live draw — 24 December · </span><a href="/free-postal-entry">Free postal entry on every paid competition</a>
-</div>
+{announce ? <div class="announce" data-announce>{announce}</div> : null}
 <header class="site-header">
   <div class="container bar">
     <a href="/" class="logo" aria-label="WDS Competitions home"><img src="/images/wds-logo.png" alt="WDS Competitions" width="186" height="26" /></a>
@@ -50,8 +49,7 @@ const nav = [
 </div>
 
 <style>
-  .announce { background: #fff; color: #000; text-align: center; padding: 10px 16px; font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
-  .announce a { color: #000; text-underline-offset: 3px; display: inline-block; padding: 6px 0; margin: -6px 0; } /* a 24px+ tap target; nothing moves */
+  .announce { background: #fff; color: #000; text-align: center; padding: 8px 16px; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
   .site-header { position: sticky; top: 0; z-index: 40; border-bottom: 1px solid var(--line); background: #000; transition: background-color .4s, transform .5s var(--ease), border-color .4s; }
   .site-header.is-scrolled { background: rgba(0,0,0,.78); -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
   .site-header.is-hidden { transform: translateY(-100%); }
