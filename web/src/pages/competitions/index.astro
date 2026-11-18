@@ -24,7 +24,7 @@ const POINTS = ['Low ticket numbers', 'Great odds', 'Highly exclusive prizes'];
 <Layout title="Competitions" active="competitions">
   <PageHero eyebrow="Competitions" title={noneLive ? 'Coming soon' : 'Live competitions'}>
     <!-- One line on desktop; on a phone each point stays whole and the line breaks between points. -->
-    <p class="lead points" data-points>{POINTS.map((t, i) => <><span class="pt">{t}{i < POINTS.length - 1 ? <span class="pt-sep" aria-hidden="true"> Â·</span> : null}</span>{' '}</>)}</p>
+    <p class="lead points" data-points>{POINTS.map((t, i) => <><span class="pt">{t}{i < POINTS.length - 1 ? <span class="pt-sep" aria-hidden="true"> ·</span> : null}</span>{' '}</>)}</p>
   </PageHero>
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 32px">

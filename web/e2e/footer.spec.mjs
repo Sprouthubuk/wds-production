@@ -50,12 +50,17 @@ test('the footer has every block, with the right links', async ({ page }) => {
   await page.goto('/about');
   const f = page.locator('footer[data-footer]');
 
-  // Brand row: logo, strapline, socials with accessible names.
+  // Brand row: logo (no tagline), then the social links as icon + handle, in order, opening in a new tab.
   await expect(f.locator('[data-footer-brand] img[data-logo]')).toHaveAttribute('alt', 'WDS Competitions');
-  await expect(f.locator('[data-footer-brand] .strap')).not.toBeEmpty();
-  await expect(f.getByRole('link', { name: 'Instagram @wds_competitions' })).toHaveAttribute('href', 'https://www.instagram.com/wds_competitions/');
-  await expect(f.getByRole('link', { name: 'YouTube WDS Originals' })).toHaveAttribute('href', 'https://youtube.com/@wdsoriginals');
-  await expect(f).not.toContainText('wds_originals');
+  await expect(f.locator('[data-footer-brand] .strap')).toHaveCount(0);
+  const socials = f.locator('[data-socials] a');
+  await expect(socials).toHaveText(['Instagram @wds_originals', 'YouTube @wds_originals', 'Instagram @wds_competitions']);
+  expect(await socials.evaluateAll((as) => as.map((a) => [a.href, a.target, a.rel]))).toEqual([
+    ['https://www.instagram.com/wds_originals/', '_blank', 'noopener'],
+    ['https://www.youtube.com/@wds_originals', '_blank', 'noopener'],
+    ['https://www.instagram.com/wds_competitions/', '_blank', 'noopener'],
+  ]);
+  await expect(f.locator('[data-social="facebook"]')).toHaveCount(0);
 
   // Link columns.
   for (const label of ['Competitions', 'Help', 'Company', 'Policies']) await expect(f.getByRole('navigation', { name: label })).toBeVisible();

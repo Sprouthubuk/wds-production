@@ -1,6 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
+import SocialLinks from '../components/SocialLinks.astro';
 import { getSettings } from '../lib/api';
 const s = await getSettings();
 // The same list as config('wds.contact_topics').
@@ -27,8 +28,8 @@ const TOPICS = ['A competition', 'My order', 'Free postal entry', 'Draws and win
       <div class="stack" style="gap: 24px; flex: 1 1 320px">
         <div class="rows">
           <div><span>Email</span><span><a href={`mailto:${s.supportEmail}`}>{s.supportEmail}</a></span></div>
-          <div><span>Instagram</span><span><a href={`https://www.instagram.com/${s.drawsInstagram.replace(/^@/, "")}/`}>@{s.drawsInstagram}</a></span></div>
         </div>
+        <div class="stack" style="gap: 8px"><h2 class="label">Follow us</h2><SocialLinks settings={s} /></div>
         <div class="post-note"><h2 class="h3" style="font-size: 16px">Entering by post?</h2><p class="small muted" style="margin:0">Postal entries go to a different address. See the free postal entry page.</p><a href="/free-postal-entry" class="link-caps small">Free postal entry →</a></div>
       </div>
     </div>

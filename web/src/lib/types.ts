@@ -109,7 +109,15 @@ export interface SiteSettings {
   bannerMessages?: string[];
   /** Footer config (config/wds.php). Optional so an older API still renders a footer. */
   footer?: FooterConfig;
+  /** Social links to show, in order (Admin → Settings → Social links). Missing = the defaults (lib/socials.ts). */
+  socialLinks?: SocialLink[];
+  socialInstagramOriginalsLabel?: string; socialInstagramOriginalsUrl?: string;
+  socialYoutubeLabel?: string; socialYoutubeUrl?: string;
+  socialInstagramCompetitionsLabel?: string; socialInstagramCompetitionsUrl?: string;
+  socialFacebookLabel?: string; socialFacebookUrl?: string;
 }
+
+export interface SocialLink { network: 'instagram' | 'youtube' | 'facebook'; label: string; url: string }
 
 export interface FooterConfig {
   instagram: { handle: string; url: string };

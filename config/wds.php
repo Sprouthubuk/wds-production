@@ -19,7 +19,7 @@ return [
 
     // Site footer: social links, the ICO registration line (shown only when set) and "Powered by RaffleLabs".
     'instagram' => ['handle' => 'wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'],
-    'youtube' => ['name' => 'WDS Originals', 'url' => 'https://youtube.com/@wdsoriginals'],
+    'youtube' => ['name' => 'WDS Originals', 'url' => 'https://www.youtube.com/@wds_originals'],
     'ico_number' => env('ICO_NUMBER') ?: null,
     'powered_by' => (bool) env('SHOW_POWERED_BY', true),
 

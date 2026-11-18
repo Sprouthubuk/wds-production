@@ -29,7 +29,18 @@ class SettingsController extends Controller
             'siteSpendCapEnabled' => ['sometimes', 'boolean'],
             'siteSpendCapMonthly' => ['sometimes', 'nullable', 'numeric', 'min:1', 'max:100000', 'required_if:siteSpendCapEnabled,true'],
             'bannerMessages' => ['sometimes', 'nullable', 'array', 'max:12'], 'bannerMessages.*' => ['nullable', 'string', 'max:120'],
+            ...collect(SettingsPayload::SOCIALS)->flatMap(fn ($s) => [
+                $s[0].'Label' => ['sometimes', 'nullable', 'string', 'max:40'],
+                $s[0].'Url' => ['sometimes', 'nullable', 'url:https,http', 'max:255'],
+            ])->all(),
         ]);
+        foreach (SettingsPayload::SOCIALS as [$key]) {
+            foreach (['Label', 'Url'] as $f) {
+                if (array_key_exists($key.$f, $d)) {
+                    $d[$key.$f] = trim((string) $d[$key.$f]); // empty URL = hidden
+                }
+            }
+        }
         if (array_key_exists('bannerMessages', $d)) {
             // One message per line, in order; blank lines dropped. Empty = no banner.
             $d['bannerMessages'] = array_values(array_filter(array_map(fn ($m) => trim((string) $m), (array) $d['bannerMessages']), fn ($m) => $m !== ''));

@@ -117,7 +117,8 @@ class ContactFormTest extends TestCase
         config(['wds.contact_email' => 'help@example.com']);
         $this->assertSame('help@example.com', SettingsPayload::get()['supportEmail']);
 
-        $this->assertStringNotContainsString('wds_originals', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
+        // The live-draw handle is @wds_competitions (@wds_originals is only a social link, seeded separately).
+        $this->assertSame('wds_competitions', SettingsPayload::DEFAULTS['drawsInstagram']);
         $this->assertStringContainsString('instagram.com/wds_competitions/', json_encode(SettingsPayload::DEFAULTS, JSON_UNESCAPED_SLASHES));
     }
 

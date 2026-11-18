@@ -26,12 +26,32 @@ const s = (await adminGet<{ data: SiteSettings }>(Astro.cookies, '/settings')).d
       <div class="field"><label for="pa">Postal entry address (one line per row)</label><textarea id="pa" name="postalEntryAddress" data-type="lines" rows="7">{s.postalEntryAddress.join('\n')}</textarea><span class="hint">Shown on the Free Postal Entry page.</span></div>
     </section>
     <section class="panel">
-      <h2>Live draws &amp; socials</h2>
+      <h2>Live draws</h2>
       <div class="form-grid">
         <div class="field"><label for="ig">Instagram for live draws</label><input id="ig" name="drawsInstagram" value={s.drawsInstagram} /><span class="hint">Without the @</span></div>
         <div class="field"><label for="dyt">YouTube for live draws (optional)</label><input id="dyt" name="drawsYoutubeUrl" type="url" placeholder="https://youtube.com/@…" value={s.drawsYoutubeUrl ?? ''} /><span class="hint">When set, the site says "Drawn live on our socials". Instagram stays the main link.</span></div>
-        <div class="field"><label for="yt">YouTube channel (builds)</label><input id="yt" name="youtubeUrl" type="url" value={s.youtubeUrl} /><span class="hint">The WDS Originals channel in the footer and About page.</span></div>
       </div>
+    </section>
+    <section class="panel">
+      <h2>Social links</h2>
+      <p class="small muted" style="margin:0 0 14px">Shown as icon + label in the footer and on the Contact page, in this order. Leave a link empty to hide it.</p>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label for="socialInstagramOriginals-l">Instagram 1: label</label><input id="socialInstagramOriginals-l" name="socialInstagramOriginalsLabel" maxlength="40" value={s.socialInstagramOriginalsLabel ?? ''} placeholder="@wds_originals" /></div>
+        <div class="field"><label for="socialInstagramOriginals-u">Instagram 1: link</label><input id="socialInstagramOriginals-u" name="socialInstagramOriginalsUrl" type="url" value={s.socialInstagramOriginalsUrl ?? ''} placeholder="https://www.instagram.com/wds_originals/" /></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label for="socialYoutube-l">YouTube: label</label><input id="socialYoutube-l" name="socialYoutubeLabel" maxlength="40" value={s.socialYoutubeLabel ?? ''} placeholder="@wds_originals" /></div>
+        <div class="field"><label for="socialYoutube-u">YouTube: link</label><input id="socialYoutube-u" name="socialYoutubeUrl" type="url" value={s.socialYoutubeUrl ?? ''} placeholder="https://www.youtube.com/@wds_originals" /></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label for="socialInstagramCompetitions-l">Instagram 2: label</label><input id="socialInstagramCompetitions-l" name="socialInstagramCompetitionsLabel" maxlength="40" value={s.socialInstagramCompetitionsLabel ?? ''} placeholder="@wds_competitions" /></div>
+        <div class="field"><label for="socialInstagramCompetitions-u">Instagram 2: link</label><input id="socialInstagramCompetitions-u" name="socialInstagramCompetitionsUrl" type="url" value={s.socialInstagramCompetitionsUrl ?? ''} placeholder="https://www.instagram.com/wds_competitions/" /></div>
+      </div>
+      <div class="form-grid" style="margin-bottom:10px">
+        <div class="field"><label for="socialFacebook-l">Facebook: label</label><input id="socialFacebook-l" name="socialFacebookLabel" maxlength="40" value={s.socialFacebookLabel ?? ''} placeholder="Facebook" /></div>
+        <div class="field"><label for="socialFacebook-u">Facebook: link</label><input id="socialFacebook-u" name="socialFacebookUrl" type="url" value={s.socialFacebookUrl ?? ''} placeholder="https://www.facebook.com/…" /></div>
+      </div>
+      <span class="hint">The Instagram account named in live-draw copy is set under Live draws, not here.</span>
     </section>
     <section class="panel">
       <h2>Site-wide monthly spend cap</h2>

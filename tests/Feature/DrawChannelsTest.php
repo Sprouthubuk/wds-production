@@ -51,7 +51,8 @@ class DrawChannelsTest extends TestCase
         $this->assertSame('wds_competitions', $site['drawsInstagram']);
         $this->assertEquals([['label' => 'Instagram @wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'], ['label' => 'TikTok', 'url' => 'https://tiktok.com/@wds']], $site['socials']);
         $this->assertSame('https://youtube.com/@wdscompetitions', $site['drawsYoutubeUrl']);
-        $this->assertStringNotContainsString('wds_originals', json_encode($site));
+        // Only the draw handle and the old socials list moved: @wds_originals is now just a footer social link.
+        $this->assertStringNotContainsString('wds_originals', json_encode([$site['drawsInstagram'], $site['socials'], $site['drawsYoutubeUrl']]));
 
         // A handle an admin chose themselves is left alone.
         \App\Models\Setting::put('site', ['drawsInstagram' => 'someone_else']);
