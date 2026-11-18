@@ -53,9 +53,9 @@ test('the footer has every block, with the right links', async ({ page }) => {
   // Brand row: logo, strapline, socials with accessible names.
   await expect(f.locator('[data-footer-brand] img[data-logo]')).toHaveAttribute('alt', 'WDS Competitions');
   await expect(f.locator('[data-footer-brand] .strap')).not.toBeEmpty();
-  await expect(f.getByRole('link', { name: 'Instagram @wds_originals' })).toHaveAttribute('href', 'https://instagram.com/wds_originals');
+  await expect(f.getByRole('link', { name: 'Instagram @wds_competitions' })).toHaveAttribute('href', 'https://www.instagram.com/wds_competitions/');
   await expect(f.getByRole('link', { name: 'YouTube WDS Originals' })).toHaveAttribute('href', 'https://youtube.com/@wdsoriginals');
-  await expect(f).not.toContainText('wds_competitions');
+  await expect(f).not.toContainText('wds_originals');
 
   // Link columns.
   for (const label of ['Competitions', 'Help', 'Company', 'Policies']) await expect(f.getByRole('navigation', { name: label })).toBeVisible();

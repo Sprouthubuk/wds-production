@@ -8,9 +8,9 @@ import type { SiteSettings } from './types';
 export interface DrawChannels {
   instagram: { handle: string; url: string } | null;
   youtube: { url: string } | null;
-  /** "Drawn live on our socials" or "Drawn live on Instagram @wds_originals". */
+  /** "Drawn live on our socials" or "Drawn live on Instagram @wds_competitions". */
   drawnLive: string;
-  /** "our socials" / "Instagram @wds_originals", to finish a sentence ("Streamed live on …"). */
+  /** "our socials" / "Instagram @wds_competitions", to finish a sentence ("Streamed live on …"). */
   where: string;
   /** The main follow/watch link (Instagram first). */
   primary: { label: string; url: string } | null;
@@ -18,7 +18,7 @@ export interface DrawChannels {
 
 export function drawChannels(s: Pick<SiteSettings, 'drawsInstagram' | 'drawsYoutubeUrl'>): DrawChannels {
   const handle = (s.drawsInstagram ?? '').replace(/^@/, '').trim();
-  const instagram = handle ? { handle, url: `https://instagram.com/${handle}` } : null;
+  const instagram = handle ? { handle, url: `https://www.instagram.com/${handle}/` } : null;
   const youtube = s.drawsYoutubeUrl ? { url: s.drawsYoutubeUrl } : null;
   const where = instagram && youtube ? 'our socials' : instagram ? `Instagram @${instagram.handle}` : youtube ? 'YouTube' : 'our socials';
   const primary = instagram ? { label: `Follow @${instagram.handle}`, url: instagram.url } : youtube ? { label: 'Watch on YouTube', url: youtube.url } : null;

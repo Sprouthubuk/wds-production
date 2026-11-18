@@ -14,7 +14,7 @@ class FooterConfigTest extends TestCase
     public function test_defaults_socials_no_ico_line_and_powered_by_on(): void
     {
         $this->getJson('/api/settings')->assertOk()
-            ->assertJsonPath('data.footer.instagram', ['handle' => 'wds_originals', 'url' => 'https://instagram.com/wds_originals'])
+            ->assertJsonPath('data.footer.instagram', ['handle' => 'wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'])
             ->assertJsonPath('data.footer.youtube', ['name' => 'WDS Originals', 'url' => 'https://youtube.com/@wdsoriginals'])
             ->assertJsonPath('data.footer.icoNumber', null)
             ->assertJsonPath('data.footer.poweredBy', true);

@@ -23,7 +23,7 @@ test('legal line with an ICO number', () => {
 test('an API without footer config still gets the confirmed socials and Powered by', () => {
   const { footer, ...older } = { ...sampleSettings, footer: undefined };
   const f = footerConfig(older);
-  assert.equal(f.instagram.url, 'https://instagram.com/wds_originals');
+  assert.equal(f.instagram.url, 'https://www.instagram.com/wds_competitions/');
   assert.equal(f.youtube.url, 'https://youtube.com/@wdsoriginals');
   assert.equal(f.icoNumber, null);
   assert.equal(f.poweredBy, true);

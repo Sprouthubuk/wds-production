@@ -2,7 +2,7 @@ import type { FooterConfig, SiteSettings } from './types';
 
 /** Used when the API doesn't send footer config (an older API, or sample data). Matches config/wds.php. */
 export const DEFAULT_FOOTER: FooterConfig = {
-  instagram: { handle: 'wds_originals', url: 'https://instagram.com/wds_originals' },
+  instagram: { handle: 'wds_competitions', url: 'https://www.instagram.com/wds_competitions/' },
   youtube: { name: 'WDS Originals', url: 'https://youtube.com/@wdsoriginals' },
   icoNumber: null,
   poweredBy: true,
