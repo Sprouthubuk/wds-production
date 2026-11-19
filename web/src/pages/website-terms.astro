@@ -1,12 +1,12 @@
 ---
-// Placeholder: WDS will supply the final text.
 import LegalPage from '../components/LegalPage.astro';
+import { getSettings } from '../lib/api';
+const s = await getSettings();
 const sections: [string, string[]][] = [
-  ['About these terms', ['Placeholder: final text to be supplied by WDS. These terms cover using this website. Entering a competition is covered by the <a href="/terms">competition terms &amp; conditions</a>.']],
-  ['Using the site', ['Placeholder: final text to be supplied by WDS.']],
-  ['Your account', ['Placeholder: final text to be supplied by WDS.']],
-  ['Content and intellectual property', ['Placeholder: final text to be supplied by WDS.']],
-  ['Liability', ['Placeholder: final text to be supplied by WDS.']],
+  ['About these terms', ['These terms cover using this website. Entering a competition is covered by the <a href="/terms">competition terms &amp; conditions</a>.']],
+  ['Using the site', ["Use the site lawfully, and don't try to interfere with how it works."]],
+  ['Your account', ['Keep your sign-in details private. You can close your account at any time.']],
+  ['Content and intellectual property', [`The content on this site, including photos and the WDS name and logo, belongs to ${s.legalName} and can't be reused without our permission.`]],
 ];
 ---
 <LegalPage title={'Website terms of use'} heading={'Website terms of use'} sections={sections} />

@@ -44,6 +44,7 @@ before(async () => {
     if (path === '/api/settings') return SETTINGS ? send(res, 200, { data: SETTINGS }) : send(res, 404, { message: 'Not found.' });
     if (path === '/api/upcoming') return send(res, 200, { data: null });
     if (path === '/api/winners') return send(res, 200, { data: [] });
+    if (path === '/api/draws') return send(res, 200, { data: [] });
     return send(res, 404, { message: 'Not found.' });
   });
   await new Promise((r) => api.listen(0, '127.0.0.1', r));
@@ -104,9 +105,8 @@ test('the free competition gets no free-route line and no skill question', async
 test('/free-postal-entry has the address and instructions; the footer links to it without the address', async () => {
   const html = await page('/free-postal-entry');
   assert.ok(html.includes(ADDRESS), 'the address');
-  assert.ok(html.includes('One entry per postcard or envelope'), 'one entry per envelope');
+  assert.ok(html.includes('One entry per envelope, sent by post with the correct stamp.'), 'one entry per envelope');
   assert.ok(html.includes('Tuesday 22 December 2026, 7:00pm'), 'the deadline');
-  assert.ok(html.includes('first or second class post'), 'postage, as written');
   const foot = footer(await page('/faqs'));
   assert.ok(foot.includes('<a href="/free-postal-entry">Free postal entry</a>'), 'footer link');
   assert.ok(!foot.includes(ADDRESS), 'no postal address in the footer');
@@ -303,4 +303,103 @@ test('FAQs: every question closed by default, each with an id to link to (free e
   const ids = details.map((attrs) => attrs.match(/id="([^"]+)"/)?.[1]);
   assert.ok(ids.every(Boolean) && new Set(ids).size === ids.length, 'unique ids');
   assert.ok(/<details id="free-entry"[^>]*><summary>Can I enter for free\?<\/summary>/.test(html));
+});
+
+// Pre-launch cleanup (reviewer): no placeholders, debit cards only, official payment marks, tighter postal rules,
+// plain-English draws on the public pages, short FAQs.
+const PUBLIC = ['/', '/competitions', `/competitions/${PAID.slug}`, '/faqs', '/terms', '/privacy', '/cookies', '/refunds', '/complaints',
+  '/our-commitment', '/website-terms', '/draw-process', '/how-it-works', '/free-postal-entry', '/responsible-play', '/live-draws',
+  '/verify', '/about', '/contact', '/winners', '/basket', '/sign-in'];
+const textOf = (html) => html.replace(/<script[\s\S]*?<\/script>/g, '').replace(/<style[\s\S]*?<\/style>/g, '').replace(/<[^>]+>/g, ' ')
+  .replace(/&amp;/g, '&').replace(/&#39;|&rsquo;/g, "'").replace(/\s+/g, ' ');
+const faqAnswers = (html) => Object.fromEntries([...html.matchAll(/<summary>([^<]*)<\/summary><p>([\s\S]*?)<\/p><\/details>/g)]
+  .map((m) => [textOf(m[1]).trim(), textOf(m[2]).trim()]));
+
+test('no placeholder text on any public page', async () => {
+  for (const path of PUBLIC) {
+    const text = textOf(await page(path));
+    for (const bad of ['[Confirm', '[TBC', '[Insert', '[To confirm', '[DATE]', 'Placeholder:', 'Draft for legal review', 'TBC']) assert.ok(!text.includes(bad), `${path}: ${bad}`);
+    assert.ok(!/lorem/i.test(text), `${path}: lorem`);
+    assert.ok(!/\[[A-Z][^\]]{2,}\]/.test(text), `${path}: bracketed note ${text.match(/\[[A-Z][^\]]{2,}\]/)?.[0]}`);
+  }
+});
+
+const WHO = "Anyone aged 18 or over who lives in the UK. Employees and contractors of WDS Originals Limited, their immediate families and households, and anyone professionally connected with running the competitions can't enter.";
+test('who can enter: the same wording in the FAQ and the T&Cs eligibility clause', async () => {
+  assert.equal(faqAnswers(await page('/faqs'))['Who can enter?'], WHO);
+  assert.ok(textOf(await page('/terms')).includes(`2. Who can enter ${WHO}`), 'T&Cs clause 2');
+});
+
+test('debit cards only: no credit card wording on public pages; How do I pay? and the T&Cs say so plainly', async () => {
+  for (const path of PUBLIC.filter((p) => p !== '/terms')) assert.ok(!/credit card|credit-card|£250 a month/i.test(textOf(await page(path))), path);
+  assert.equal(faqAnswers(await page('/faqs'))['How do I pay?'], "Add your tickets to the basket and pay on our payment provider's secure checkout page by debit card, Apple Pay or Google Pay. Any site credit in your account is used first.");
+  const terms = textOf(await page('/terms'));
+  assert.ok(terms.includes("Payment Payment is by debit card, including Apple Pay or Google Pay using a debit card. Credit cards aren't accepted."), 'T&Cs payment clause');
+  assert.equal((terms.match(/credit card/gi) ?? []).length, 1, 'the T&Cs mention credit cards only to say they are not accepted');
+  assert.ok(textOf(await page('/basket')).includes('pay by debit card, Apple Pay or Google Pay'), 'basket');
+});
+
+test('footer payments: official marks on light badges, same size, alt text; "Debit cards only" in normal case', async () => {
+  const html = await page('/faqs');
+  const pay = footerOf(html).match(/<div class="payments"[\s\S]*?<\/div>/)[0];
+  assert.ok(pay.includes('Secure payments by Cashflows'));
+  const imgs = [...pay.matchAll(/<img src="\/images\/payments\/([a-z-]+)\.svg" alt="([^"]+)" width="38" height="24"/g)].map((m) => [m[1], m[2]]);
+  assert.deepEqual(imgs, [['visa', 'Visa'], ['mastercard', 'Mastercard'], ['apple-pay', 'Apple Pay'], ['google-pay', 'Google Pay']]);
+  assert.ok(pay.includes('<span class="debit">Debit cards only</span>') && !pay.includes('DEBIT'));
+  const { readFileSync } = await import('node:fs');
+  const footerSrc = readFileSync(new URL('../src/components/Footer.astro', import.meta.url), 'utf8');
+  assert.ok(!/\.debit \{[^}]*uppercase/.test(footerSrc), 'not upper-cased by CSS');
+  const svg = (k) => readFileSync(new URL(`../public/images/payments/${k}.svg`, import.meta.url), 'utf8');
+  // Brand colours of the official marks (Shopify payment_icons v1.7.60): Visa blue, Mastercard red / orange / overlap.
+  assert.ok(svg('visa').includes('#142688'), 'Visa blue');
+  for (const c of ['#EB001B', '#F79E1B', '#FF5F00']) assert.ok(svg('mastercard').includes(c), `Mastercard ${c}`);
+  for (const k of ['visa', 'mastercard', 'google-pay']) assert.match(svg(k), /fill="#(fff|FFF)"/, `${k}: light badge`);
+  for (const k of ['visa', 'mastercard', 'apple-pay', 'google-pay']) {
+    assert.match(svg(k), /<title[^>]*>[^<]+<\/title>/, `${k}: title`);
+    assert.match(svg(k), /width="38" height="24"/, `${k}: 38×24`);
+  }
+});
+
+const POSTAL = ['One entry per envelope, sent by post with the correct stamp. Envelopes containing more than one entry count as one entry.',
+  "Hand-delivered, bulk, mass-produced or third-party entries (entries sent on someone else's behalf) aren't accepted.",
+  'If a competition has a maximum per person, online and postal entries count towards the same limit.'];
+test('postal entry rules: the same short bullets on /free-postal-entry and in the T&Cs', async () => {
+  const fpe = textOf(await page('/free-postal-entry'));
+  const termsHtml = await page('/terms');
+  const terms = textOf(termsHtml);
+  for (const r of POSTAL) { assert.ok(fpe.includes(r), `page: ${r}`); assert.ok(terms.includes(r), `terms: ${r}`); }
+  assert.ok(fpe.includes('Entries must arrive by the postal deadline shown on the competition.'));
+  assert.ok(terms.includes('Entries must arrive by the postal deadline shown on the competition'));
+  assert.ok(termsHtml.includes('<div class="body"><ul><li>One entry per envelope'), 'a real list, not a list inside a paragraph');
+});
+
+test('FAQ: how many times can I enter', async () => {
+  assert.equal(faqAnswers(await page('/faqs'))['How many times can I enter?'], "If a competition has a maximum per person, it's shown on the competition page, and online and postal entries count towards it. Otherwise you can enter as many times as you like, as long as tickets remain available.");
+});
+
+test('verify page: plain-English draw explanation, no A/B or drand jargon; the lookup box and draws list stay', async () => {
+  const html = await page('/verify');
+  assert.ok(textOf(mainOf(html)).includes("How our draws work When a competition closes at 7pm, the entry list is locked and can't be changed. At 7:30pm we draw the winning number live on Instagram from numbered chips. The result is recorded here, so anyone can check the winning ticket was a genuine entry."));
+  for (const p of ['/verify', '/faqs', '/how-it-works', '/draw-process', '/live-draws', '/our-commitment']) {
+    const t = textOf(mainOf(await page(p)));
+    for (const bad of ['Verity', 'drand', 'beacon', 'External draw', 'A ·', 'B ·', 'randomness', 'protocol R2', 'audit chain']) assert.ok(!t.includes(bad), `${p}: ${bad}`);
+  }
+  assert.ok(!/drand|Verity/.test(html.match(/<meta name="description" content="([^"]*)"/)?.[1] ?? ''), 'meta description');
+  assert.ok(html.includes('method="get" action="/verify"') && html.includes('name="q"'), 'lookup box');
+  assert.ok(html.includes('Published draws'), 'draws list');
+});
+
+test('FAQs are short: at most three sentences each, with the legal essentials kept', async () => {
+  const html = await page('/faqs');
+  const answers = faqAnswers(html);
+  assert.ok(Object.keys(answers).length >= 15, 'all questions found');
+  for (const [q, a] of Object.entries(answers)) {
+    const sentences = a.replace(/ [A-Z][^.]* →$/, '').split(/(?<=[.?!])\s+(?=[A-Z])/).filter(Boolean);
+    assert.ok(sentences.length <= 3, `${q}: ${sentences.length} sentences`);
+  }
+  const all = Object.values(answers).join(' ');
+  assert.ok(all.includes('18 or over') && all.includes('lives in the UK'), '18+, UK');
+  assert.ok(answers['Can I enter for free?'].startsWith('Yes. Every paid competition can be entered free by post.') && html.includes('href="/free-postal-entry"'), 'free route');
+  assert.ok(answers['When do postal entries close?'] && answers['What if not every ticket sells?'].includes('Closing dates are not extended'), 'closing dates');
+  assert.ok(mainOf(html).includes('href="/terms"'), 'T&Cs link');
 });

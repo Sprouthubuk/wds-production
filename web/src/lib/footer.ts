@@ -16,7 +16,11 @@ export const SUPPORT_LINKS = [
   { label: 'GambleAware', url: 'https://www.gambleaware.org' },
 ] as const;
 
-/** Accepted cards and wallets (Cashflows; debit only). Monochrome marks in /images/payments. */
+/**
+ * Accepted cards and wallets (Cashflows; debit only). The marks in /images/payments are the official brand marks on
+ * light badges, 38×24, from Shopify's payment_icons set (github.com/activemerchant/payment_icons v1.7.60, MIT).
+ * Don't redraw or recolour them.
+ */
 export const PAYMENT_MARKS = [
   { key: 'visa', alt: 'Visa' },
   { key: 'mastercard', alt: 'Mastercard' },

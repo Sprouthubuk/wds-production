@@ -2,7 +2,7 @@
 import Layout from '../layouts/Layout.astro';
 import PageHero from './PageHero.astro';
 interface Props { title: string; heading: string; sections: [string, string[]][]; updated?: string }
-const { title, heading, sections, updated = '[DATE]' } = Astro.props;
+const { title, heading, sections, updated = '19 November 2026' } = Astro.props;
 // Each heading also gets a readable anchor, e.g. /terms#company-details.
 const slug = (t: string) => t.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 ---
@@ -10,12 +10,12 @@ const slug = (t: string) => t.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0
   <PageHero eyebrow="Legal" title={heading} />
   <section class="section" style="border-bottom: 0">
     <div class="container stack" style="gap: 32px">
-      <div class="alert">Draft for legal review — final wording must be approved by WDS Originals Limited and its legal adviser before launch. Last updated {updated}.</div>
+      <p class="small muted" style="margin: 0" data-updated>Last updated {updated}.</p>
       <div class="cols">
         <nav aria-label="Contents" class="toc"><span class="label">Contents</span>{sections.map(([t], i) => <a href={`#s${i + 1}`}>{i + 1}. {t}</a>)}</nav>
         <div class="content">
           {sections.map(([t, paras], i) => (
-            <section id={`s${i + 1}`}><h2 class="h3" id={slug(t)}>{i + 1}. {t}</h2>{paras.map((p) => <p class="body" set:html={p} />)}</section>
+            <section id={`s${i + 1}`}><h2 class="h3" id={slug(t)}>{i + 1}. {t}</h2>{paras.map((p) => p.startsWith('<ul>') ? <div class="body" set:html={p} /> : <p class="body" set:html={p} />)}</section>
           ))}
         </div>
       </div>

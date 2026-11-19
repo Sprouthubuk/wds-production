@@ -52,7 +52,7 @@ const NAV: [string, [string, string][]][] = [
 
     <div class="payments" data-footer-payments>
       <span>Secure payments by Cashflows</span>
-      <ul class="marks">{PAYMENT_MARKS.map((m) => <li><img src={`/images/payments/${m.key}.svg`} alt={m.alt} width="40" height="24" loading="lazy" /></li>)}</ul>
+      <ul class="marks">{PAYMENT_MARKS.map((m) => <li><img src={`/images/payments/${m.key}.svg`} alt={m.alt} width="38" height="24" loading="lazy" /></li>)}</ul>
       <span class="debit">Debit cards only</span>
     </div>
 
@@ -91,7 +91,7 @@ const NAV: [string, [string, string][]][] = [
   .payments { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; border-top: 1px solid var(--line); padding-top: 28px; font-size: 13px; color: var(--muted-2); }
   .marks { display: flex; gap: 8px; list-style: none; margin: 0; padding: 0; }
   .marks img { height: 24px; width: auto; display: block; }
-  .debit { color: #fff; font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 700; }
+  .debit { color: var(--muted-2); font-size: 13px; }
 
   .legal { border-top: 1px solid var(--line); padding-top: 22px; display: flex; flex-direction: column; gap: 10px; font-size: 12px; line-height: 1.6; color: #8a8a8a; }
   .legal p { margin: 0; }

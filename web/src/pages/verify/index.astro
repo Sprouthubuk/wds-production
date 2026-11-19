@@ -24,16 +24,16 @@ const published = draws.filter((d) => d.id && d.verifyUrl); // newest first, as 
 const upcoming = draws.filter((d) => !d.id).sort((a, b) => a.drawAt.localeCompare(b.drawAt));
 const nextDrawAt = upcoming[0]?.drawAt ?? (await prelaunchState(Astro.locals)).upcoming?.drawAt ?? null;
 const day = (iso: string | null | undefined) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Europe/London' }) : null);
-const description = 'Check any WDS Competitions draw yourself: entries are sealed before every draw, Verity draws use public randomness, and external draws are proven to come from the sealed entry list.';
+const description = 'Check any WDS Competitions draw: every winning number is drawn live on Instagram, and the result is recorded here.';
 ---
 <Layout title="Verify a draw" description={description}>
-  <PageHero eyebrow="Verify a draw" title="Check any draw yourself">
-    <div class="hero-lines">
-      <p class="lead">Entries are sealed and fingerprinted before every draw, and anyone can re-check each draw in their own browser.</p>
-      <p class="lead">Verity draws use public randomness that nobody, including us, can predict or choose.</p>
-      <p class="lead">External draws are made live on a linked livestream, and Verity proves the winning ticket was on the sealed list.</p>
+  <PageHero eyebrow="Verify a draw" title="Check any draw yourself" />
+  <section class="section section--tight">
+    <div class="container stack" style="gap: 12px; max-width: 960px" data-how-draws>
+      <h2 class="display display--s" style="margin: 0">How our draws work</h2>
+      <p class="body" style="margin: 0">When a competition closes at 7pm, the entry list is locked and can't be changed. At 7:30pm we draw the winning number live on Instagram from numbered chips. The result is recorded here, so anyone can check the winning ticket was a genuine entry.</p>
     </div>
-  </PageHero>
+  </section>
   <section class="section">
     <div class="container"><div class="stack" style="gap: 40px; max-width: 960px">
       <form class="lookup stack" method="get" action="/verify" role="search" aria-labelledby="lookup-title" data-reveal>
@@ -60,7 +60,6 @@ const description = 'Check any WDS Competitions draw yourself: entries are seale
               <li>
                 <a href={`/verify/${d.id}`}>
                   <span class="dl-main"><strong>{d.competition}</strong><span class="small muted">{day(d.drawAt)}{d.reference ? <> · <span class="mono">{d.reference}</span></> : null}</span></span>
-                  <span class={`badge ${d.method === 'external' ? 'badge--b' : ''}`} title={d.method === 'external' ? 'Drawn externally on the livestream, from the entry list Verity sealed' : 'Drawn by Verity from public drand randomness'}>{d.method === 'external' ? 'B · External draw' : 'A · Verity draw'}</span>
                   <span class="dl-go" aria-hidden="true">→</span>
                 </a>
               </li>
@@ -69,15 +68,12 @@ const description = 'Check any WDS Competitions draw yourself: entries are seale
         ) : (
           <p class="body muted" style="margin: 0">No draws published yet. {nextDrawAt ? <>The first live draw is on <strong>{day(nextDrawAt)}</strong>.</> : 'The first live draw date will be announced soon.'}</p>
         )}
-        <p class="small muted" style="margin: 0"><strong>A · Verity draw:</strong> the winner is computed from a public drand round committed when entries closed, and anyone can re-run it. <strong>B · External draw:</strong> Verity sealed the entry list and checks the winning ticket was on it; the pick itself was made on the linked livestream.</p>
       </div>
     </div></div>
   </section>
 </Layout>
 
 <style>
-  .hero-lines { display: flex; flex-direction: column; gap: 8px; }
-  .hero-lines .lead { margin: 0; }
   .lookup { border: 1px solid var(--line-2); padding: 28px; gap: 14px; }
   .lookup-row { display: flex; gap: 12px; align-items: flex-end; }
   .lookup-row .btn { min-width: 140px; }
@@ -88,8 +84,6 @@ const description = 'Check any WDS Competitions draw yourself: entries are seale
   .draw-list a:hover .dl-go, .draw-list a:focus-visible .dl-go { transform: translateX(3px); }
   .dl-main { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 0; }
   .dl-go { transition: transform 0.2s ease; }
-  .badge { display: inline-block; white-space: nowrap; padding: 3px 9px; border: 1px solid var(--line-3); border-radius: 999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-  .badge--b { color: var(--muted-2); border-style: dashed; }
   .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; white-space: nowrap; }
   @media (max-width: 700px) {
     .lookup { padding: 18px; }
