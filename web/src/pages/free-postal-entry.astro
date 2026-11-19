@@ -1,5 +1,5 @@
 ---
-import { POSTAL_HOURS_BEFORE_CLOSE, POSTAL_RULE, hasPostalRoute, postalBy, postalDeadlineSentence, seasonalPostNote } from '../lib/postal';
+import { POSTAL_HOURS_BEFORE_CLOSE, hasPostalRoute, postalBy, postalDeadlineSentence, seasonalPostNote } from '../lib/postal';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getCompetitions, getSettings } from '../lib/api';
@@ -12,18 +12,16 @@ const postalOpen = competitions.filter(hasPostalRoute); // free competitions are
 const deadlines = postalOpen.filter((c) => (c.status === 'live' || postalBeforeOpening(c)) && postalBy(c));
 const include = ['The competition name, e.g. “BMW E46 330Ci Clubsport”', 'Your full name', 'Your full postal address', 'Your date of birth', 'Your phone number', 'Your email address (the one on your WDS account, if you have one)'];
 const steps = [
-  ['01', 'Write your entry', 'On a postcard, or a letter in an envelope, write the competition name and your details (see the list).'],
-  ['02', 'Post it to us', 'Send it by first or second class post to the address shown, with enough stamps.'],
+  ['01', 'Write your entry', 'Write the competition name and your details (see the list) and put it in an envelope.'],
+  ['02', 'Post it to us', 'Send it by post to the address shown, with the correct stamp.'],
   ['03', 'Arrive in time', `It must reach us at least ${POSTAL_HOURS_BEFORE_CLOSE} hours before the competition closes. Each competition's exact deadline is listed below and on its page.`],
   ['04', 'Get your number', 'We give you the next ticket number in sequence and email it to you.'],
 ];
 const rules = [
-  'One entry per postcard or envelope. Multiple entries in one envelope count as one entry.',
-  'Where a competition has a maximum per person, postal entries count towards it along with online entries.',
-  `${POSTAL_RULE} Envelopes received less than ${POSTAL_HOURS_BEFORE_CLOSE} hours before close are rejected. Proof of posting is not proof of receipt.`,
-  'Hand-delivered, bulk, illegible or incomplete entries cannot be accepted.',
-  "If a competition sells out before your entry arrives, we can't include it. We'll email you to let you know.",
-  'Postal entries are entered into the same draw as online entries, with exactly the same chance of winning.',
+  'One entry per envelope, sent by post with the correct stamp. Envelopes containing more than one entry count as one entry.',
+  "Hand-delivered, bulk, mass-produced or third-party entries (entries sent on someone else's behalf) aren't accepted.",
+  'If a competition has a maximum per person, online and postal entries count towards the same limit.',
+  'Entries must arrive by the postal deadline shown on the competition.',
 ];
 ---
 <Layout title="Free postal entry" description="Every paid WDS competition can be entered free by post, with exactly the same chance of winning as online entries.">
@@ -66,8 +64,8 @@ const rules = [
   </section>
   <section class="section">
     <div class="container row" style="gap: 40px; align-items: center">
-      <div class="postcard" aria-label="Example postcard">
-        <div class="pc-left">Competition: BMW E46 330Ci Clubsport<br />Name: [Full name]<br />Address: [Full address]<br />DOB: [DD/MM/YYYY]<br />Phone: [Number]<br />Email: [Email]</div>
+      <div class="postcard" aria-label="Example entry">
+        <div class="pc-left">Competition: BMW E46 330Ci Clubsport<br />Name: your full name<br />Address: your full address<br />DOB: DD/MM/YYYY<br />Phone: your number<br />Email: your email</div>
         <div class="pc-right"><span class="stamp">Stamp</span><b>{address.map((l, i) => <>{l}{i < address.length - 1 ? <br /> : null}</>)}</b></div>
       </div>
       <p class="body" style="flex: 1 1 320px">Write clearly in capitals so we can read every detail. If we can't read it, we can't enter it.</p>
