@@ -72,6 +72,7 @@ class CustomerController extends Controller
     public function verificationFile(IdVerification $verification, string $which)
     {
         abort_unless(in_array($which, ['document', 'selfie'], true), 404);
+        abort_if($verification->files_deleted_at !== null, 410, 'These ID files were deleted 30 days after the prize was handed over.');
 
         return Storage::disk('local')->response($verification->{$which.'_path'});
     }

@@ -5,8 +5,13 @@ const s = await getSettings();
 const sections: [string, string[]][] = [
   ['About these terms', ['These terms cover using this website. Entering a competition is covered by the <a href="/terms">competition terms &amp; conditions</a>.']],
   ['Using the site', ["Use the site lawfully, and don't try to interfere with how it works."]],
+  ["Availability", ["We aim to keep the site running but can't guarantee it will always be available or error-free. We may suspend or change it, for example for maintenance."]],
   ['Your account', ['Keep your sign-in details private. You can close your account at any time.']],
+  ["Suspending accounts", ["We may suspend or close an account that's used to break these terms or the competition terms & conditions, or to act fraudulently."]],
   ['Content and intellectual property', [`The content on this site, including photos and the WDS name and logo, belongs to ${s.legalName} and can't be reused without our permission.`]],
+  ["Links to other sites", ["Links to other websites are for information only. We aren't responsible for their content."]],
+  ["Our liability", ["Nothing in these terms limits liability that can't be limited by law. Otherwise, we aren't liable for any loss caused by using the site, by the site being unavailable, or by any virus or technical problem, as far as the law allows."]],
+  ["Governing law", ["These terms are governed by the laws of England and Wales."]],
 ];
 ---
-<LegalPage title={'Website terms of use'} heading={'Website terms of use'} sections={sections} />
+<LegalPage title={'Website terms of use'} heading={'Website terms of use'} sections={sections} updated="20 November 2026" />
