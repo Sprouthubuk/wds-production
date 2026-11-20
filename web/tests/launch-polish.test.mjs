@@ -433,3 +433,70 @@ test('winner publicity: in the T&Cs winners clause, the privacy policy and a sho
   const a = faqAnswers(await page('/faqs'))['Will my name be published if I win?'];
   assert.ok(a && a.includes('first name, surname and county') && a.includes('Advertising Standards Authority'), a);
 });
+
+// Legal pages hardening (client wording, 20 Nov 2026).
+const headings = (html) => [...html.matchAll(/<h2 class="h3" id="[^"]*">\d+\. ([^<]*)<\/h2>/g)].map((m) => m[1].replace(/&amp;/g, '&').replace(/&#39;/g, "'"));
+
+test('T&Cs: the new sections, in order, with the client wording', async () => {
+  const html = await page('/terms');
+  assert.deepEqual(headings(html), ['The promoter', 'Who can enter', 'Age and identity checks', 'How to enter', 'Payment', 'Entries and limits', 'Your entry',
+    'Bundles and pricing', 'Closing dates', 'The draw', 'Winners', 'Prizes', 'Cancellation and changes', 'Disqualification', 'Refunds and cancellations',
+    'Your data', 'Our liability', 'Changes to these terms', 'Decisions', 'Governing law', 'Company details']);
+  const t = textOf(html);
+  for (const s of [
+    'Entries made by anyone under 18 or otherwise not eligible are void and refunded to the payer.',
+    "Your entry is completed as soon as your ticket numbers are issued.",
+    "must be the person named on the winning account or postal entry. If the winner isn't eligible, doesn't respond within 14 days of the draw",
+    "we'll pay it by bank transfer within 14 days of the winner choosing it and completing our checks.",
+    "We'll provide the V5C so the winner can register the vehicle in their name.",
+    "If we cancel a competition, we'll refund all paid entries in full and no draw will take place.",
+    'If a payment is reversed or charged back, the tickets bought with it are void.',
+    'Nothing in these terms limits or excludes our liability for death or personal injury caused by our negligence',
+    "Once a competition is published we won't change its closing date, number of tickets, price or maximum per person, except as set out under Cancellation and changes.",
+    "Our decisions on eligibility and on running the competitions are final, as far as the law allows.",
+    'if you live in Scotland or Northern Ireland, in the courts where you live.',
+  ]) assert.ok(t.includes(s), s);
+  assert.ok(t.includes("we'll publish your first name, surname and county"), 'the publicity paragraph is kept');
+  assert.ok(!t.includes('We will contact the winner'), 'the old first Winners paragraph is replaced');
+  assert.ok(html.includes('Last updated 20 November 2026.'));
+});
+
+test('privacy policy: providers, transfers, retention, response time, age', async () => {
+  const html = await page('/privacy');
+  const t = textOf(html);
+  for (const s of ['our payment provider (Cashflows, for card payments), our website hosting provider (servers in London, UK)',
+    'International transfers Some of our providers may process data outside the UK.',
+    'Winner ID documents are deleted within 30 days of the prize being handed over',
+    'six years after the end of the financial year',
+    "We'll respond to requests within one month. Contact us at ",
+    "Age Our competitions are for people aged 18 or over"]) assert.ok(t.includes(s), s);
+  assert.ok(t.includes("we'll publish your first name, surname and county"), 'the publicity paragraph is kept');
+  assert.ok(!t.includes('Our payment provider, website host, email provider'), 'the old first paragraph is replaced');
+  assert.ok(html.includes('Last updated 20 November 2026.'));
+});
+
+test('refunds policy: cancelled competitions, no refund once issued, charge backs, timescale', async () => {
+  const html = await page('/refunds');
+  const t = textOf(html);
+  assert.ok(t.includes('we cancel a competition'), 'cancelled competitions');
+  assert.ok(t.includes('If you charge back a payment, the tickets bought with it are void.'), 'charge back');
+  assert.ok(t.includes("Once your ticket numbers are issued, your entry is complete and isn't refundable"));
+  assert.ok(t.includes('usually within 5 to 10 working days'));
+  assert.ok(t.includes('with your order number'), 'asking for a refund: kept');
+  assert.ok(html.includes('Last updated 20 November 2026.'));
+});
+
+test('complaints and website terms: the new sections', async () => {
+  const c = await page('/complaints');
+  assert.deepEqual(headings(c), ['How to complain', 'What happens next', "If you're not happy with our response"]);
+  assert.ok(textOf(c).includes("We'll acknowledge your complaint within 5 working days and aim to give you a full response within 14 days."));
+  const w = await page('/website-terms');
+  for (const h of ['Availability', 'Suspending accounts', 'Links to other sites', 'Our liability', 'Governing law']) assert.ok(headings(w).includes(h), h);
+  for (const html of [c, w]) assert.ok(html.includes('Last updated 20 November 2026.'));
+  assert.ok((await page('/cookies')).includes('Last updated 19 November 2026.'), 'unchanged pages keep their date');
+});
+
+test('checkout: the terms tick-box has the new wording, with the T&Cs link', async () => {
+  const html = await page('/basket');
+  assert.ok(html.includes('<input id="b-terms" name="terms" type="checkbox" required><span>I\'m 18 or over, I agree to the <a href="/terms">terms &amp; conditions</a>, and I understand my entry is completed when my ticket numbers are issued, so I can\'t cancel it afterwards.</span>'));
+});

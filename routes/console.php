@@ -31,3 +31,5 @@ foreach (app(Scheduler::class)->events() as $event) {
 Schedule::command('wds:verity-check-alert')->dailyAt('07:00')->timezone('Europe/London');
 // Responsible Play Policy: remind admins about winners not contacted within 48 hours of the draw.
 Schedule::command('wds:winner-contact-reminders')->hourly()->withoutOverlapping();
+// Privacy policy: winner ID files are deleted 30 days after the prize is handed over.
+Schedule::command('wds:delete-winner-ids')->hourly()->withoutOverlapping();

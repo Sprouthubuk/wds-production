@@ -9,18 +9,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Larastan reads these columns as strings; the casts make them dates/arrays.
  *
  * @property \Illuminate\Support\Carbon|null $drawn_at
+ * @property \Illuminate\Support\Carbon|null $handed_over_at
  */
 class Winner extends Model
 {
     protected $fillable = ['competition_id', 'draw_id', 'ticket_id', 'user_id', 'display_name', 'prize', 'image', 'verification', 'handover', 'show_on_site', 'drawn_at',
-        'verity_winner_id', 'redraw_number', 'forfeited_at', 'forfeit_category', 'forfeit_note', 'forfeited_by', 'contacted_at', 'contact_reminder_sent_at'];
+        'verity_winner_id', 'redraw_number', 'forfeited_at', 'forfeit_category', 'forfeit_note', 'forfeited_by', 'contacted_at', 'contact_reminder_sent_at', 'handed_over_at'];
 
     protected function casts(): array
     {
-        return ['show_on_site' => 'boolean', 'drawn_at' => 'datetime', 'forfeited_at' => 'datetime', 'contacted_at' => 'datetime', 'contact_reminder_sent_at' => 'datetime'];
+        return ['show_on_site' => 'boolean', 'drawn_at' => 'datetime', 'forfeited_at' => 'datetime', 'contacted_at' => 'datetime', 'contact_reminder_sent_at' => 'datetime', 'handed_over_at' => 'datetime'];
     }
 
     public const CONTACT_WITHIN_HOURS = 48;
+
+    /** When the prize is marked "Delivered", record when (winner ID files are deleted 30 days later: wds:delete-winner-ids). */
+    protected static function booted(): void
+    {
+        static::saving(function (Winner $w) {
+            if ($w->isDirty('handover')) {
+                $w->handed_over_at = $w->handover === 'delivered' ? ($w->handed_over_at ?? now()) : null;
+            }
+        });
+    }
 
     /** The winner has this long from the draw to claim (terms: 14 days). */
     public function claimBy(): ?\Illuminate\Support\Carbon
