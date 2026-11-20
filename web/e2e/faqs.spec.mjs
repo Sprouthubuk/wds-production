@@ -8,11 +8,11 @@ test('/faqs shows every question closed', async ({ page }) => {
   expect(await faqs.evaluateAll((ds) => ds.filter((d) => d.open).length)).toBe(0);
 });
 
-test('/faqs#free-entry opens only "Can I enter for free?", and a later hash link opens that one', async ({ page }) => {
+test('/faqs#free-entry opens only "When do postal entries close?", and a later hash link opens that one', async ({ page }) => {
   await page.goto('/faqs#free-entry');
   const open = () => page.locator('details[data-faq]').evaluateAll((ds) => ds.filter((d) => d.open).map((d) => d.id));
   await expect.poll(open).toEqual(['free-entry']);
-  await expect(page.locator('#free-entry summary')).toHaveText('Can I enter for free?');
+  await expect(page.locator('#free-entry summary')).toHaveText('When do postal entries close?');
   await expect(page.locator('#free-entry')).toBeInViewport();
 
   await page.goto('/faqs#how-do-i-pay');
