@@ -25,7 +25,9 @@ const rules = [
 ];
 ---
 <Layout title="Free postal entry" description="Every paid WDS competition can be entered free by post, with exactly the same chance of winning as online entries.">
-  <PageHero eyebrow="Free entry" title="Enter free by post" intro="Every paid WDS competition can be entered free by post. Postal entries go into the same draw as online entries, with exactly the same chance of winning." />
+  <PageHero eyebrow="Free entry" title="Enter free by post" intro="Every paid WDS competition can be entered free by post. Postal entries go into the same draw as online entries, with exactly the same chance of winning.">
+    <p class="limits" data-postal-limits>One entry per envelope. If a competition has a maximum per person, postal and online entries count towards the same limit.</p>
+  </PageHero>
   {deadlines.length ? (
     <section class="section section--tight">
       <div class="container stack" style="gap: 16px">
@@ -88,6 +90,7 @@ const rules = [
 </Layout>
 
 <style>
+  .limits { margin: 0; padding: 12px 16px; border-left: 3px solid #fff; font-size: 16px; font-weight: 700; line-height: 1.5; max-width: 62ch; }
   .deadlines { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 12px; }
   .deadline { border: 2px solid #fff; padding: 22px 24px; display: flex; flex-direction: column; gap: 8px; }
   .deadline b { font-size: clamp(22px, 2.4vw, 30px); line-height: 1.2; }

@@ -148,21 +148,42 @@ class PostalCloseTest extends TestCase
     public function test_the_free_entry_address_defaults_to_knoll_house(): void
     {
         $this->assertSame(
-            'WDS Competitions – Free Entry, Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY, United Kingdom',
+            'WDS Originals Ltd, WDS Competitions – Free Entry, Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY, United Kingdom',
             implode(', ', SettingsPayload::get()['postalEntryAddress']),
         );
-        $this->getJson('/api/settings')->assertOk()->assertJsonPath('data.postalEntryAddress.1', 'Knoll House');
+        $this->getJson('/api/settings')->assertOk()->assertJsonPath('data.postalEntryAddress.2', 'Knoll House');
     }
 
     public function test_the_seeder_replaces_a_placeholder_address_but_keeps_a_real_one(): void
     {
         Setting::put('site', ['postalEntryAddress' => ['WDS Competitions — Free Entry', '[POSTAL ADDRESS LINE 1]']]);
         $this->seed();
-        $this->assertSame('Knoll House', Setting::get('site')['postalEntryAddress'][1]);
+        $this->assertSame(SettingsPayload::DEFAULTS['postalEntryAddress'], Setting::get('site')['postalEntryAddress']);
 
         Setting::put('site', ['postalEntryAddress' => ['PO Box 1', 'Town']]);
         $this->seed();
         $this->assertSame(['PO Box 1', 'Town'], Setting::get('site')['postalEntryAddress']);
+    }
+
+    public function test_the_migration_updates_only_a_saved_copy_of_the_old_default_address(): void
+    {
+        $migrate = fn () => (require database_path('migrations/2026_11_24_000001_update_postal_entry_address.php'))->up();
+        $old = ['WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'];
+
+        Setting::put('site', ['postalEntryAddress' => $old, 'tradingName' => 'WDS Competitions']);
+        $migrate();
+        $this->assertSame(SettingsPayload::DEFAULTS['postalEntryAddress'], Setting::get('site')['postalEntryAddress']);
+        $this->assertSame('WDS Originals Ltd', SettingsPayload::get()['postalEntryAddress'][0]);
+        $this->assertSame('WDS Competitions', Setting::get('site')['tradingName'], 'other settings kept');
+
+        Setting::put('site', ['postalEntryAddress' => ['PO Box 1', 'Town']]);
+        $migrate();
+        $this->assertSame(['PO Box 1', 'Town'], Setting::get('site')['postalEntryAddress'], 'an admin-set address is left alone');
+
+        Setting::put('site', ['tradingName' => 'WDS Competitions']);
+        $migrate();
+        $this->assertArrayNotHasKey('postalEntryAddress', Setting::get('site'), 'nothing written when never saved');
+        $this->assertSame(8, count(SettingsPayload::get()['postalEntryAddress']), 'the new default applies (8 lines, the most Settings allows)');
     }
 
     public function test_the_api_shows_the_postal_close(): void
