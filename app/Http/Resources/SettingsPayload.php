@@ -11,8 +11,9 @@ final class SettingsPayload
         'legalName' => 'WDS Originals Limited',
         'companyNumber' => '13330886',
         'registeredOffice' => 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY',
-        // One line per row: "WDS Competitions – Free Entry, Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY, United Kingdom".
-        'postalEntryAddress' => ['WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'],
+        // One line per row (at most 8). Saved copies of the previous default are updated by the migration
+        // 2026_11_24_000001_update_postal_entry_address.
+        'postalEntryAddress' => ['WDS Originals Ltd', 'WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'],
         'drawsInstagram' => 'wds_competitions',
         'socials' => [
             ['label' => 'Instagram @wds_competitions', 'url' => 'https://www.instagram.com/wds_competitions/'],

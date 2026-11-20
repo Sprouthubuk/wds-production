@@ -59,7 +59,7 @@ export const sampleAdmin: Record<string, unknown> = {
   '/settings': { data: {
     tradingName: 'WDS Competitions', legalName: 'WDS Originals Limited', companyNumber: '13330886',
     registeredOffice: 'Knoll House, Knoll Road, Camberley, Surrey, GU15 3SY', supportEmail: 'sales@wdsoriginals.com',
-    postalEntryAddress: ['WDS Competitions — Free Entry', '[POSTAL ADDRESS LINE 1]', '[TOWN] [POSTCODE]'], drawsInstagram: 'wds_competitions',
+    postalEntryAddress: ['WDS Originals Ltd', 'WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'], drawsInstagram: 'wds_competitions',
     socials: [{ label: 'Instagram @wds_competitions', url: 'https://www.instagram.com/wds_competitions/' }], youtubeUrl: 'https://youtube.com/@wdsoriginals',
   } },
   '/event-sales/competitions': { data: sampleCompetitions },

@@ -403,3 +403,33 @@ test('FAQs are short: at most three sentences each, with the legal essentials ke
   assert.ok(answers['When do postal entries close?'] && answers['What if not every ticket sells?'].includes('Closing dates are not extended'), 'closing dates');
   assert.ok(mainOf(html).includes('href="/terms"'), 'T&Cs link');
 });
+
+// Client tweaks: the full postal address, the limits line at the top of /free-postal-entry, winner publicity.
+const POSTAL_ADDRESS = ['WDS Originals Ltd', 'WDS Competitions – Free Entry', 'Knoll House', 'Knoll Road', 'Camberley', 'Surrey', 'GU15 3SY', 'United Kingdom'];
+test('/free-postal-entry shows the full address, in order, in the address box, the copy button and the example', async () => {
+  const html = await page('/free-postal-entry'); // SETTINGS null: the site's sample settings, which match the API default
+  const box = html.slice(html.indexOf('<address data-address>'), html.indexOf('</address>'));
+  assert.equal(box.replace('<address data-address>', ''), POSTAL_ADDRESS.join('<br>'));
+  assert.ok(html.includes(`data-copy="${POSTAL_ADDRESS.join(', ')}"`), 'copy button');
+  assert.ok(html.includes(`<b>${POSTAL_ADDRESS.join('<br>')}</b>`), 'example envelope');
+});
+
+test('/free-postal-entry: the limits line sits at the top, and the four bullets stay', async () => {
+  const html = await page('/free-postal-entry');
+  const line = '<p class="limits" data-postal-limits>One entry per envelope. If a competition has a maximum per person, postal and online entries count towards the same limit.</p>';
+  assert.ok(html.includes(line), 'the line');
+  assert.ok(html.indexOf(line) < html.indexOf('</h1>') + 2000 && html.indexOf(line) < html.indexOf('data-address'), 'in the page header, before the address');
+  const rules = html.slice(html.indexOf('<ol class="rules">'), html.indexOf('</ol>', html.indexOf('<ol class="rules">')));
+  assert.equal((rules.match(/<li>/g) ?? []).length, 4, 'four bullets');
+});
+
+const PUBLICITY = "If you win, we'll publish your first name, surname and county, and a photo of you with your prize where you've agreed to one, on our website and social media. You can ask us not to publish your name or photo; if you do, we may still have to share these details with the Advertising Standards Authority or another regulator if asked.";
+test('winner publicity: in the T&Cs winners clause, the privacy policy and a short FAQ', async () => {
+  const terms = textOf(await page('/terms'));
+  const winners = terms.slice(terms.lastIndexOf('. Winners '), terms.lastIndexOf('. Prizes '));
+  assert.ok(winners.includes(PUBLICITY), 'T&Cs winners clause');
+  const privacy = textOf(await page('/privacy'));
+  assert.ok(privacy.slice(privacy.lastIndexOf('Who we share it with'), privacy.lastIndexOf('How long we keep it')).includes(PUBLICITY), 'privacy: who we share it with');
+  const a = faqAnswers(await page('/faqs'))['Will my name be published if I win?'];
+  assert.ok(a && a.includes('first name, surname and county') && a.includes('Advertising Standards Authority'), a);
+});
