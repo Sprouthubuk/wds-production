@@ -302,7 +302,7 @@ test('FAQs: every question closed by default, each with an id to link to (free e
   assert.ok(details.every((attrs) => !/\sopen(\s|=|$)/.test(attrs)), 'none open');
   const ids = details.map((attrs) => attrs.match(/id="([^"]+)"/)?.[1]);
   assert.ok(ids.every(Boolean) && new Set(ids).size === ids.length, 'unique ids');
-  assert.ok(/<details id="free-entry"[^>]*><summary>Can I enter for free\?<\/summary>/.test(html));
+  assert.ok(/<details id="free-entry"[^>]*><summary>When do postal entries close\?<\/summary>/.test(html), 'old #free-entry links land on the postal question');
 });
 
 // Pre-launch cleanup (reviewer): no placeholders, debit cards only, official payment marks, tighter postal rules,
@@ -399,7 +399,7 @@ test('FAQs are short: at most three sentences each, with the legal essentials ke
   }
   const all = Object.values(answers).join(' ');
   assert.ok(all.includes('18 or over') && all.includes('lives in the UK'), '18+, UK');
-  assert.ok(answers['Can I enter for free?'].startsWith('Yes. Every paid competition can be entered free by post.') && html.includes('href="/free-postal-entry"'), 'free route');
+  assert.ok(answers['When do postal entries close?'].startsWith('Every paid competition can also be entered free by post') && html.includes('href="/free-postal-entry"'), 'free route');
   assert.ok(answers['When do postal entries close?'] && answers['What if not every ticket sells?'].includes('Closing dates are not extended'), 'closing dates');
   assert.ok(mainOf(html).includes('href="/terms"'), 'T&Cs link');
 });
@@ -499,4 +499,14 @@ test('complaints and website terms: the new sections', async () => {
 test('checkout: the terms tick-box has the new wording, with the T&Cs link', async () => {
   const html = await page('/basket');
   assert.ok(html.includes('<input id="b-terms" name="terms" type="checkbox" required><span>I\'m 18 or over, I agree to the <a href="/terms">terms &amp; conditions</a>, and I understand my entry is completed when my ticket numbers are issued, so I can\'t cancel it afterwards.</span>'));
+});
+
+test('FAQs: the free postal route is answered once, under "When do postal entries close?", with an inline link', async () => {
+  const html = await page('/faqs');
+  const answers = faqAnswers(html);
+  assert.ok(!('Can I enter for free?' in answers) && !('Does a postal entry have the same chance of winning?' in answers), 'the two questions are gone');
+  assert.equal(answers['When do postal entries close?'].replace(' )', ')'), 'Every paid competition can also be entered free by post (see free postal entry). Postal entries must arrive at least 48 hours before the competition closes; the exact deadline is shown on each competition page. They go into the same draw with the same chance of winning.');
+  assert.ok(html.includes('<details id="free-entry" data-faq><summary>When do postal entries close?</summary><p>Every paid competition can also be entered free by post (see <a href="/free-postal-entry">free postal entry</a>).'), 'inline link, #free-entry id');
+  const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
+  assert.ok(ld.mainEntity.find((e) => e.name === 'When do postal entries close?').acceptedAnswer.text.includes('(see free postal entry)'), 'structured data has plain text');
 });

@@ -1,19 +1,18 @@
 ---
 import { drawChannels } from '../lib/channels';
-import { POSTAL_RULE } from '../lib/postal';
+import { POSTAL_HOURS_BEFORE_CLOSE } from '../lib/postal';
 import Layout from '../layouts/Layout.astro';
 import PageHero from '../components/PageHero.astro';
 import { getSettings } from '../lib/api';
 const settings = await getSettings();
+// An answer can link inline with [label](/path); the optional third item adds a link after the answer.
 type Faq = [q: string, a: string, link?: { href: string; label: string }];
 const ch = drawChannels(settings);
 const groups: [string, Faq[]][] = [
   ['Entering', [
     ['Who can enter?', "Anyone aged 18 or over who lives in the UK. Employees and contractors of WDS Originals Limited, their immediate families and households, and anyone professionally connected with running the competitions can't enter."],
-    ['Can I enter for free?', 'Yes. Every paid competition can be entered free by post. Free competitions are entered online only, one entry per person.', { href: '/free-postal-entry', label: 'Free postal entry' }],
     ['Why is there a question before I pay?', "To enter a paid competition online, you answer a short multiple-choice question in your basket. If you get it wrong, nothing is charged and you can try again."],
-    ['When do postal entries close?', `${POSTAL_RULE} The exact deadline is shown on each competition page.`],
-    ['Does a postal entry have the same chance of winning?', 'Yes. Postal entries get ticket numbers from the same run as online entries and go into the same draw.'],
+    ['When do postal entries close?', `Every paid competition can also be entered free by post (see [free postal entry](/free-postal-entry)). Postal entries must arrive at least ${POSTAL_HOURS_BEFORE_CLOSE} hours before the competition closes; the exact deadline is shown on each competition page. They go into the same draw with the same chance of winning.`],
     ['How many times can I enter?', "If a competition has a maximum per person, it's shown on the competition page, and online and postal entries count towards it. Otherwise you can enter as many times as you like, as long as tickets remain available."],
   ]],
   ['Tickets & payment', [
@@ -36,10 +35,14 @@ const groups: [string, Faq[]][] = [
     ['How do I get my prize?', "We'll contact you after the draw to arrange handover."],
   ]],
 ];
-// Every question starts closed. Each has an id so a link can open one directly, e.g. /faqs#free-entry.
-const IDS: Record<string, string> = { 'Can I enter for free?': 'free-entry' };
+// Every question starts closed. Each has an id so a link can open one directly, e.g. /faqs#free-entry, which
+// (since "Can I enter for free?" was merged into it) opens "When do postal entries close?".
+const IDS: Record<string, string> = { 'When do postal entries close?': 'free-entry' };
+const INLINE = /\[([^\]]+)\]\((\/[^)]*)\)/g;
+const parts = (a: string) => a.split(/(\[[^\]]+\]\(\/[^)]*\))/).map((p) => { const m = /^\[([^\]]+)\]\((\/[^)]*)\)$/.exec(p); return m ? { label: m[1], href: m[2] } : p; });
+const plain = (a: string) => a.replace(INLINE, '$1');
 const faqId = (q: string) => IDS[q] ?? q.toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: groups.flatMap(([, items]) => items.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: a } }))) };
+const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntity: groups.flatMap(([, items]) => items.map(([q, a]) => ({ '@type': 'Question', name: q, acceptedAnswer: { '@type': 'Answer', text: plain(a) } }))) };
 ---
 <Layout title="FAQs" active="faqs">
   <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
@@ -47,7 +50,7 @@ const jsonLd = { '@context': 'https://schema.org', '@type': 'FAQPage', mainEntit
   <section class="section" style="border-bottom: 0">
     <div class="container faq" style="max-width: 960px">
       {groups.map(([cat, items]) => (
-        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a, link]) => <details id={faqId(q)} data-faq><summary>{q}</summary><p>{a}{link ? <> <a href={link.href}>{link.label} →</a></> : null}</p></details>)}</div></div>
+        <div class="group"><h2 class="h3" style="font-size: 22px">{cat}</h2><div>{items.map(([q, a, link]) => <details id={faqId(q)} data-faq><summary>{q}</summary><p>{parts(a).map((p) => (typeof p === 'string' ? p : <a href={p.href}>{p.label}</a>))}{link ? <> <a href={link.href}>{link.label} →</a></> : null}</p></details>)}</div></div>
       ))}
       <p class="body">The full rules are in our <a href="/terms">Terms &amp; conditions</a>. Can't find your answer? <a href="/contact">Contact us</a>.</p>
     </div>
