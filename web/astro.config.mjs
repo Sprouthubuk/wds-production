@@ -6,6 +6,8 @@ import node from '@astrojs/node';
 export default defineConfig({
   site: 'https://wdscompetitions.co.uk',
   output: 'server',
+  // src/middleware.ts checks instead, against `site` above (src/lib/origin-check.ts): never turn both off.
+  security: { checkOrigin: false },
   adapter: node({ mode: 'standalone' }),
   server: { port: 4321, host: true },
 });
