@@ -19,6 +19,19 @@ Server setup and go-live checks: `forge/README.md`, sections 4 and 5.
 | Reveal | Admin → Draws → **Publish result** | The result and `GET /api/draws/{id}/certificate` go public; the public page `/verify/{id}` re-runs every check in the visitor's browser. |
 | Forfeit / redraw | Admin → Draws or Winners → **Forfeit prize** (reason category, private note, redraw or not, confirmation) | `Verity::redraw()` forfeits and commits the replacement to a future drand round in one step (protocol R2); `verity:process-due` draws it once that round is out. `Verity::forfeit()` = no redraw, prize unawarded. Only the category goes on the public chain; the forfeited winner stays (ticket + reason, no name) and the replacement shows as "Redraw 1". |
 
+## Amending terms before opening
+
+Published terms are fixed, with one exception: `php artisan competitions:amend-cap {slug} {max} --reason="..." --by={admin email}`
+(a dry run unless `--apply`) sets or lowers the **maximum per person** of a competition that is still coming soon and has no
+entries of any kind. Nothing else can change this way and it can't be loosened (`App\Services\PreOpeningAmendments`).
+
+- It's a `competition.amended` event on Verity's audit chain, written by Verity's own `AuditLog::record()`: field, from, to,
+  reason, `admin:{id}`, opening time. Verifiers re-hash it like every event. It's emailed to `VERITY_ANCHOR_EMAILS`, an anchor
+  follows, and it shows in the competition's History and on its `/verify` page once drawn.
+- Verity's own row is **not** changed (it has no API for that, and `verity_*` tables are never written to): it keeps the maximum
+  it was published with. `TicketAllocator` enforces the amended one on every ticket issued. The maximum is not part of Verity's
+  commitment, its `competition.published` event or the public record.
+
 Nothing in WDS can pick a number or a winner, void a competition with entries, or change a result.
 
 ## Where it lives

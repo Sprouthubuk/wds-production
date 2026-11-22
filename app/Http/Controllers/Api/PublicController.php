@@ -102,15 +102,16 @@ class PublicController extends Controller
      * can be entered right now. A coming-soon competition says "not open yet". Read only: checkout re-checks
      * everything, so this can't be used to get round anything.
      */
-    public function basketQuote(Request $request, \App\Services\PricingService $pricing)
+    public function basketQuote(Request $request, \App\Services\PricingService $pricing, \App\Services\TicketAllocator $allocator)
     {
+        $user = $request->user('sanctum');
         $d = $request->validate([
             'items' => ['required', 'array', 'max:20'],
             'items.*.competitionId' => ['required', 'integer'],
             'items.*.qty' => ['required', 'integer', 'min:1', 'max:100000'],
         ]);
         $competitions = Competition::whereIn('id', collect($d['items'])->pluck('competitionId'))->get()->keyBy('id');
-        $lines = collect($d['items'])->map(function ($item) use ($competitions, $pricing) {
+        $lines = collect($d['items'])->map(function ($item) use ($competitions, $pricing, $allocator, $user) {
             $c = $competitions->get((int) $item['competitionId']);
             if (! $c || $c->status === 'draft') {
                 return ['competitionId' => (int) $item['competitionId'], 'open' => false, 'state' => 'unavailable', 'message' => 'This competition is no longer available.'];
@@ -127,6 +128,10 @@ class PublicController extends Controller
                 'qty' => (int) $item['qty'],
                 'total' => \App\Http\Resources\Money::pounds($pricing->forCompetition($c, (int) $item['qty'])),
                 'available' => $state === 'open' ? $c->available() : 0,
+                // The per-person maximum (null = none), and, signed in, what they already hold (online and postal).
+                // A guest's email isn't known here, and what another person holds is never shown: checkout checks it.
+                'maxPerPerson' => $c->max_per_person,
+                'held' => $user ? ($allocator->allowance($c, $user->email, $user->id)['held'] ?? null) : null,
                 // Asked in the basket before payment (paid competitions). Never says which answer is correct.
                 'skillQuestion' => ($q = $c->skillQuestion()) ? ['question' => $q['question'], 'options' => $q['options']] : null,
             ];

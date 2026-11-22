@@ -66,6 +66,13 @@ $publish = function (array $attrs) {
 $publish(['slug' => 'e2e-bmw', 'title' => 'E2E BMW E46', 'badge' => 'Main event', 'cash_alternative_pence' => 500000, 'sort_order' => 1,
     'skill_question' => ['question' => 'What does BMW stand for?', 'options' => ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons'], 'correct' => 1]]);
 $publish(['slug' => 'e2e-few-left', 'title' => 'E2E Few Left', 'total_tickets' => 4, 'max_per_person' => 2, 'bundles' => [], 'sort_order' => 2]);
+// Alice already holds 3 of this one's maximum of 5: two online and one by post.
+$capped = $publish(['slug' => 'e2e-capped', 'title' => 'E2E Capped', 'max_per_person' => 5, 'bundles' => [], 'sort_order' => 4]);
+if (! getenv('E2E_COMING_SOON')) {
+    $alloc = app(App\Services\TicketAllocator::class);
+    $alloc->allocate($capped, 2, ['channel' => 'event', 'email' => 'alice@e2e.test', 'name' => 'Alice Tester']);
+    app(App\Services\PostalEntryService::class)->log($capped, ['name' => 'Alice Tester', 'address' => '1 High St', 'date_of_birth' => '1990-01-01', 'email' => 'alice@e2e.test', 'received_on' => now()->toDateTimeString()], User::where('email', 'admin@e2e.test')->firstOrFail());
+}
 $publish(['slug' => 'e2e-free', 'title' => 'E2E Free Table', 'category' => 'merch', 'ticket_price_pence' => 0, 'bundles' => [], 'total_tickets' => 100, 'max_per_person' => 1, 'event_sales_enabled' => false, 'postal_entry_enabled' => false, 'sort_order' => 3]);
 Competition::create(['slug' => 'e2e-draft', 'title' => 'E2E Draft (never public)', 'category' => 'cars', 'status' => 'draft', 'ticket_price_pence' => 100, 'bundles' => [],
     'total_tickets' => 10, 'closes_at' => '2026-12-30 19:00:00', 'draw_at' => '2026-12-30 19:30:00', 'images' => []]);

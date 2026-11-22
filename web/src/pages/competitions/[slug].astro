@@ -13,6 +13,7 @@ import { getCompetition, getSettings, getUpcomingBySlug } from '../../lib/api';
 import { money, percentSold } from '../../lib/pricing';
 import { countdownParts } from '../../lib/countdown';
 import { prelaunchState } from '../../lib/prelaunch';
+import { getAllowance } from '../../lib/allowance';
 
 const { slug } = Astro.params;
 const [c, settings, pre] = await Promise.all([getCompetition(slug!), getSettings(), prelaunchState(Astro.locals)]);
@@ -31,6 +32,9 @@ const entered = free && !soon && me
   ? await api<{ data: { slug: string; online: string[] }[] }>('/me/entries', { token: getToken(Astro.cookies) })
     .then((r) => r.data.find((e) => e.slug === c.slug)?.online ?? null).catch(() => null)
   : null;
+// Signed in, with a per-person maximum: the selector stops at what they can still add.
+const allowance = !free && !soon ? await getAllowance(Astro.cookies, c) : null;
+if (allowance) Astro.response.headers.set('Cache-Control', 'private, no-store');
 const drawDate = c.drawAt ? new Date(c.drawAt) : null;
 const drawLabel = drawDate ? drawDate.toLocaleString('en-GB', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }) : 'To be confirmed';
 const postal = hasPostalRoute(c); // free competitions: online only
@@ -160,7 +164,7 @@ const jsonLd = {
       <div class="prices"><div><span class="label">{free ? 'Entry' : 'Per ticket'}</span><b>{free ? 'Free' : money(c.ticketPrice)}</b></div></div>
       <p class="key-terms small" data-key-terms>{soon && c.opensAt ? <><span>Opens {opensLabel(c.opensAt)}</span> · </> : null}<span>Closes {closesLabel}</span> · <span>{maxLine}</span> · <a href="/terms">T&amp;Cs</a></p>
       {soon ? <NotifyPanel competition={c} signedInAs={me?.email ?? null} />
-        : free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} />}
+        : free ? <FreeEntryPanel competition={c} me={me} entered={entered} /> : <EntryPanel competition={c} settings={settings} allowance={allowance} />}
       {postal ? <p class="free-route small" data-free-route>Free entry route available – see <a href="/free-postal-entry">free postal entry</a></p> : null}
     </aside>
   </div>

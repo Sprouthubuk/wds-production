@@ -93,10 +93,8 @@ class CheckoutService
                     if ($qty > $available) {
                         throw new EntryException($available > 0 ? "Only {$available} tickets left for {$c->title}." : "{$c->title} is sold out.");
                     }
-                    $held = $this->allocator->heldBy($c, $email);
-                    if ($c->max_per_person !== null && $held + $qty > $c->max_per_person) {
-                        $left = max(0, $c->max_per_person - $held);
-                        throw new EntryException("The maximum is {$c->max_per_person} tickets per person for {$c->title}. You can add {$left} more.");
+                    if ($c->max_per_person !== null && ($held = $this->allocator->heldBy($c, $email, $account?->id)) + $qty > $c->max_per_person) {
+                        throw new EntryException(TicketAllocator::overMaximum($c, $held));
                     }
                     // The skill question (paid competitions, online): checked here, never trusted from the browser.
                     // A wrong or missing answer stops the order before anything is created or any payment starts.

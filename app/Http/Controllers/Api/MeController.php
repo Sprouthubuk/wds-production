@@ -91,6 +91,14 @@ class MeController extends Controller
         return response()->json(['data' => $data]);
     }
 
+    /** What the customer can still add to a competition with a per-person maximum (the ticket selector's limit). */
+    public function allowance(Request $request, string $slug, TicketAllocator $allocator)
+    {
+        $c = Competition::visible()->where('slug', $slug)->firstOrFail();
+
+        return response()->json(['data' => $allocator->allowance($c, $request->user()->email, $request->user()->id)])->header('Cache-Control', 'no-store, private');
+    }
+
     public function orders(Request $request)
     {
         $orders = $request->user()->orders()->with('lines.competition')->latest()->limit(100)->get();

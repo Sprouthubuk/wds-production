@@ -9,12 +9,18 @@
 import type { Competition, SiteSettings } from '../lib/types';
 import { money, odds, percentSold, priceFor, savingFor } from '../lib/pricing';
 import { countdownParts } from '../lib/countdown';
+import { canAddLine, maxPerPersonLine } from '../lib/per-person';
+import type { Allowance } from '../lib/allowance';
 
-interface Props { competition: Competition; settings: SiteSettings; variant?: 'full' | 'hero' }
-const { competition: c, variant = 'full' } = Astro.props; // settings: kept in Props for callers
+interface Props { competition: Competition; settings: SiteSettings; variant?: 'full' | 'hero'; allowance?: Allowance | null }
+const { competition: c, variant = 'full', allowance = null } = Astro.props; // settings: kept in Props for callers
 
 const left = Math.max(0, c.totalTickets - c.ticketsSold);
-const cap = Math.max(1, Math.min(c.maxPerPerson ?? left, left || 1)); // no per-person cap: up to what's left
+// What this person can still add: their remaining allowance (signed in), or the maximum. Null = no per-person cap.
+const limit = c.maxPerPerson ? allowance?.remaining ?? c.maxPerPerson : null;
+const atMax = limit === 0;
+const cap = Math.max(1, Math.min(limit ?? left, left || 1)); // no per-person cap: up to what's left
+const holds = c.maxPerPerson && allowance && allowance.held > 0 ? canAddLine(c.maxPerPerson, allowance.held) : null;
 const startQty = Math.min(c.bundles.find((b) => b.qty === 3)?.qty ?? 1, cap);
 const pct = percentSold(c.ticketsSold, c.totalTickets);
 const cd = countdownParts(c.drawAt ?? new Date().toISOString());
@@ -22,7 +28,7 @@ const options = [{ qty: 1, price: c.ticketPrice }, ...[...c.bundles].sort((a, b)
 const soldOut = left === 0;
 const config = JSON.stringify({
   id: c.id, slug: c.slug, title: c.title, image: c.images[0]?.src ?? '', ticketPrice: c.ticketPrice,
-  bundles: c.bundles, maxPerPerson: c.maxPerPerson, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
+  bundles: c.bundles, maxPerPerson: c.maxPerPerson, limit, cap, totalTickets: c.totalTickets, drawAt: c.drawAt,
 });
 ---
 {c.ticketPrice === 0 ? (
@@ -79,12 +85,14 @@ const config = JSON.stringify({
         </div>
 
         <div class="own">
-          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span>{c.maxPerPerson ? <span class="small muted">Max {c.maxPerPerson} per person</span> : null}</div> : null}
+          {variant === 'full' ? <div class="own-head"><span class="label">Or choose your own</span></div> : null}
           <div class="stepper">
             <button type="button" data-step="-1" aria-label="One fewer ticket">−</button>
             <div><span class="qty num" data-qty aria-live="polite">{startQty}</span><span class="word" data-word>{startQty === 1 ? 'ticket' : 'tickets'}</span></div>
             <button type="button" data-step="1" aria-label="One more ticket" class="plus">+</button>
           </div>
+          {variant === 'full' && c.maxPerPerson ? <p class="cap-line" data-max-line>{maxPerPersonLine(c.maxPerPerson)}</p> : null}
+          {holds ? <p class="cap-line" data-can-add><strong>{holds}</strong></p> : null}
           {variant === 'full' ? (
             <>
               <label class="sr-only" for={`range-${c.id}`}>Number of tickets</label>
@@ -100,13 +108,13 @@ const config = JSON.stringify({
         <button type="button" class="nudge" data-nudge hidden></button>
 
         {variant === 'hero' ? (
-          <button type="button" class="btn btn--block" data-enter disabled={c.preview}>{c.preview ? 'Entries disabled' : 'Enter now'}</button>
+          <button type="button" class="btn btn--block" data-enter disabled={c.preview || atMax}>{c.preview ? 'Entries disabled' : 'Enter now'}</button>
           <p class="free-route" data-free-route>Free entry route available – see <a href="/free-postal-entry">free postal entry</a></p>
         ) : (
           <div class="enter-row">
             {c.preview
               ? <button type="button" class="btn btn--lg" disabled>Preview: entries disabled</button>
-              : <button type="button" class="btn btn--lg" data-enter>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>}
+              : <button type="button" class="btn btn--lg" data-enter disabled={atMax}>Enter now · <span data-total-btn>{money(priceFor(startQty, c.ticketPrice, c.bundles))}</span></button>}
           </div>
         )}
       </>
@@ -163,6 +171,8 @@ const config = JSON.stringify({
   .entry--hero .p-price { font-size: 18px; }
   .own { display: flex; flex-direction: column; gap: 12px; }
   .own-head { display: flex; justify-content: space-between; align-items: center; }
+  .cap-line { margin: 0; font-size: 13px; color: var(--muted-2); }
+  .cap-line strong { color: #fff; }
   .stepper { display: flex; align-items: stretch; border: 1px solid #fff; }
   .stepper button { width: 60px; flex: 0 0 60px; min-height: 56px; background: transparent; border: 0; border-right: 1px solid #fff; color: #fff; font-size: 26px; cursor: pointer; transition: background-color .3s, color .3s, transform .15s; }
   .stepper button:active { transform: scale(.92); }
@@ -201,7 +211,7 @@ const config = JSON.stringify({
   import type { Bundle } from '../lib/types';
   import { pop } from '../lib/motion';
 
-  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number | null; cap: number; totalTickets: number; drawAt: string };
+  type Cfg = { id: number; slug: string; title: string; image: string; ticketPrice: number; bundles: Bundle[]; maxPerPerson: number | null; limit: number | null; cap: number; totalTickets: number; drawAt: string };
 
   document.querySelectorAll<HTMLElement>('[data-entry-panel]').forEach((root) => {
     const cfg: Cfg = JSON.parse(root.dataset.config || '{}');
@@ -240,7 +250,8 @@ const config = JSON.stringify({
     $<HTMLInputElement>('[data-range]')?.addEventListener('input', (e) => set(Number((e.target as HTMLInputElement).value)));
 
     root.querySelectorAll<HTMLButtonElement>('[data-enter]').forEach((b) => b.addEventListener('click', () => {
-      addToBasket({ competitionId: cfg.id, slug: cfg.slug, title: cfg.title, image: cfg.image, qty, ticketPrice: cfg.ticketPrice, bundles: cfg.bundles, maxPerPerson: cfg.maxPerPerson, drawAt: cfg.drawAt });
+      if (cfg.limit === 0) return; // already at the maximum
+      addToBasket({ competitionId: cfg.id, slug: cfg.slug, title: cfg.title, image: cfg.image, qty, ticketPrice: cfg.ticketPrice, bundles: cfg.bundles, maxPerPerson: cfg.maxPerPerson, drawAt: cfg.drawAt }, cfg.limit ?? Infinity);
       window.location.href = '/basket';
     }));
     render();
