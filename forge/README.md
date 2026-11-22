@@ -64,6 +64,32 @@ it runs `pkill -x -f "node $FORGE_SITE_PATH/web/dist/server/entry.mjs"` (the who
 and Forge's supervisor starts it again. Start the command with `node`, not `/usr/bin/node`, or it won't match.
 Staging has its own process, `wds-web-staging` on port 4322 (section 6). Never `supervisorctl restart all`.
 
+### Visitor IPs (rate limits)
+
+The API limits requests per account, or per visitor IP for guests (`app/Support/ApiRateLimits.php`). Guests reach it through
+the website, so the website passes the visitor's IP on: nginx sets `X-Real-IP` (`forge/web-nginx.conf`), the website sends it to
+the API as `X-Forwarded-For`, and the API believes it **only from 127.0.0.1 / ::1** (`bootstrap/app.php`).
+
+The website calls the API by its public domain, so on this server those calls arrive from the server's own public IP, not
+127.0.0.1. Tell the **API site's** nginx (Forge → API site → Nginx configuration, inside the `server { listen 443 … }` block) that
+calls from this server are on behalf of a visitor:
+
+```
+set_real_ip_from <this server's public IP>;   # only ever this server's own IP: never 0.0.0.0/0
+real_ip_header X-Forwarded-For;
+```
+
+`API_URL` in the `wds-web` command must be the direct domain (`api.wdscompetitions.co.uk`): the on-forge.com names go through
+Cloudflare, so every visitor would look like Cloudflare. Without this step guests share one counter per limit. Never put another
+proxy or CDN in front of the website without changing `X-Real-IP` too (it would be the CDN's address).
+
+Check it (read only). Run this **on the server**: every number is 59 (three visitors, three counters).
+Run it **from your own computer**: the numbers keep going down (the header is ignored).
+
+```
+for ip in 198.51.100.1 198.51.100.2 198.51.100.3; do curl -s -o /dev/null -D - -X POST https://<api-domain>/api/basket/quote   -H 'Content-Type: application/json' -H "X-Forwarded-For: $ip" -d '{"items":[{"competitionId":1,"qty":1}]}' | grep -i ratelimit-remaining; done
+```
+
 Node must be **22.23 or newer** (`node -v` in Forge's Commands). If it's older, upgrade Node on the server first.
 
 Deploy the website **after** the first deploy has built `web/dist`, then start the background process.

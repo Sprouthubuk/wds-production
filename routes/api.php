@@ -11,23 +11,27 @@ use App\Http\Controllers\Api\PaymentController;
 use App\Http\Controllers\Api\PublicController;
 use Illuminate\Support\Facades\Route;
 
+// Rate limits (throttle:{name}): App\Support\ApiRateLimits. Never an inline throttle:N,M: those all share one counter.
+
 // Public
 Route::get('/competitions', [PublicController::class, 'competitions']);
 Route::get('/competitions/{slug}', [PublicController::class, 'competition']);
 Route::get('/upcoming', [PublicController::class, 'upcoming']);
 Route::get('/upcoming/{slug}', [PublicController::class, 'upcomingBySlug']);
-Route::get('/preview/{token}', [PublicController::class, 'preview'])->middleware('throttle:30,1');
+Route::get('/preview/{token}', [PublicController::class, 'preview'])->middleware('throttle:preview');
 Route::get('/winners', [PublicController::class, 'winners']);
 Route::get('/draws', [PublicController::class, 'draws']);
-Route::get('/draws/lookup', [PublicController::class, 'lookup'])->middleware('throttle:60,1');
+Route::get('/draws/lookup', [PublicController::class, 'lookup'])->middleware('throttle:draw-lookup');
 Route::get('/draws/{draw}/certificate', [PublicController::class, 'certificate'])->name('draws.certificate');
 Route::get('/settings', [PublicController::class, 'settings']);
 
-Route::middleware('throttle:10,1')->group(function () {
+Route::middleware('throttle:sign-in')->group(function () {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/login', [AuthController::class, 'login']);
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/auth/reset-password', [AuthController::class, 'resetPassword']);
+});
+Route::middleware('throttle:forms')->group(function () {
     Route::post('/newsletter', [EngagementController::class, 'newsletter']);
     Route::post('/contact', [EngagementController::class, 'contact']);
     Route::post('/launch-alerts/unsubscribe/{token}', [EngagementController::class, 'unsubscribe']);
@@ -35,19 +39,19 @@ Route::middleware('throttle:10,1')->group(function () {
 
 // The basket's price and availability check: per line, the price and whether it can be entered now
 // ("not open yet" for a coming-soon competition). Checkout refuses the same lines whatever this says.
-Route::post('/basket/quote', [PublicController::class, 'basketQuote'])->middleware('throttle:60,1');
+Route::post('/basket/quote', [PublicController::class, 'basketQuote'])->middleware('throttle:basket');
 
 // The "Confirm your email" link (signed; lands on the website's account page)
-Route::get('/auth/verify-email/{user}/{hash}', [EmailVerificationController::class, 'verify'])->name('auth.verify-email')->middleware(['signed', 'throttle:20,1']);
+Route::get('/auth/verify-email/{user}/{hash}', [EmailVerificationController::class, 'verify'])->name('auth.verify-email')->middleware(['signed', 'throttle:verify-email']);
 
 // Checkout (guest or signed in) and order confirmation
-Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:20,1');
+Route::post('/checkout', [CheckoutController::class, 'store'])->middleware('throttle:checkout');
 Route::get('/orders/{reference}', [CheckoutController::class, 'show']);
 
 // Payments
 Route::post('/payments/webhook', [PaymentController::class, 'webhook'])->name('payments.webhook');
 // Cashflows notifications: ?token=CASHFLOWS_WEBHOOK_TOKEN, then the status is always re-queried from Cashflows.
-Route::post('/payments/cashflows/notify', [PaymentController::class, 'cashflows'])->name('payments.cashflows')->middleware('throttle:120,1');
+Route::post('/payments/cashflows/notify', [PaymentController::class, 'cashflows'])->name('payments.cashflows')->middleware('throttle:cashflows');
 Route::get('/payments/fake', [PaymentController::class, 'fake'])->name('payments.fake'); // signature checked in the controller
 
 // Signed-in customer
@@ -63,9 +67,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/me/self-exclude', [MeController::class, 'selfExclude']);
     Route::post('/me/close', [MeController::class, 'close']);
     Route::post('/me/verification', [MeController::class, 'verification']);
-    Route::post('/me/verify-email', [EmailVerificationController::class, 'resend'])->middleware('throttle:3,10');
+    Route::post('/me/verify-email', [EmailVerificationController::class, 'resend'])->middleware('throttle:verify-email-resend');
     // A free competition (£0): one online entry per verified account. No basket, no payment.
-    Route::post('/competitions/{competition}/free-entry', [FreeEntryController::class, 'store'])->middleware('throttle:10,1');
+    Route::post('/competitions/{competition}/free-entry', [FreeEntryController::class, 'store'])->middleware('throttle:free-entry');
 });
 
 // Staff (event sales + postal logging)
@@ -96,7 +100,7 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'role:admin'])->group(functi
     Route::get('/competitions/{competition}/history', [Admin\CompetitionController::class, 'history']);
     Route::get('/launch-alerts', [Admin\LaunchAlertController::class, 'index']);
     Route::get('/launch-alerts/export', [Admin\LaunchAlertController::class, 'export']);
-    Route::post('/launch-alerts/test', [Admin\LaunchAlertController::class, 'test'])->middleware('throttle:10,1');
+    Route::post('/launch-alerts/test', [Admin\LaunchAlertController::class, 'test'])->middleware('throttle:launch-alert-test');
     Route::get('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'show']);
     Route::post('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'store']);
     Route::delete('/competitions/{competition}/preview-link', [Admin\PreviewLinkController::class, 'destroy']);

@@ -22,6 +22,21 @@ export function withPreviewToken<T>(token: string, fn: () => T): T {
   return previewToken.run(token, fn);
 }
 
+/** The visitor the request being handled is for (set by src/middleware.ts), passed on so the API can limit each visitor separately. */
+const visitorIp = new AsyncLocalStorage<string>();
+export function withVisitorIp<T>(ip: string | null, fn: () => T): T {
+  return ip ? visitorIp.run(ip, fn) : fn();
+}
+
+/** Every call to the API goes through here: it says which visitor it's for. The API believes it only from this server. */
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const headers = new Headers(init.headers);
+  const ip = visitorIp.getStore();
+  if (ip) headers.set('X-Forwarded-For', ip);
+  else headers.delete('X-Forwarded-For');
+  return fetch(`${API_URL}/api${path}`, { ...init, headers });
+}
+
 export async function api<T>(path: string, init: RequestInit & { token?: string | null } = {}): Promise<T> {
   const headers = new Headers(init.headers);
   headers.set('Accept', 'application/json');
@@ -30,7 +45,7 @@ export async function api<T>(path: string, init: RequestInit & { token?: string 
   if (preview) headers.set('X-Preview-Token', preview);
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
   if (init.token) headers.set('Authorization', `Bearer ${init.token}`);
-  const res = await fetch(`${API_URL}/api${path}`, { ...init, headers });
+  const res = await apiFetch(path, { ...init, headers });
   const text = await res.text();
   const body = text ? JSON.parse(text) : null;
   if (!res.ok) throw new ApiError(res.status, body);
