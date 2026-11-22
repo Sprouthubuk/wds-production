@@ -90,6 +90,12 @@ Run it **from your own computer**: the numbers keep going down (the header is ig
 for ip in 198.51.100.1 198.51.100.2 198.51.100.3; do curl -s -o /dev/null -D - -X POST https://<api-domain>/api/basket/quote   -H 'Content-Type: application/json' -H "X-Forwarded-For: $ip" -d '{"items":[{"competitionId":1,"qty":1}]}' | grep -i ratelimit-remaining; done
 ```
 
+### Upload sizes
+
+A winner ID upload is two files of up to 10 MB each, sent by the browser to the website and by the website to the API, so both need
+room: Forge → Server → PHP → **Max file upload size 25 MB** (covers PHP and the API), and `client_max_body_size 25m;` in the website's nginx
+block (`forge/web-nginx.conf`). Uploads are accepted only from `https://wdscompetitions.co.uk` (`web/src/lib/origin-check.ts`).
+
 Node must be **22.23 or newer** (`node -v` in Forge's Commands). If it's older, upgrade Node on the server first.
 
 Deploy the website **after** the first deploy has built `web/dist`, then start the background process.
