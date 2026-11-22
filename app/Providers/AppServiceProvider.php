@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Mail\AccountPasswordLink;
+use App\Support\ApiRateLimits;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Support\ServiceProvider;
 
@@ -21,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        ApiRateLimits::register();
+
         // Password links open the website (this app is API-only, so there's no password.reset route here),
         // and use the branded email. A customer who has never signed in (account made at checkout) gets
         // "Set your password"; everyone else "Reset your password".

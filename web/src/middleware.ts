@@ -1,12 +1,14 @@
 import { defineMiddleware } from 'astro:middleware';
-import type { APIContext } from 'astro';
-import { api, ApiError, usingSampleData, withPreviewToken } from './lib/api';
+import type { APIContext, MiddlewareNext } from 'astro';
+import { api, ApiError, usingSampleData, withPreviewToken, withVisitorIp } from './lib/api';
+import { visitorIp } from './lib/client-ip';
 import { PREVIEW_COOKIE } from './lib/preview';
 import { gateFor, safeNext, signInUrl, SIGN_IN_ALIASES, type Gate } from './lib/auth-gate';
 import { clearAdminToken, clearToken, getAdminToken, getToken, type Me } from './lib/session';
 import type { AdminUser } from './lib/admin';
 
 /**
+ * 0. The visitor's IP goes with every API call made for the request, so the API limits each visitor, not this server.
  * 1. Sign-in (every admin and account page, in one place: never per page). No token, or one the API
  *    rejects (401), clears the cookie and redirects to /sign-in?next=<path>. A signed-in customer on
  *    /admin goes to /account. A 401 or 403 thrown by an API call while a page renders is handled the
@@ -17,7 +19,18 @@ import type { AdminUser } from './lib/admin';
  *    are never cached or indexed. Entries stay impossible: the API refuses drafts on every entry
  *    route, whatever the cookie says.
  */
-export const onRequest = defineMiddleware(async (context, next) => {
+export const onRequest = defineMiddleware((context, next) => withVisitorIp(visitorIp(addressOf(context), context.request.headers), () => handle(context, next)));
+
+/** The connection's address (nginx, on this machine). Astro takes no header for it, as allowedDomains isn't set. */
+function addressOf(context: APIContext): string | null {
+  try {
+    return context.clientAddress;
+  } catch {
+    return null;
+  }
+}
+
+async function handle(context: APIContext, next: MiddlewareNext): Promise<Response> {
   context.locals.preview = null;
   context.locals.admin = null;
   context.locals.user = null;
@@ -45,7 +58,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   return preview(context, next);
-});
+}
 
 async function signIn(context: APIContext, gate: Gate, here: string): Promise<Response | null> {
   const token = gate === 'admin' ? getAdminToken(context.cookies) : getToken(context.cookies);

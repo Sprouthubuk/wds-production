@@ -1,5 +1,5 @@
 import type { APIRoute } from 'astro';
-import { API_URL, usingSampleData } from '../../../lib/api';
+import { apiFetch, usingSampleData } from '../../../lib/api';
 import { getAdminToken, json } from '../../../lib/session';
 
 /**
@@ -20,7 +20,7 @@ const handler: APIRoute = async ({ params, request, cookies, url }) => {
   if (type) headers.set('Content-Type', type);
   const body = ['GET', 'HEAD'].includes(request.method) ? undefined : await request.arrayBuffer();
   try {
-    const res = await fetch(`${API_URL}/api/admin/${path}${url.search}`, { method: request.method, headers, body });
+    const res = await apiFetch(`/admin/${path}${url.search}`, { method: request.method, headers, body });
     const out = new Headers();
     for (const h of ['content-type', 'content-disposition']) {
       const v = res.headers.get(h);
