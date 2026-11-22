@@ -57,6 +57,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::put('/me', [MeController::class, 'update']);
     Route::get('/me/entries', [MeController::class, 'entries']);
     Route::get('/me/orders', [MeController::class, 'orders']);
+    Route::get('/me/allowance/{slug}', [MeController::class, 'allowance']);
     Route::post('/me/limits', [MeController::class, 'limits']);
     Route::post('/me/break', [MeController::class, 'takeBreak']);
     Route::post('/me/self-exclude', [MeController::class, 'selfExclude']);

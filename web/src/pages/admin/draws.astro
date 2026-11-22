@@ -16,7 +16,7 @@ interface DrawState {
 }
 const rows = await adminGet<DrawState[]>(Astro.cookies, '/draws');
 const label: Record<string, string> = {
-  'competition.published': 'Published (seed committed, round planned)', 'competition.extended': 'Closing time extended', 'competition.closed_early': 'Closed early',
+  'competition.published': 'Published (seed committed, round planned)', 'competition.amended': 'Terms amended before opening', 'competition.extended': 'Closing time extended', 'competition.closed_early': 'Closed early',
   'competition.closed': 'Entries closed and frozen, round committed', 'close.witnessed': 'Close timestamped', 'competition.void': 'Void (no entries)',
   'draw.completed': 'Drawn (on drand, or the external result recorded)', 'draw.winner_forfeited': 'Winner forfeited', 'draw.forfeited': 'Prize unawarded', 'draw.redraw_scheduled': 'Redraw scheduled (R2)',
   'redraw.witnessed': 'Redraw timestamped', 'draw.redrawn': 'Redrawn (R2)', 'order.withdrawn': 'Entries withdrawn (refund while open)',

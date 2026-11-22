@@ -77,7 +77,7 @@ class DrawController extends Controller
                 ] : null,
                 // Closes, extensions, voids, redraws and forfeits as recorded on Verity's public audit chain.
                 'trail' => collect($verity->auditTrail($c))
-                    ->whereIn('type', ['competition.published', 'competition.extended', 'competition.closed_early', 'competition.closed', 'close.witnessed',
+                    ->whereIn('type', ['competition.published', 'competition.amended', 'competition.extended', 'competition.closed_early', 'competition.closed', 'close.witnessed',
                         'competition.void', 'draw.completed', 'draw.winner_forfeited', 'draw.forfeited', 'draw.redraw_scheduled', 'redraw.witnessed', 'draw.redrawn', 'order.withdrawn'])
                     ->map(fn ($e) => ['seq' => $e['seq'], 'type' => $e['type'], 'at' => $e['occurred_at'] ?? null, 'hash' => $e['hash']])
                     ->values(),

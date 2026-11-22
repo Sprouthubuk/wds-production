@@ -14,6 +14,7 @@ import { countdownParts } from '../lib/countdown';
 import { drawChannels } from '../lib/channels';
 import { launchCountdown } from '../lib/prelaunch';
 import { isComingSoon, launchDay, nextOpening } from '../lib/coming-soon';
+import { getAllowance } from '../lib/allowance';
 import type { CompetitionTeaser } from '../lib/types';
 
 const [competitions, settings, winners, upcoming] = await Promise.all([getCompetitions(), getSettings(), getWinners(), getUpcoming()]);
@@ -33,6 +34,8 @@ const headline = launchAt ? `Launching ${launchDay(launchAt)}` : 'Launching soon
 // The draft teaser card only while nothing is published yet (a coming-soon card shows the real terms).
 const draftCard = prelaunch && !heroSoon ? prelaunch : null;
 const featured = prelaunch ? undefined : competitions.find((c) => c.badge) ?? competitions[0];
+const allowance = featured && featured.ticketPrice > 0 ? await getAllowance(Astro.cookies, featured) : null;
+if (allowance) Astro.response.headers.set('Cache-Control', 'private, no-store');
 const latestWinner = winners[0];
 const placeholders = Math.max(0, 3 - competitions.length - (draftCard ? 1 : 0));
 const launchCd = prelaunch ? launchCountdown(prelaunch) : null;
@@ -61,7 +64,7 @@ const drawDay = featured ? new Date(featured.drawAt).toLocaleDateString('en-GB',
           <div class="hero-facts"><strong>Only {featured.totalTickets.toLocaleString('en-GB')} tickets</strong><strong>{odds(featured.totalTickets)} odds</strong><span>{ch.youtube ? 'Drawn live on our socials' : 'Drawn live on Instagram'}</span></div>
         </div>
         <div class="hero-card hero-anim-card">
-          <EntryPanel competition={featured} settings={settings} variant="hero" />
+          <EntryPanel competition={featured} settings={settings} variant="hero" allowance={allowance} />
         </div>
       </div>
     </section>

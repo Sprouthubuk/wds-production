@@ -109,6 +109,8 @@ export interface DrawCertificate {
   engine: { version: string; engine_sha256: string; draw_path_sha256: string } | null; howToVerify: string;
   /** Original draw, then Redraw 1, 2 …; a forfeited winner is kept (ticket and reason only). */
   winners: { label: string; ticket: string | null; name: string | null; status: 'winner' | 'forfeited'; reason: string | null }[];
+  /** Terms tightened before opening, as recorded on the draw's audit chain. */
+  amendments?: { summary: string; from: number | null; to: number; reason: string; at: string; seq: number; hash: string }[];
   redrawsPending: { redraw: number; forfeitedTicket: number; drandRound: number | null; drandRoundAt: string | null }[];
 }
 

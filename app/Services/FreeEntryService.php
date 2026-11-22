@@ -58,7 +58,7 @@ class FreeEntryService
             if ($c->available() < 1) {
                 throw new EntryException("{$c->title} is full.");
             }
-            if ($c->max_per_person !== null && $this->allocator->heldBy($c, $email) + 1 > $c->max_per_person) {
+            if ($c->max_per_person !== null && $this->allocator->heldBy($c, $email, $user->id) + 1 > $c->max_per_person) {
                 throw new EntryException("You already have the maximum number of entries for {$c->title}.");
             }
 

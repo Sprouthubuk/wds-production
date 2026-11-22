@@ -97,6 +97,7 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
 <script>
   import { lineCap, readBasket, setQty } from '../lib/basket';
   import { thumb } from '../lib/images';
+  import { canAddLine, maxPerPersonLine } from '../lib/per-person';
   import { money, priceFor, savingFor } from '../lib/pricing';
 
   const root = document.querySelector<HTMLElement>('[data-basket]')!;
@@ -111,6 +112,13 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
   type Skill = { question: string; options: string[] };
   // The skill question for each paid competition in the basket, as the API sends it (never with the answer).
   let questions: { competitionId: number; title: string; q: Skill }[] = [];
+
+  // The per-person maximum of each competition as the API has it now, and what this customer already holds (signed in).
+  const limits = new Map<number, { max: number | null; held: number }>();
+  const capOf = (l: { competitionId: number; maxPerPerson: number | null }) => {
+    const x = limits.get(l.competitionId);
+    return x ? (x.max === null ? Infinity : Math.max(0, x.max - x.held)) : lineCap(l);
+  };
 
   function renderSkill() {
     const lines = readBasket();
@@ -157,16 +165,32 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
         <div class="step"><button type="button" aria-label="One fewer ticket" data-d="-1">−</button><span aria-live="polite">${l.qty}</span><button type="button" aria-label="One more ticket" data-d="1">+</button></div>
         <div class="price"><b>${money(lineTotal)}</b>${lineSave > 0 ? `<span class="small">Bundle saving ${money(lineSave)}</span>` : ''}</div>`;
       div.querySelector<HTMLElement>('[data-o]')!.textContent = l.qty ? `${l.qty} ticket${l.qty === 1 ? '' : 's'}` : '';
-      div.querySelectorAll<HTMLButtonElement>('[data-d]').forEach((b) => b.addEventListener('click', () => { setQty(l.competitionId, l.qty + Number(b.dataset.d)); render(); }));
+      div.querySelectorAll<HTMLButtonElement>('[data-d]').forEach((b) => b.addEventListener('click', () => { setQty(l.competitionId, l.qty + Number(b.dataset.d), capOf(l)); render(); }));
       div.querySelector<HTMLButtonElement>('[data-remove]')!.addEventListener('click', () => { setQty(l.competitionId, 0); render(); });
-      if (l.qty >= lineCap(l)) div.querySelector<HTMLButtonElement>('[data-d="1"]')!.disabled = true;
       linesEl.appendChild(div);
+      showCap(l);
     }
     totalsEl.innerHTML = `
       <div><span>${count} ticket${count === 1 ? '' : 's'}</span><span>${money(total + saving)}</span></div>
       <div><span>Bundle saving</span><span>−${money(saving)}</span></div>
       <div><span>Total</span><span>${money(total)}</span></div>`;
     void checkOpen();
+  }
+
+  /** The per-person maximum on a line, what can still be added, and the + button stopping there. */
+  function showCap(l: { competitionId: number; qty: number; maxPerPerson: number | null }) {
+    const div = linesEl.querySelector<HTMLElement>(`[data-cid="${l.competitionId}"]`);
+    if (!div) return;
+    div.querySelector<HTMLButtonElement>('[data-d="1"]')!.disabled = l.qty >= capOf(l);
+    div.querySelector('[data-line-max]')?.remove();
+    const x = limits.get(l.competitionId);
+    const max = x ? x.max : l.maxPerPerson;
+    if (max === null) return;
+    const el = document.createElement('span');
+    el.className = 'small muted';
+    el.dataset.lineMax = '';
+    el.textContent = x && x.held > 0 && x.held < max ? `${maxPerPersonLine(max)}. ${canAddLine(max, x.held)}.` : `${maxPerPersonLine(max)}.`;
+    div.querySelector('.info')!.insertBefore(el, div.querySelector('[data-remove]'));
   }
 
   // The API's price/availability check: a competition that isn't open yet (coming soon) or has closed
@@ -180,10 +204,20 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
       const res = await fetch('/api/basket/quote', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items: lines.map((l) => ({ competitionId: l.competitionId, qty: l.qty })) }) });
       if (!res.ok || seq !== checkSeq) return;
-      const { data } = await res.json() as { data: { competitionId: number; open: boolean; message: string | null; skillQuestion?: Skill | null }[] };
+      const { data } = await res.json() as { data: { competitionId: number; open: boolean; message: string | null; maxPerPerson?: number | null; held?: number | null; skillQuestion?: Skill | null }[] };
+      for (const q of data) if (q.maxPerPerson !== undefined) limits.set(q.competitionId, { max: q.maxPerPerson, held: q.held ?? 0 });
+      // More in the basket than they can still add: brought down to it (nothing left is marked below instead).
+      const over = lines.filter((l) => capOf(l) > 0 && l.qty > capOf(l));
+      if (over.length) {
+        for (const l of over) setQty(l.competitionId, capOf(l), capOf(l));
+        render();
+        return;
+      }
+      lines.forEach(showCap);
       questions = data.filter((q) => q.skillQuestion).map((q) => ({ competitionId: q.competitionId, title: lines.find((l) => l.competitionId === q.competitionId)?.title ?? '', q: q.skillQuestion! }));
       renderSkill();
-      const blocked = data.filter((q) => !q.open);
+      const full = (q: { competitionId: number }) => { const x = limits.get(q.competitionId); return !!x && x.max !== null && x.held >= x.max; };
+      const blocked = data.filter((q) => !q.open || full(q));
       linesEl.querySelectorAll('[data-line-warn]').forEach((el) => el.remove());
       for (const q of blocked) {
         const info = linesEl.querySelector<HTMLElement>(`[data-cid="${q.competitionId}"] .info`);
@@ -191,12 +225,15 @@ const prefill = me ? { email: me.email, name: `${me.firstName} ${me.lastName}`.t
         const warn = document.createElement('span');
         warn.className = 'small line-warn';
         warn.dataset.lineWarn = '';
-        warn.textContent = q.message ?? 'This competition is not open for entries.';
+        const x = limits.get(q.competitionId);
+        warn.textContent = q.open && x ? `${canAddLine(x.max!, x.held)} for this competition.` : q.message ?? 'This competition is not open for entries.';
         info.appendChild(warn);
       }
       submit.disabled = blocked.length > 0;
       if (blocked.length) {
-        errorEl.textContent = 'Remove the competitions marked above to continue: they are not open for entries right now.';
+        errorEl.textContent = blocked.every((q) => !q.open)
+          ? 'Remove the competitions marked above to continue: they are not open for entries right now.'
+          : 'Remove the competitions marked above to continue.';
         errorEl.hidden = false;
       } else if (errorEl.textContent?.startsWith('Remove the competitions')) {
         errorEl.hidden = true;

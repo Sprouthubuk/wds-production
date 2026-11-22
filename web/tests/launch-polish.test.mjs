@@ -18,9 +18,14 @@ const PAID = { ...base0, id: 1, slug: 'bmw', title: 'BMW E46 330Ci Clubsport', t
   skillQuestion: { question: 'What does BMW stand for?', options: ['British Motor Works', 'Bayerische Motoren Werke', 'Berlin Motor Wagons'] } };
 const FREE = { ...base0, id: 2, slug: 'engine-table', title: 'Bespoke Built Bedside Engine Table', category: 'merch', ticketPrice: 0, totalTickets: 500,
   maxPerPerson: 1, bundles: [], postalClosesAt: null, postalEntryEnabled: false, cashAlternative: null, skillQuestion: null };
+// Per-person maximum: the signed-in customer 'holder' already holds 20 of 150, 'full' holds all of them.
+const CAPPED = { ...PAID, id: 4, slug: 'capped', title: 'Capped car', maxPerPerson: 150 };
+const HELD = { 'Bearer holder': 20, 'Bearer full': 150, 'Bearer none': 0 };
 const ADMIN = { id: 1, firstName: 'Jo', lastName: 'Admin', email: 'jo@example.com', isAdmin: true, isStaff: true };
 const DRAFT = { ...PAID, id: 3, slug: 'coilovers', title: 'BC Racing BR Series Coilovers', status: 'draft', verityRef: null, ticketPrice: 5,
   skillQuestion: { question: 'What part of a car do coilovers replace?', options: ['The brakes', 'The exhaust', 'The suspension (springs and dampers)', 'The gearbox'], correct: 2 } };
+const CERT = { competition: 'Capped car', reference: 'WDS-TJ7XVR', method: 'external', externalKind: 'physical', winningTicket: '0004', winners: [], redrawsPending: [], entriesCount: 5,
+  amendments: [{ summary: 'Terms amended before opening: max per person set to 150', from: null, to: 150, reason: 'A limit per person before launch.', at: '2026-11-22T12:00:00Z', seq: 42, hash: 'ab'.repeat(32) }] };
 const ADDRESS = 'WDS Competitions – Free Entry'; // the first line of the free entry address (sample settings)
 
 // null = the API has no settings (the site uses its sample settings); set it to test the scrolling banner.
@@ -37,6 +42,12 @@ before(async () => {
     if (path === '/api/me') return (req.headers.authorization ?? '') === 'Bearer admin' ? send(res, 200, { data: ADMIN }) : send(res, 401, { message: 'Unauthenticated.' });
     if (path === '/api/competitions') return send(res, 200, { data: [PAID, FREE] });
     if (path === `/api/competitions/${PAID.slug}`) return send(res, 200, { data: PAID });
+    if (path === `/api/competitions/${CAPPED.slug}`) return send(res, 200, { data: CAPPED });
+    if (path === `/api/me/allowance/${CAPPED.slug}`) {
+      const held = HELD[req.headers.authorization ?? ''];
+      return held === undefined ? send(res, 401, { message: 'Unauthenticated.' }) : send(res, 200, { data: { max: 150, held, remaining: 150 - held } });
+    }
+    if (path === '/api/draws/9/certificate') return send(res, 200, { data: {}, certificate: CERT });
     if (path === `/api/competitions/${FREE.slug}`) return send(res, 200, { data: FREE });
     if (path === `/api/admin/competitions/${DRAFT.id}`) return send(res, 200, { data: DRAFT });
     if (path.startsWith(`/api/admin/competitions/${DRAFT.id}/`)) return send(res, 200, { data: path.endsWith('history') ? [] : null });
@@ -509,4 +520,40 @@ test('FAQs: the free postal route is answered once, under "When do postal entrie
   assert.ok(html.includes('<details id="free-entry" data-faq><summary>When do postal entries close?</summary><p>Every paid competition can also be entered free by post (see <a href="/free-postal-entry">free postal entry</a>).'), 'inline link, #free-entry id');
   const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
   assert.ok(ld.mainEntity.find((e) => e.name === 'When do postal entries close?').acceptedAnswer.text.includes('(see free postal entry)'), 'structured data has plain text');
+});
+
+const capPanel = async (cookie) => {
+  const html = await page(`/competitions/${CAPPED.slug}`, cookie);
+  return html.slice(html.indexOf('id="top-panel"'), html.indexOf('</aside>'));
+};
+
+test('a competition with a maximum says so next to the ticket selector, and the key-terms line keeps it', async () => {
+  const panel = await capPanel();
+  assert.ok(panel.includes('>Max 150 tickets per person (online and postal combined)</p>'), 'by the selector');
+  assert.ok(panel.indexOf('data-max-line') > panel.indexOf('data-step="1"') && panel.indexOf('data-max-line') < panel.indexOf('data-total'), 'between the stepper and the total');
+  assert.ok(panel.includes('<span>Max 150 per person</span>'), 'key terms');
+  assert.ok(panel.includes('max="150"'), 'the slider stops at the maximum');
+  assert.ok(!panel.includes('data-can-add'), 'nothing about holdings for a guest');
+  const none = await page(`/competitions/${PAID.slug}`);
+  assert.ok(!none.includes('data-max-line') && none.includes('No limit per person'), 'no maximum, no line');
+});
+
+test('signed in and holding some: "You can add up to N more", and the selector stops there', async () => {
+  const some = await capPanel('wds_session=holder');
+  assert.ok(some.includes('You can add up to 130 more'), 'what is left');
+  assert.ok(some.includes('max="130"') && some.includes('&quot;limit&quot;:130'), 'the slider and stepper stop at it');
+  const none = await capPanel('wds_session=none');
+  assert.ok(!none.includes('data-can-add') && none.includes('max="150"'), 'holding none: just the maximum');
+  const full = await capPanel('wds_session=full');
+  assert.ok(full.includes('You already have the maximum of 150 tickets'), 'at the maximum');
+  assert.ok(/<button[^>]*data-enter[^>]*disabled/.test(full), 'and cannot enter');
+  const expired = await capPanel('wds_session=expired');
+  assert.ok(expired.includes('max="150"') && !expired.includes('data-can-add'), 'an expired session: as a guest (checkout checks it)');
+});
+
+test('/verify shows a term amended before opening', async () => {
+  const html = await page('/verify/9');
+  const t = textOf(html.slice(html.indexOf('data-amendments')));
+  assert.ok(t.includes('Terms amended before opening: max per person set to 150 (was no limit), 22 November 2026'), t.slice(0, 300));
+  assert.ok(t.includes('Reason: A limit per person before launch.') && t.includes('Audit record #42'));
 });

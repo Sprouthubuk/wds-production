@@ -24,21 +24,22 @@ export function writeBasket(lines: BasketLine[]): void {
 /** The most of a line the basket allows: the per-person maximum, if there is one (the API checks what's left). */
 export const lineCap = (l: Pick<BasketLine, 'maxPerPerson'>): number => l.maxPerPerson ?? Infinity;
 
-/** Add tickets for a competition. Quantity is capped at the per-person maximum, if any. */
-export function addToBasket(line: BasketLine): void {
+/** Add tickets for a competition, up to the limit: the per-person maximum, or what's left of it for someone who holds some. */
+export function addToBasket(line: BasketLine, limit: number = lineCap(line)): void {
   const lines = readBasket();
   const existing = lines.find((l) => l.competitionId === line.competitionId);
   if (existing) {
-    existing.qty = Math.min(lineCap(line), existing.qty + line.qty);
+    existing.maxPerPerson = line.maxPerPerson;
+    existing.qty = Math.min(limit, existing.qty + line.qty);
   } else {
-    lines.push({ ...line, qty: Math.min(lineCap(line), line.qty) });
+    lines.push({ ...line, qty: Math.min(limit, line.qty) });
   }
   writeBasket(lines);
 }
 
-export function setQty(competitionId: number, qty: number): void {
+export function setQty(competitionId: number, qty: number, limit?: number): void {
   const lines = readBasket()
-    .map((l) => (l.competitionId === competitionId ? { ...l, qty: Math.min(lineCap(l), Math.max(0, qty)) } : l))
+    .map((l) => (l.competitionId === competitionId ? { ...l, qty: Math.min(limit ?? lineCap(l), Math.max(0, qty)) } : l))
     .filter((l) => l.qty > 0);
   writeBasket(lines);
 }

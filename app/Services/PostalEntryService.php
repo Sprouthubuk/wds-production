@@ -172,7 +172,7 @@ class PostalEntryService
         if ($account?->break_until?->isFuture()) {
             return PostalEntry::ACCOUNT_REASON_PREFIX.'on a break until '.$account->break_until->format('j M Y, H:i');
         }
-        if ($competition->max_per_person !== null && $this->allocator->heldBy($competition, $data['email']) >= $competition->max_per_person) {
+        if ($competition->max_per_person !== null && $this->allocator->heldBy($competition, $data['email'], $account?->id) >= $competition->max_per_person) {
             return 'Maximum entries per person reached';
         }
         if ($competition->available() < 1) {

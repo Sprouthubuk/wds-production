@@ -70,6 +70,13 @@ const facts: [string, string | number | null][] = [
         </div>
       ) : null}
 
+      {c.amendments?.length ? (
+        <div class="stack" style="gap:8px" data-amendments>
+          <h2 class="display display--s">Changes before opening</h2>
+          {c.amendments.map((a) => <p class="body" style="margin:0">{a.summary} ({a.from === null ? 'was no limit' : `was ${a.from}`}), {utc(a.at)}, before any entries. Reason: {a.reason} <span class="small muted">Audit record #{a.seq} · <span class="mono" style="word-break:break-all">{a.hash}</span></span></p>)}
+        </div>
+      ) : null}
+
       <div class="stack" style="gap:12px">
         <h2 class="display display--s">The certificate</h2>
         <dl class="facts">{facts.filter(([, v]) => v !== null && v !== '').map(([k, v]) => <><dt>{k}</dt><dd class="mono">{v}</dd></>)}</dl>

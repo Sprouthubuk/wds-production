@@ -9,14 +9,17 @@ use App\Models\Entrant;
 use App\Models\User;
 use App\Models\Winner;
 use App\Services\DrawService;
+use App\Services\PreOpeningAmendments;
 use Illuminate\Support\Facades\DB;
 use Sprouthub\Verity\Engine\Drand;
 use Sprouthub\Verity\Engine\VerityException;
 use Sprouthub\Verity\Facades\Verity;
+use Sprouthub\Verity\Models\AuditEvent;
 use Sprouthub\Verity\Models\Competition as VerityCompetition;
 use Sprouthub\Verity\Models\EntryGroup;
 use Sprouthub\Verity\Models\Redraw;
 use Sprouthub\Verity\Models\Winner as VerityWinner;
+use Sprouthub\Verity\Services\AuditLog;
 
 /**
  * WDS's one door into the Verity draw engine (sprouthub/verity-engine). Verity owns the numbering,
@@ -141,6 +144,34 @@ class VerityDrawEngine
 
             return $locked;
         });
+    }
+
+    /** Verity's audit chain event for an amended maximum per person (PreOpeningAmendments). Verifiers re-hash it like any other. */
+    public const AMENDED = 'competition.amended';
+
+    /**
+     * A pre-opening amendment on Verity's audit chain, through its own writer (the chain's lock and hashing).
+     * Only the event is written: Verity's competition row, with its commitment and terms, isn't touched.
+     * The chain is public and permanent, so the admin is there by id, as for forfeits.
+     */
+    public function recordCapAmended(Competition $competition, ?int $from, int $to, string $reason, User $by): AuditEvent
+    {
+        $vc = VerityCompetition::query()->where('ref', $competition->verity_ref)->lockForUpdate()->firstOrFail();
+        if ($vc->status !== 'draft' || $vc->tickets_sold > 0) {
+            throw new EntryException("{$competition->title} can't be amended: it has opened or has entries.");
+        }
+
+        return AuditLog::record(self::AMENDED, [
+            'competition' => $vc->ref,
+            'field' => 'max_per_person',
+            'from' => $from,
+            'to' => $to,
+            'reason' => $reason,
+            'by' => 'admin:'.$by->id,
+            'before_opening' => true,
+            'entries' => 0,
+            'opens_at' => $competition->opens_at?->copy()->utc()->format('Y-m-d\TH:i:s\Z'),
+        ], $vc);
     }
 
     /** Move the closing time later (the only change Verity allows after publish), with a public reason. */
@@ -423,6 +454,12 @@ class VerityDrawEngine
             'statement' => ($v['draw_method'] ?? 'verity') === 'external'
                 ? ($draw->competition?->drawsPhysically() ? Competition::PHYSICAL_STATEMENT : Competition::EXTERNAL_STATEMENT) : null,
             'recordedAt' => $v['external']['recorded_at'] ?? null,
+            // Terms tightened before opening (PreOpeningAmendments), from the audit chain.
+            'amendments' => collect($record['audit'] ?? [])->where('type', self::AMENDED)->map(fn ($e) => [
+                'summary' => PreOpeningAmendments::sentence((int) $e['payload']['to']),
+                'from' => $e['payload']['from'], 'to' => $e['payload']['to'], 'reason' => $e['payload']['reason'],
+                'at' => $e['occurred_at'], 'seq' => $e['seq'], 'hash' => $e['hash'],
+            ])->values()->all(),
         ];
     }
 

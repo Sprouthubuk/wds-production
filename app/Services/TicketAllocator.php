@@ -15,8 +15,8 @@ use Sprouthub\Verity\Models\Entry;
  * are confirmed, across every channel (online, postal, event): the competition is published on Verity
  * with sequential allocation, so the numbers customers see are Verity's and match the certificate.
  *
- * WDS checks first (open, capacity with reservations; caps and responsible play are checked by the
- * callers), then Verity allocates and WDS writes the numbers into its own tickets table as a mirror.
+ * WDS checks first (open, capacity with reservations, the per-person maximum; responsible play is checked by
+ * the callers), then Verity allocates and WDS writes the numbers into its own tickets table as a mirror.
  * Everything runs in the caller's transaction: if Verity refuses, nothing is written anywhere.
  *
  * Locks: WDS's competition row, then Verity's own (its competition row and its audit-chain lock),
@@ -76,6 +76,16 @@ class TicketAllocator
                     : "{$locked->title} is sold out.");
             }
 
+            // The per-person maximum, for every channel, on what's actually issued. The callers check it first
+            // (with reservations); this catches a late payment for an order whose reservation had ended, and is the
+            // only check of a maximum amended before opening at this point (Verity keeps the published one).
+            if ($locked->max_per_person !== null) {
+                $held = $this->ticketsHeld($locked, $entrant, $owner['user_id'] ?? null);
+                if ($held + $qty > $locked->max_per_person) {
+                    throw new EntryException(self::overMaximum($locked, $held));
+                }
+            }
+
             $group = $this->verity->addEntries($locked, $entrant, $qty, $owner);
             $entries = Entry::query()->where('entry_group_id', $group->id)->orderBy('number')->get(['id', 'number']);
             if ($entries->count() !== $qty) {
@@ -105,26 +115,57 @@ class TicketAllocator
     }
 
     /**
-     * Tickets this entrant (one per normalised email) holds across every channel, plus any they're
-     * holding in pending orders. The per-person maximum is checked against this (Verity checks the
-     * same maximum again per owner reference).
+     * Tickets this person holds across every channel (online, postal, event), plus any they're holding in
+     * pending orders. A person is one entrant (per normalised email) together with their account, if they have
+     * one: another email typed at checkout while signed in is still the same person. The per-person maximum is
+     * checked against this (Verity checks the maximum it was published with again, per owner reference).
      */
-    public function heldBy(Competition $competition, string $email): int
+    public function heldBy(Competition $competition, string $email, ?int $userId = null): int
     {
         $entrant = Entrant::findByEmail($email);
-        if (! $entrant) {
+        if (! $entrant && $userId === null) {
             return 0;
         }
-        $allocated = Ticket::active()->where('competition_id', $competition->id)->where('entrant_id', $entrant->id)->count();
         $pending = (int) DB::table('order_lines')
             ->join('orders', 'orders.id', '=', 'order_lines.order_id')
             ->where('order_lines.competition_id', $competition->id)
-            ->where('orders.entrant_id', $entrant->id)
+            ->where(fn ($q) => $q->where('orders.entrant_id', $entrant->id ?? 0)->when($userId !== null, fn ($q) => $q->orWhere('orders.user_id', $userId)))
             ->where('orders.status', 'pending')
             ->where('orders.reserved_until', '>', now())
             ->sum('order_lines.qty');
 
-        return $allocated + $pending;
+        return $this->ticketsHeld($competition, $entrant, $userId) + $pending;
+    }
+
+    /** Tickets issued and still valid, to this entrant or their account. */
+    private function ticketsHeld(Competition $competition, ?Entrant $entrant, ?int $userId): int
+    {
+        return Ticket::active()->where('competition_id', $competition->id)
+            ->where(fn ($q) => $q->where('entrant_id', $entrant->id ?? 0)->when($userId !== null, fn ($q) => $q->orWhere('user_id', $userId)))
+            ->count();
+    }
+
+    /**
+     * What a person can still add: the maximum, what they hold (reservations included), and what's left of it.
+     *
+     * @return array{max: int, held: int, remaining: int}|null null when there's no maximum
+     */
+    public function allowance(Competition $competition, string $email, ?int $userId = null): ?array
+    {
+        if ($competition->max_per_person === null) {
+            return null;
+        }
+        $max = (int) $competition->max_per_person;
+        $held = $this->heldBy($competition, $email, $userId);
+
+        return ['max' => $max, 'held' => $held, 'remaining' => max(0, $max - $held)];
+    }
+
+    public static function overMaximum(Competition $c, int $held): string
+    {
+        $left = max(0, $c->max_per_person - $held);
+
+        return "The maximum is {$c->max_per_person} tickets per person for {$c->title}. You can add {$left} more.";
     }
 
     public static function normaliseEmail(string $email): string
