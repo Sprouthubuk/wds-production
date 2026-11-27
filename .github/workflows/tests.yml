@@ -10,10 +10,17 @@ on:
 permissions:
   contents: read
 
+# A newer push to the same branch or PR cancels the older, now-pointless run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   api:
     name: "API (PHP 8.5): SQLite"
     runs-on: ubuntu-latest
+    # Usually ~35s (tests + PHPStan); a little headroom for a cold Composer cache.
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
@@ -27,6 +34,21 @@ jobs:
           php-version: '8.5'
           extensions: mbstring, pdo_sqlite, intl, gmp, gd
           coverage: none
+
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        # The private Verity package is excluded: this repo is public, and pull requests from forks can
+        # restore caches, so its archive must never be stored in the cache. It is still downloaded each run.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.composer-cache.outputs.dir }}
+            !${{ steps.composer-cache.outputs.dir }}/sprouthub
+          key: composer-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.5-
 
       - name: Install Composer dependencies
         # The Verity draw engine is a private package: read-only token, never in the repo or the logs.
@@ -49,6 +71,8 @@ jobs:
   api-mysql:
     name: API (PHP 8.5, MySQL 8.4)
     runs-on: ubuntu-latest
+    # Usually ~75s including MySQL start-up.
+    timeout-minutes: 5
 
     services:
       mysql:
@@ -96,6 +120,21 @@ jobs:
           mysql -h 127.0.0.1 -uroot -proot -e "CREATE DATABASE wds_race; CREATE USER 'wds'@'%' IDENTIFIED BY 'wds'; GRANT ALL PRIVILEGES ON wds_test.* TO 'wds'@'%'; GRANT ALL PRIVILEGES ON wds_race.* TO 'wds'@'%';"
           mysql -h 127.0.0.1 -uroot -proot -N -e "SELECT CONCAT('log_bin=', @@log_bin, ' log_bin_trust_function_creators=', @@log_bin_trust_function_creators)"
 
+      - name: Get Composer cache directory
+        id: composer-cache
+        run: echo "dir=$(composer config cache-files-dir)" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Composer downloads
+        # The private Verity package is excluded: this repo is public, and pull requests from forks can
+        # restore caches, so its archive must never be stored in the cache. It is still downloaded each run.
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ steps.composer-cache.outputs.dir }}
+            !${{ steps.composer-cache.outputs.dir }}/sprouthub
+          key: composer-${{ runner.os }}-php8.5-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-php8.5-
+
       - name: Install Composer dependencies
         # The Verity draw engine is a private package: read-only token, never in the repo or the logs.
         env:
@@ -114,6 +153,8 @@ jobs:
   web:
     name: Website build
     runs-on: ubuntu-latest
+    # Usually ~30s.
+    timeout-minutes: 5
 
     defaults:
       run:
